@@ -1244,10 +1244,8 @@
       }
 
       function crearFilaNombre(valor = "", notaPago = "", cargo = "") {
-        document.getElementById('btnReordenar').addEventListener('click', function() {
-  contNombres.classList.toggle('modo-reordenar');
-  this.textContent = contNombres.classList.contains('modo-reordenar') ? '✓ Finalizar' : '↕ Reordenar';
-});
+        
+
         
         const row = document.createElement("div");
         row.className = "nombre-row";
@@ -1281,6 +1279,10 @@
         actualizarPreview();
     }
 }
+document.getElementById('btnReordenar').addEventListener('click', function() {
+  contNombres.classList.toggle('modo-reordenar');
+  this.textContent = contNombres.classList.contains('modo-reordenar') ? '✓ Finalizar' : '↕ Reordenar';
+});
 
 function moverAbajo(btn) {
     const row = btn.closest(".nombre-row");
