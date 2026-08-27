@@ -1326,6 +1326,27 @@ function moverAbajo(btn) {
       function obtenerNotasPago() { return obtenerUsuarios().map((u) => u.nota || null); }
       function obtenerCargos() { return obtenerUsuarios().map((u) => u.cargo || ""); }
 
+      function actualizarPreview() {
+        const nombres = obtenerNombres();
+        const nombresVisibles = nombres.slice(0, 10);
+        
+        let html = nombresVisibles.length
+          ? nombresVisibles.map((n) => `<div>${escaparHtml(n)}</div>`).join("")
+          : '<div style="color:#aaa"></div>';
+
+        if (nombres.length > 10) {
+          html += `<div style="font-size:12px;color:#0ea5e9;font-weight:bold;margin-top:4px;">... y ${nombres.length - 10} más</div>`;
+        }
+
+        previewNombres.innerHTML = html;
+        previewNumero.textContent = inpNumero.value || "--";
+        previewPeriodo.textContent = inpPeriodo.value || "----";
+      }
+
+      contNombres.addEventListener("input", actualizarPreview);
+      inpNumero.addEventListener("input", actualizarPreview);
+      inpPeriodo.addEventListener("input", actualizarPreview);
+
       function validarTodasLasNotas() {
         for (const usuario of obtenerUsuarios()) {
           const resultado = validarRangoNotaPago(usuario.nota);
@@ -1341,14 +1362,17 @@ function moverAbajo(btn) {
 
       /* PREVIEW */
       function actualizarPreview() {
-        const nombres = obtenerNombres();
-        previewNombres.innerHTML = nombres.length
-          ? nombres.map((n) => `<div>${escaparHtml(n)}</div>`).join("")
-          : '<div style="color:#aaa"></div>';
+  const nombres = obtenerNombres();
+  const nombresVisibles = nombres.slice(0, 10);
 
-        previewNumero.textContent = inpNumero.value || "--";
-        previewPeriodo.textContent = inpPeriodo.value || "----";
-      }
+  let html = nombresVisibles.length
+    ? nombresVisibles.map((n) => `<div>${escaparHtml(n)}</div>`).join("")
+    : '<div style="color:#aaa"></div>';
+
+  previewNombres.innerHTML = html;
+  previewNumero.textContent = inpNumero.value || "--";
+  previewPeriodo.textContent = inpPeriodo.value || "----";
+}
 
       [inpNumero, inpPeriodo].forEach((el) => {
         el.addEventListener("input", actualizarPreview);
