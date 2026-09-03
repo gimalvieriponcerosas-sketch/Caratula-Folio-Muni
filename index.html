@@ -639,6 +639,32 @@
           display: none;
         }
       }
+      .nombre-row.separador-row {
+  background: #fef9c3;
+  border-color: #eab308;
+}
+.nombre-row.separador-row .inpSeparador {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #eab308;
+  border-radius: 6px;
+  text-align: center;
+  background: #fffbeb;
+}
+
+#caratula .nombres .separador-tema {
+  font-weight: bold;
+  text-align: center;
+  text-transform: uppercase;
+  margin: 10px 0 6px;
+  padding-left: 0;
+  color: #1e3a8a;
+  border-top: 1px solid #cbd5e1;
+  padding-top: 6px;
+}
+#caratula .nombres .separador-tema:before {
+  content: none; /* sin la flechita ➤ */
+}
     </style>
   </head>
 
@@ -690,6 +716,9 @@
         </button>
 
         <button id="btnAgregarNombre" type="button">+ Agregar nombre</button>
+        <button id="btnAgregarSeparador" type="button" style="margin-top:4px;background:#eab308;color:#1e293b;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;">
+  ➕ Agregar separador / tema
+</button>
         <button id="btnReordenar" type="button" style="margin-top:4px; background:#8b5cf6; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:13px;">
   ↕ Reordenar
 </button>
@@ -934,6 +963,8 @@
       const cfgFuenteCv = document.getElementById("cfgFuenteCv");
       const valorTamanoSubgerencia = document.getElementById("valorTamanoSubgerencia");
       const valorTamanoCv = document.getElementById("valorTamanoCv");
+      const MARCADOR_SEPARADOR = "§SEP§"; // prefijo interno, no se muestra al usuario
+
 
       /* CONFIGURACION VISUAL */
       let configVisual = {
@@ -1115,6 +1146,7 @@ function renderizarLista(folios, duplicados = {}) {
       const contenido = nombres.length
         ? nombres
             .map((nombre, index) => {
+            if (esSeparador(nombre)) return "";
               const nota = notas[index] ?? "";
               const cargo = cargos[index] ?? "";
               const clave = normalizarTexto(nombre);
@@ -1160,16 +1192,18 @@ const esDuplicado = duplicados[clave] && duplicados[clave] > 1;
            </div>`
         : "";
 
-      return `
-        <div class="lista-item">
-          <div class="folio-cabecera">
-            <div>
-              <b>N° ${escaparHtml(f.numero_folio)}</b> - ${escaparHtml(f.periodo)}
-              <div class="cantidad-nombres" style="color:#64748b;font-size:12px;">
-                ${nombres.length} nombre${nombres.length === 1 ? "" : "s"}
-              </div>
-            </div>
-          </div>
+     const nombresReales = nombres.filter((n) => !esSeparador(n));
+
+return `
+  <div class="lista-item">
+    <div class="folio-cabecera">
+      <div>
+        <b>N° ${escaparHtml(f.numero_folio)}</b> - ${escaparHtml(f.periodo)}
+        <div class="cantidad-nombres" style="color:#64748b;font-size:12px;">
+          ${nombresReales.length} nombre${nombresReales.length === 1 ? "" : "s"}
+        </div>
+      </div>
+    </div>
 
           <details class="detalle-folio" style="margin-top:6px;" data-folio-id="${f.id}" ${isOpen ? 'open' : ''}>
             <summary style="cursor:pointer;color:#0ea5e9;">Ver contenido</summary>
@@ -1222,6 +1256,22 @@ listaFolios.addEventListener('toggle', function(e) {
   }
 }, true); // <-- capture=true es la clave, toggle no burbujea
 
+function crearFilaSeparador(valor = "") {
+  const row = document.createElement("div");
+  row.className = "nombre-row separador-row";
+  row.dataset.tipo = "separador";
+
+  row.innerHTML = `
+    <div class="nombre-row-top">
+      <button type="button" class="btn-orden" onclick="moverArriba(this)">▲</button>
+      <button type="button" class="btn-orden" onclick="moverAbajo(this)">▼</button>
+      <input type="text" class="inpSeparador" value="${escaparHtml(valor)}">
+      <button type="button" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>
+    </div>
+  `;
+  contNombres.appendChild(row);
+}
+
       function guardarHistorial(h) {
         localStorage.setItem("historialFolios", JSON.stringify(h));
       }
@@ -1257,6 +1307,11 @@ listaFolios.addEventListener('toggle', function(e) {
           renderizarHistorial();
         }
       });
+      document.getElementById("btnAgregarSeparador").onclick = () => {
+  crearFilaSeparador();
+  actualizarPreview();
+  actualizarVisibilidadFilas();
+};
 
       /* NOMBRES Y NOTAS DE PAGO */
       let notasPagoVisibles = false;
@@ -1294,7 +1349,9 @@ listaFolios.addEventListener('toggle', function(e) {
         if (inicio > fin) return { valido: false, mensaje: "La página inicial no puede ser mayor que la página final." };
         return { valido: true, total: fin - inicio + 1 };
       }
-
+function esSeparador(nombre) {
+  return typeof nombre === "string" && nombre.startsWith(MARCADOR_SEPARADOR);
+}
       function actualizarTotalNotaPago(row) {
         const input = row.querySelector(".inpNotaPago");
         const total = row.querySelector(".nota-pago-total");
@@ -1417,35 +1474,49 @@ function moverAbajo(btn) {
       };
 
       function obtenerUsuarios() {
-        return Array.from(document.querySelectorAll(".nombre-row"))
-          .map((row) => ({
-            nombre: row.querySelector(".inpNombreItem")?.value.trim() || "",
-            nota: row.querySelector(".inpNotaPago")?.value.trim() || "",
-            cargo: row.querySelector(".inpCargoItem")?.value.trim() || "",
-          }))
-          .filter((u) => u.nombre.length > 0);
+  return Array.from(document.querySelectorAll(".nombre-row"))
+    .map((row) => {
+      if (row.dataset.tipo === "separador") {
+        const texto = row.querySelector(".inpSeparador")?.value.trim() || "";
+        return {
+          nombre: texto ? MARCADOR_SEPARADOR + texto : "",
+          nota: "",
+          cargo: "",
+          separador: true,
+        };
       }
+      return {
+        nombre: row.querySelector(".inpNombreItem")?.value.trim() || "",
+        nota: row.querySelector(".inpNotaPago")?.value.trim() || "",
+        cargo: row.querySelector(".inpCargoItem")?.value.trim() || "",
+        separador: false,
+      };
+    })
+    .filter((u) => u.nombre.length > 0);
+}
 
       function obtenerNombres() { return obtenerUsuarios().map((u) => u.nombre); }
       function obtenerNotasPago() { return obtenerUsuarios().map((u) => u.nota || null); }
       function obtenerCargos() { return obtenerUsuarios().map((u) => u.cargo || ""); }
 
-      function actualizarPreview() {
-        const nombres = obtenerNombres();
-        const nombresVisibles = nombres.slice(0, 10);
-        
-        let html = nombresVisibles.length
-          ? nombresVisibles.map((n) => `<div>${escaparHtml(n)}</div>`).join("")
-          : '<div style="color:#aaa"></div>';
+function actualizarPreview() {
+  const usuarios = obtenerUsuarios();
+  const visibles = usuarios.slice(0, 10);
 
-        if (nombres.length > 10) {
-          html += `<div style="font-size:12px;color:#0ea5e9;font-weight:bold;margin-top:4px;">... y ${nombres.length - 10} más</div>`;
+  const html = visibles.length
+    ? visibles.map((u) => {
+        if (u.separador) {
+          const texto = u.nombre.slice(MARCADOR_SEPARADOR.length);
+          return `<div>${escaparHtml(texto)}</div>`;
         }
+        return `<div>${escaparHtml(u.nombre)}</div>`;
+      }).join("")
+    : '<div style="color:#aaa"></div>';
 
-        previewNombres.innerHTML = html;
-        previewNumero.textContent = inpNumero.value || "--";
-        previewPeriodo.textContent = inpPeriodo.value || "----";
-      }
+  previewNombres.innerHTML = html;
+  previewNumero.textContent = inpNumero.value || "--";
+  previewPeriodo.textContent = inpPeriodo.value || "----";
+}
 
       contNombres.addEventListener("input", actualizarPreview);
       inpNumero.addEventListener("input", actualizarPreview);
@@ -1465,19 +1536,7 @@ function moverAbajo(btn) {
       });
 
       /* PREVIEW */
-      function actualizarPreview() {
-  const nombres = obtenerNombres();
-  const nombresVisibles = nombres.slice(0, 10);
-
-  let html = nombresVisibles.length
-    ? nombresVisibles.map((n) => `<div>${escaparHtml(n)}</div>`).join("")
-    : '<div style="color:#aaa"></div>';
-
-  previewNombres.innerHTML = html;
-  previewNumero.textContent = inpNumero.value || "--";
-  previewPeriodo.textContent = inpPeriodo.value || "----";
-}
-
+    
       [inpNumero, inpPeriodo].forEach((el) => {
         el.addEventListener("input", actualizarPreview);
       });
@@ -1511,59 +1570,70 @@ function moverAbajo(btn) {
       }
 
       /* GUARDAR / EDITAR */
-      document.getElementById("btnGuardar").onclick = async () => {
-        const payload = {
-          numero_folio: inpNumero.value.trim(),
-          periodo: inpPeriodo.value.trim(),
-          nombres: obtenerNombres(),
-          notas_pago: obtenerNotasPago(),
-          cargos: obtenerCargos(),
-          observaciones: inpObservaciones.value.trim() || null,
-          actualizado_en: new Date().toISOString(),
-        };
+document.getElementById("btnGuardar").onclick = async () => {
+  const payload = {
+    numero_folio: inpNumero.value.trim(),
+    periodo: inpPeriodo.value.trim(),
+    nombres: obtenerNombres(),
+    notas_pago: obtenerNotasPago(),
+    cargos: obtenerCargos(),
+    observaciones: inpObservaciones.value.trim() || null,
+    actualizado_en: new Date().toISOString(),
+  };
 
-        if (!payload.numero_folio || !payload.periodo || payload.nombres.length === 0) {
-          alert("Completa número de folio, periodo y al menos un nombre.");
-          return;
-        }
+  if (!payload.numero_folio || !payload.periodo || payload.nombres.length === 0) {
+    alert("Completa número de folio, periodo y al menos un nombre.");
+    return;
+  }
 
-        const validacionNotas = validarTodasLasNotas();
-        if (!validacionNotas.valido) {
-          alert(validacionNotas.mensaje);
-          notasPagoVisibles = true;
-          actualizarVisibilidadNotas();
-          return;
-        }
+  const validacionNotas = validarTodasLasNotas();
+  if (!validacionNotas.valido) {
+    alert(validacionNotas.mensaje);
+    notasPagoVisibles = true;
+    actualizarVisibilidadNotas();
+    return;
+  }
 
-        let error;
-        let accion;
-        let detalle;
+  let error;
+  let data;
+  let accion;
+  let detalle;
 
-        if (inpId.value) {
-          ({ error } = await clienteDB
-            .from("folios_cv")
-            .update(payload)
-            .eq("id", inpId.value));
+  if (inpId.value) {
+    ({ error } = await clienteDB
+      .from("folios_cv")
+      .update(payload)
+      .eq("id", inpId.value));
 
-          accion = "✏️ Edición";
-          detalle = `Folio N° ${payload.numero_folio} - ${payload.periodo}`;
-        } else {
-          ({ error } = await clienteDB.from("folios_cv").insert(payload));
+    accion = "✏️ Edición";
+    detalle = `Folio N° ${payload.numero_folio} - ${payload.periodo}`;
+  } else {
+    ({ data, error } = await clienteDB
+      .from("folios_cv")
+      .insert(payload)
+      .select()
+      .single());  // 👈 pedimos que devuelva el registro creado, con su id
 
-          accion = "➕ Creación";
-          detalle = `Folio N° ${payload.numero_folio} - ${payload.periodo}`;
-        }
+    accion = "➕ Creación";
+    detalle = `Folio N° ${payload.numero_folio} - ${payload.periodo}`;
+  }
 
-        if (error) {
-          alert("Error al guardar: " + error.message);
-          return;
-        }
+  if (error) {
+    alert("Error al guardar: " + error.message);
+    return;
+  }
 
-        alert(inpId.value ? "Folio actualizado correctamente." : "Folio guardado correctamente.");
-        agregarHistorial(accion, detalle);
-        limpiarFormulario();
-        await recargarUltimaPagina();
-      };
+  alert(inpId.value ? "Folio actualizado correctamente." : "Folio guardado correctamente.");
+  agregarHistorial(accion, detalle);
+
+  // Si era un folio nuevo, ahora queda "enganchado" a su id para poder seguir editándolo
+  if (!inpId.value && data) {
+    inpId.value = data.id;
+    modoEdicion.classList.add("mostrar");
+  }
+
+  await recargarUltimaPagina();
+};
 
       /* BUSCADOR */
       function debounce(fn, delay = 300) {
@@ -1604,7 +1674,13 @@ function moverAbajo(btn) {
 
         const notas = folio.notas_pago || [];
         const cargos = folio.cargos || [];
-        (folio.nombres || [""]).forEach((n, i) => crearFilaNombre(n, notas[i] || "", cargos[i] || ""));
+        (folio.nombres || [""]).forEach((n, i) => {
+  if (esSeparador(n)) {
+    crearFilaSeparador(n.slice(MARCADOR_SEPARADOR.length));
+  } else {
+    crearFilaNombre(n, notas[i] || "", cargos[i] || "");
+  }
+});
 
         modoEdicion.classList.add("mostrar");
         notasPagoVisibles = false;
