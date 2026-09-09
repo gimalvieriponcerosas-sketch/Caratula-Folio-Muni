@@ -143,8 +143,42 @@
       #btnGuardar:hover {
         background: #152a63;
       }
-      .btn-orden { display: none; }
-.modo-reordenar .btn-orden { display: inline-block; }
+      .btn-orden {
+    display: none;
+}
+
+.modo-reordenar .nombre-row {
+    cursor: pointer;
+    transition: .2s;
+    background: #bfdbfe;
+    border: 2px solid #3b82f6;
+}
+
+.modo-reordenar .nombre-row:hover {
+    background: #93c5fd;
+    border-color: #2563eb;
+}
+
+.modo-reordenar .nombre-row.seleccionado {
+    background: #ede9fe;
+    border: 2px solid #8b5cf6;
+    color: #6d28d9;
+}
+
+.modo-reordenar .nombre-row.arrastrando {
+    opacity: .5;
+}
+
+.indicador-mover {
+    display: none;
+    float: right;
+    font-weight: bold;
+    color: #7c3aed;
+}
+
+.modo-reordenar .nombre-row.seleccionado .indicador-mover {
+    display: inline-block;
+}
 
       .btn-group {
         display: flex;
@@ -1774,6 +1808,7 @@ function limpiarNombreParaExportar(nombre) {
             <button type="button" class="btn-orden" onclick="moverArriba(this)">▲</button>
             <button type="button" class="btn-orden" onclick="moverAbajo(this)">▼</button>
             <input type="text" class="inpNombreItem" value="${escaparHtml(valor)}" >
+              <span class="indicador-mover">↕ Mover</span>
             <input type="text" class="inpCargoItem" value="${escaparHtml(cargoFinal)}" >
             <button type="button" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>          </div>
           <div class="nota-pago-wrap ${notasPagoVisibles ? "mostrar" : ""}">
@@ -1829,9 +1864,98 @@ function limpiarNombreParaExportar(nombre) {
         actualizarVisibilidadFilas();
       });
 
-document.getElementById('btnReordenar').addEventListener('click', function() {
-  contNombres.classList.toggle('modo-reordenar');
-  this.textContent = contNombres.classList.contains('modo-reordenar') ? '✓ Finalizar' : '↕ Reordenar';
+let filaSeleccionada = null;
+let filaArrastrada = null;
+
+contNombres.addEventListener("click", function(e) {
+
+    if (!contNombres.classList.contains("modo-reordenar")) return;
+
+    const fila = e.target.closest(".nombre-row");
+
+    if (!fila) return;
+
+    if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON") {
+        return;
+    }
+
+    document.querySelectorAll(".nombre-row").forEach(f => {
+        f.classList.remove("seleccionado");
+    });
+
+    fila.classList.add("seleccionado");
+    filaSeleccionada = fila;
+});
+
+document.getElementById("btnReordenar").addEventListener("click", function() {
+
+    const activo = contNombres.classList.toggle("modo-reordenar");
+
+    this.textContent = activo
+        ? "✓ Finalizar"
+        : "↕ Reordenar";
+
+    filaSeleccionada = null;
+
+    document.querySelectorAll(".nombre-row").forEach(fila => {
+
+        fila.draggable = activo;
+
+        fila.classList.remove("seleccionado");
+        fila.classList.remove("arrastrando");
+    });
+    actualizarVisibilidadFilas();
+    if (!activo) {
+        actualizarPreview();
+    }
+});
+
+contNombres.addEventListener("dragstart", function(e) {
+
+    if (!contNombres.classList.contains("modo-reordenar")) {
+        e.preventDefault();
+        return;
+    }
+    const fila = e.target.closest(".nombre-row");
+
+    if (!fila || fila !== filaSeleccionada) {
+        e.preventDefault();
+        return;
+    }
+        filaArrastrada = fila;
+    fila.classList.add("arrastrando");
+});
+
+contNombres.addEventListener("dragend", function() {
+    if (filaArrastrada) {
+        filaArrastrada.classList.remove("arrastrando");
+        actualizarPreview();
+        actualizarVisibilidadFilas();
+    }
+    filaArrastrada = null;
+});
+contNombres.addEventListener("dragover", function(e) {
+
+    if (!filaArrastrada) return;
+
+    e.preventDefault();
+
+    const fila = e.target.closest(".nombre-row");
+
+    if (!fila || fila === filaArrastrada) return;
+
+    const mitad =
+        fila.getBoundingClientRect().top +
+        fila.getBoundingClientRect().height / 2;
+
+    if (e.clientY < mitad) {
+        contNombres.insertBefore(filaArrastrada, fila);
+    } else {
+        contNombres.insertBefore(
+            filaArrastrada,
+            fila.nextSibling
+        );
+    }
 });
 
 function moverAbajo(btn) {
@@ -1863,6 +1987,7 @@ function moverAbajo(btn) {
         actualizarVisibilidadNotas();
         actualizarVisibilidadFilas();
       };
+      
 
       function obtenerUsuarios() {
   return Array.from(document.querySelectorAll(".nombre-row"))
