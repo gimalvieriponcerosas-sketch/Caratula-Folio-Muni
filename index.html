@@ -2057,7 +2057,14 @@ function actualizarMarcadoDuplicadosFormulario() {
 function actualizarPreview() {
   actualizarMarcadoDuplicadosFormulario();
   const usuarios = obtenerUsuarios();
-  const visibles = usuarios.slice(0, 10);
+  let visibles;
+  if (modoMostrarFilas === "primeros") {
+    visibles = usuarios.slice(0, 10);
+  } else if (modoMostrarFilas === "ultimos") {
+    visibles = usuarios.slice(-10);
+  } else {
+    visibles = usuarios;
+  }
 
   const html = visibles.length
     ? visibles.map((u) => {
