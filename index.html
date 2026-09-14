@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <title>Carátulas de Folio - Municipalidad de Chinchao</title>
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
@@ -11,1033 +10,323 @@
     <style>
       :root {
         --azul: #1e3a8a;
+        --azul-hover: #152a63;
+        --sky: #0ea5e9;
+        --sky-hover: #0284c7;
+        --bg-gray: #f1f5f9;
+        --border-color: #e5e7eb;
       }
 
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; background: var(--bg-gray); margin: 0; padding: 20px; }
 
-      body {
-        font-family: Arial, sans-serif;
-        background: #f1f5f9;
-        margin: 0;
-        padding: 20px;
-      }
+      .layout { display: flex; gap: 30px; flex-wrap: wrap; align-items: flex-start; justify-content: center; }
+      .panel { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 400px; }
 
-      .layout {
-        display: flex;
-        gap: 30px;
-        flex-wrap: wrap;
-        align-items: flex-start;
-        justify-content: center;
-      }
+      h2 { margin-top: 0; font-size: 18px; color: var(--azul); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+      label { display: block; font-size: 13px; margin: 10px 0 4px; font-weight: bold; color: #333; }
 
-      .panel {
-        background: #fff;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        width: 400px;
+      input[type="text"], input[type="search"], select, textarea {
+        width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; font-family: inherit;
       }
+      textarea { resize: vertical; }
 
-      .panel.lista {
-        width: 400px;
-      }
+      /* Botones Generales */
+      .btn { border: none; border-radius: 6px; cursor: pointer; font-weight: bold; padding: 8px; transition: background 0.2s; }
+      .btn-primary { background: var(--azul); color: #fff; }
+      .btn-primary:hover { background: var(--azul-hover); }
+      .btn-sky { background: var(--sky); color: #fff; }
+      .btn-sky:hover { background: var(--sky-hover); }
+      .btn-danger { background: #ef4444; color: #fff; }
+      .btn-danger:hover { background: #dc2626; }
+      .btn-gray { background: #94a3b8; color: #fff; }
+      .btn-gray:hover { background: #64748b; }
 
-      h2 {
-        margin-top: 0;
-        font-size: 18px;
-        color: var(--azul);
-        border-bottom: 1px solid #e5e7eb;
-        padding-bottom: 8px;
-      }
-
-      label {
-        display: block;
-        font-size: 13px;
-        margin: 10px 0 4px;
-        font-weight: bold;
-        color: #333;
-      }
-
-      input[type="text"],
-      input[type="search"] {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        font-size: 14px;
-      }
-
+      /* Filas de Formulario */
       .nombre-row {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-bottom: 10px;
-        background: #f8fafc;
-        padding: 8px;
-        border-radius: 6px;
-        border: 1px solid #e2e8f0;
+        display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;
+        background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;
       }
+      .nombre-row-top { display: flex; gap: 6px; }
+      .nombre-row-top input { flex: 1; min-width: 0; }
+      .nombre-row-top button { background: #e11d48; color: #fff; border: none; border-radius: 6px; width: 32px; cursor: pointer; font-size: 16px; }
+      .fila-oculta { display: none; }
 
-      .nombre-row-top {
-        display: flex;
-        gap: 6px;
-      }
-
-      .nombre-row-top input {
-        flex: 1;
-        min-width: 0;
-      }
-
-             .nombre-row-top button {
-        background: #e11d48;
-        color: #fff;
-        border: none;
-        border-radius: 6px;
-        width: 32px;
-        cursor: pointer;
-        font-size: 16px;
-        line-height: 1;
-      }
-
-      .fila-oculta {
-        display: none;
-      }
-
-      /* Nombres que están repetidos en otros folios */
       .nombre-duplicado-input {
-        color: #dc2626 !important;
-        border: 2px solid #ef4444 !important;
-        background: #fef2f2 !important;
-        font-weight: 700;
-      }
-
-      .nombre-duplicado-input:focus {
-        border-color: #dc2626 !important;
-        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15);
-      }
-      #btnAgregarNombre {
-        margin-top: 4px;
-        background: #0ea5e9;
-        color: #fff;
-        border: none;
-        padding: 6px 10px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 13px;
-      }
-
-      #btnGuardar {
-        margin-top: 16px;
-        width: 100%;
-        background: var(--azul);
-        color: #fff;
-        border: none;
-        padding: 10px;
-        border-radius: 6px;
-        font-size: 15px;
-        cursor: pointer;
-      }
-
-      #btnGuardar:hover {
-        background: #152a63;
-      }
-      .btn-orden {
-    display: none;
-}
-
-.modo-reordenar .nombre-row {
-    cursor: pointer;
-    transition: .2s;
-    background: #bfdbfe;
-    border: 2px solid #3b82f6;
-}
-
-.modo-reordenar .nombre-row:hover {
-    background: #93c5fd;
-    border-color: #2563eb;
-}
-
-.modo-reordenar .nombre-row.seleccionado {
-    background: #ede9fe;
-    border: 2px solid #8b5cf6;
-    color: #6d28d9;
-}
-
-.modo-reordenar .nombre-row.arrastrando {
-    opacity: .5;
-}
-
-.indicador-mover {
-    display: none;
-    float: right;
-    font-weight: bold;
-    color: #7c3aed;
-}
-
-.modo-reordenar .nombre-row.seleccionado .indicador-mover {
-    display: inline-block;
-}
-
-      .btn-group {
-        display: flex;
-        gap: 10px;
-        margin-top: 10px;
-        flex-wrap: wrap;
-      }
-
-      .btn-group button {
-        flex: 1;
-        padding: 8px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: bold;
-        min-width: 120px;
-      }
-
-      #btnImprimirPDF {
-        background: #16a34a;
-        color: #fff;
-      }
-
-      #btnImprimirPDF:hover {
-        background: #15803d;
-      }
-
-      #btnExportarExcel {
-        background: #0ea5e9;
-        color: #fff;
-      }
-
-      #btnExportarExcel:hover {
-        background: #0284c7;
-      }
-
-      #btnLimpiar {
-        background: #94a3b8;
-        color: #fff;
-      }
-
-      #btnLimpiar:hover {
-        background: #64748b;
-      }
-
-      /* ENCABEZADO */
-
-      .encabezado {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        margin-bottom: 10px;
-      }
-
-      #btnConfig {
-        background: #475569;
-        color: #fff;
-        border: none;
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        cursor: pointer;
-        font-size: 16px;
-      }
-
-      #btnConfig:hover {
-        background: #334155;
-      }
-
-      /* MODAL */
-
-      #modalConfig {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 50;
-        align-items: center;
-        justify-content: center;
-      }
-
-      #modalConfig.mostrar {
-        display: flex;
-      }
-
-      .modal-caja {
-        background: #fff;
-        border-radius: 10px;
-        padding: 20px;
-        width: 400px;
-        max-width: 90vw;
-        max-height: 90vh;
-        overflow-y: auto;
-      }
-
-      .modal-caja h3 {
-        margin-top: 0;
-        color: var(--azul);
-        font-size: 16px;
-      }
-
-      /* CONFIGURACION DE CADA TEXTO */
-
-      .config-seccion {
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 12px;
-        margin-top: 12px;
-        background: #f8fafc;
-      }
-
-      .config-seccion h4 {
-        margin: 0 0 10px;
-        color: #1e3a8a;
-        font-size: 14px;
-      }
-
-      .config-fila {
-        display: flex;
-        gap: 6px;
-        align-items: center;
-        margin-top: 8px;
-      }
-
-      .config-fila label {
-        margin: 0;
-        min-width: 90px;
-      }
-
-      .config-fila select {
-        flex: 1;
-        padding: 7px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        background: white;
-      }
-
-      .tamano-controles {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .tamano-controles button {
-        width: 34px;
-        height: 32px;
-        border: none;
-        border-radius: 6px;
-        background: #1e3a8a;
-        color: white;
-        font-size: 18px;
-        font-weight: bold;
-        cursor: pointer;
-      }
-
-      .tamano-controles button:hover {
-        background: #152a63;
-      }
-
-      .tamano-controles span {
-        min-width: 55px;
-        text-align: center;
-        font-weight: bold;
-        font-size: 14px;
-      }
-
-      /* PAGINACION */
-
-      .paginacion {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 15px;
-        margin-top: 10px;
-      }
-
-      .paginacion button {
-        background: var(--azul);
-        color: #fff;
-        border: none;
-        border-radius: 6px;
-        padding: 6px 16px;
-        cursor: pointer;
-        font-size: 18px;
-        font-weight: bold;
-        transition: background 0.2s;
-      }
-
-      .paginacion button:hover:not(:disabled) {
-        background: #152a63;
-      }
-
-      .paginacion button:disabled {
-        opacity: 0.4;
-        cursor: default;
-      }
-
-      .paginacion span {
-        font-size: 14px;
-        font-weight: bold;
-        color: #333;
-        min-width: 60px;
-        text-align: center;
-      }
-
-      .lista-item {
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 10px;
-        margin-bottom: 8px;
-        font-size: 13px;
-        transition: background 0.2s;
-      }
-
-      .lista-item:hover {
-        background: #f8fafc;
-      }
-
-      .lista-item b {
-        color: var(--azul);
-      }
-
-      .lista-item .acciones {
-        display: flex;
-        gap: 5px;
-        margin-top: 8px;
-      }
-
-      .lista-item .btn-accion {
-        flex: 1;
-        padding: 4px 8px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-      }
-
-      .nombres-cabecera {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        margin: 10px 0 6px;
-      }
-
-      .nombres-cabecera label {
-        margin: 0;
-      }
-
-      #btnMostrarNotas {
-        border: 1px solid #64748b;
-        background: #f8fafc;
-        color: #334155;
-        border-radius: 6px;
-        padding: 5px 8px;
-        cursor: pointer;
-        font-size: 12px;
-        white-space: nowrap;
-      }
-
-      #btnMostrarNotas.activo {
-        background: #1e3a8a;
-        color: #fff;
-        border-color: #1e3a8a;
-      }
-
-      .nota-pago-wrap {
-        display: none;
-        margin-top: 6px;
-        padding: 7px 8px;
-        border: 1px dashed #94a3b8;
-        border-radius: 6px;
-        background: #fff;
-      }
-
-      .nota-pago-wrap.mostrar {
-        display: block;
-      }
-
-      .nota-pago-wrap label {
-        margin: 0 0 4px;
-        font-size: 11px;
-        color: #475569;
-      }
-
-      .inpNotaPago {
-        width: 100%;
-        padding: 7px;
-        border: 1px solid #cbd5e1;
-        border-radius: 5px;
-        font-size: 13px;
-      }
-
-      .nota-pago-total {
-        margin-top: 4px;
-        font-size: 11px;
-        color: #475569;
-        font-weight: bold;
-      }
-
-      .nota-pago-error {
-        color: #b91c1c;
-        font-weight: normal;
-      }
-
-      .btn-editar {
-        background: #3b82f6;
-        color: #fff;
-      }
-
-      .btn-duplicar {
-        background: #8b5cf6;
-        color: #fff;
-      }
-
-      .btn-eliminar {
-        background: #ef4444;
-        color: #fff;
-      }
-
-      /* CARATULA */
-
-      .caratula-wrap {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-
-      #caratula {
-        width: 300px;
-        min-height: 760px;
-        border: 5px solid #000;
-        border-radius: 40px;
-        padding: 25px 20px;
-        text-align: center;
-        background: #fff;
-        display: flex;
-        flex-direction: column;
-      }
-
-      /* MUNICIPALIDAD NO SE TOCA */
-
-      #caratula .titulo {
-        font-family: "Monotype Corsiva", "Apple Chancery", cursive;
-        font-size: 24px;
-        font-weight: bold;
-        line-height: 1.15;
-        margin-bottom: 8px;
-      }
-
-      #caratula img.escudo {
-        width: 140px;
-        margin: 6px auto 14px;
-        display: block;
-      }
-
-      /* SUB GERENCIA */
-
-      #caratula .subgerencia {
-        font-family: Arial, sans-serif;
-        font-size: 18px;
-        font-weight: bold;
-        margin-bottom: 12px;
-        line-height: 1.2;
-
-        /* VARIABLES MODIFICABLES */
-        --tamano-subgerencia: 18px;
-        --fuente-subgerencia: Arial;
-
-        font-size: var(--tamano-subgerencia);
-        font-family: var(--fuente-subgerencia), Arial, sans-serif;
-      }
-
-      /* CURRICULUM VITAE */
-
-      #caratula .cv-label {
-        font-family: Algerian, "Bookman Old Style", serif;
-        font-size: 26px;
-        font-weight: bold;
-        margin-bottom: 14px;
-        letter-spacing: 1px;
-        text-align: center;
-
-        /* VARIABLES MODIFICABLES */
-        --tamano-cv: 26px;
-        --fuente-cv: Algerian;
-
-        font-size: var(--tamano-cv);
-        font-family: var(--fuente-cv), Algerian, "Bookman Old Style", serif;
-      }
-
-      /* NOMBRES NO SE TOCAN */
-
-      #caratula .nombres {
-        font-family: Arial, sans-serif;
-        font-size: 16px;
-        text-align: left;
-        padding-left: 8px;
-        flex-grow: 1;
-      }
-
-      #caratula .nombres div {
-        margin-bottom: 6px;
-        padding-left: 14px;
-        position: relative;
-      }
-
-      #caratula .nombres div:before {
-        content: "➤";
-        position: absolute;
-        left: -4px;
-        color: #0ea5e9;
-        font-size: 11px;
-      }
-
-      /* NUMERO NO SE TOCA */
-
-      #caratula .folio-circulo {
-        font-family: Arial, sans-serif;
-        font-size: 30px;
-        font-weight: bold;
-        width: 80px;
-        height: 80px;
-        border: 4px solid #000;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 14px auto;
-      }
-
-      #caratula .periodo {
-        font-family: Arial, sans-serif;
-        font-size: 16px;
-        font-weight: bold;
-        margin-top: 6px;
-      }
-
-      #modoEdicion {
-        display: none;
-        background: #fef3c7;
-        color: #92400e;
-        padding: 8px;
-        border-radius: 6px;
-        margin-bottom: 10px;
-        font-size: 13px;
-        text-align: center;
-        border: 1px solid #f59e0b;
-      }
-
-      #modoEdicion.mostrar {
-        display: block;
-      }
-
-      /* HISTORIAL */
-
-      .historial-panel {
-        margin-top: 20px;
-        border-top: 1px solid #e5e7eb;
-        padding-top: 12px;
-      }
-
-      .historial-panel summary {
-        cursor: pointer;
-        font-weight: bold;
-        color: var(--azul);
-      }
-
-      .historial-panel .historial-item {
-        font-size: 12px;
-        padding: 4px 0;
-        border-bottom: 1px solid #f1f5f9;
-        display: flex;
-        justify-content: space-between;
-      }
-
-      .historial-panel .historial-item .fecha {
-        color: #6b7280;
-      }
-
-      /* IMPRESION */
+        color: #dc2626 !important; border: 2px solid #ef4444 !important; background: #fef2f2 !important; font-weight: 700;
+      }
+      .nombre-duplicado-input:focus { box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15); }
+
+      /* Modo Reordenar */
+      .btn-orden { display: none; }
+      .modo-reordenar .nombre-row { cursor: pointer; transition: .2s; background: #bfdbfe; border: 2px solid #3b82f6; }
+      .modo-reordenar .nombre-row:hover { background: #93c5fd; border-color: #2563eb; }
+      .modo-reordenar .nombre-row.seleccionado { background: #ede9fe; border: 2px solid #8b5cf6; color: #6d28d9; }
+      .modo-reordenar .nombre-row.arrastrando { opacity: .5; }
+      .indicador-mover { display: none; float: right; font-weight: bold; color: #7c3aed; }
+      .modo-reordenar .nombre-row.seleccionado .indicador-mover { display: inline-block; }
+
+      .btn-group { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+      .btn-group button { flex: 1; min-width: 120px; }
+
+      /* Header & Modal */
+      .encabezado { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+      #btnConfig { background: #475569; color: #fff; border: none; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 16px; }
+      #btnConfig:hover { background: #334155; }
+
+      .modal-overlay {
+        display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.48);
+        z-index: 5000; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(2px);
+      }
+      .modal-overlay.mostrar { display: flex; }
+      .modal-caja { background: #fff; border-radius: 10px; padding: 20px; width: 420px; max-width: 90vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+
+      .config-seccion { border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-top: 12px; background: #f8fafc; }
+      .config-seccion h4 { margin: 0 0 10px; color: var(--azul); font-size: 14px; }
+      .config-fila { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+      .config-fila label { margin: 0; min-width: 90px; }
+
+      .tamano-controles { display: flex; align-items: center; gap: 6px; }
+      .tamano-controles button { width: 34px; height: 32px; border: none; border-radius: 6px; background: var(--azul); color: white; font-size: 18px; font-weight: bold; cursor: pointer; }
+      .tamano-controles span { min-width: 55px; text-align: center; font-weight: bold; font-size: 14px; }
+
+      /* Paginación Mejorada */
+      .paginacion { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 12px; }
+      .paginacion button { background: var(--azul); color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 14px; font-weight: bold; }
+      .paginacion button:disabled { opacity: 0.3; cursor: default; }
+      .paginacion .info-paginacion { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: bold; color: #334155; }
+      .paginacion select { width: auto; padding: 4px 6px; font-size: 13px; font-weight: bold; cursor: pointer; border-color: #cbd5e1; }
+
+      .lista-item { border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 13px; transition: background 0.2s; }
+      .lista-item:hover { background: #f8fafc; }
+      .lista-item b { color: var(--azul); }
+      .lista-item .acciones { display: flex; gap: 5px; margin-top: 8px; }
+      .lista-item .btn-accion { flex: 1; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; color: #fff; }
+
+      .controles-lista-folios { display: flex; gap: 8px; margin-bottom: 8px; }
+      .btn-orden-lista {
+        flex: 1; border: 1px solid #cbd5e1; background: #f8fafc; color: #334155;
+        border-radius: 6px; padding: 8px; cursor: pointer; font-size: 12px; font-weight: bold;
+      }
+      .btn-orden-lista:hover { background: #e2e8f0; }
+      .btn-orden-lista.activo { background: #dbeafe; color: #1e3a8a; border-color: #93c5fd; }
+
+      .btn-editar { background: #3b82f6; }
+      .btn-duplicar { background: #8b5cf6; }
+      .btn-eliminar { background: #ef4444; }
+
+      .nombres-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 6px; }
+      .nombres-cabecera label { margin: 0; }
+
+      #btnMostrarNotas { border: 1px solid #64748b; background: #f8fafc; color: #334155; border-radius: 6px; padding: 5px 8px; cursor: pointer; font-size: 12px; }
+      #btnMostrarNotas.activo { background: var(--azul); color: #fff; border-color: var(--azul); }
+
+      .nota-pago-wrap { display: none; margin-top: 6px; padding: 7px 8px; border: 1px dashed #94a3b8; border-radius: 6px; background: #fff; }
+      .nota-pago-wrap.mostrar { display: block; }
+      .nota-pago-wrap label { margin: 0 0 4px; font-size: 11px; color: #475569; }
+      .nota-pago-total { margin-top: 4px; font-size: 11px; color: #475569; font-weight: bold; }
+      .nota-pago-error { color: #b91c1c; font-weight: normal; }
+
+      /* Carátula */
+      .caratula-wrap { display: flex; flex-direction: column; align-items: center; }
+      #caratula { width: 300px; min-height: 760px; border: 5px solid #000; border-radius: 40px; padding: 25px 20px; text-align: center; background: #fff; display: flex; flex-direction: column; }
+      #caratula .titulo { font-family: "Monotype Corsiva", cursive; font-size: 24px; font-weight: bold; line-height: 1.15; margin-bottom: 8px; }
+      #caratula img.escudo { width: 140px; margin: 6px auto 14px; display: block; }
+      #caratula .subgerencia { font-weight: bold; margin-bottom: 12px; line-height: 1.2; }
+      #caratula .cv-label { font-weight: bold; margin-bottom: 14px; letter-spacing: 1px; text-align: center; }
+      #caratula .nombres { font-size: 16px; text-align: left; padding-left: 8px; flex-grow: 1; }
+      #caratula .nombres div { margin-bottom: 6px; padding-left: 14px; position: relative; }
+      #caratula .nombres div:before { content: "➤"; position: absolute; left: -4px; color: var(--sky); font-size: 11px; }
+      #caratula .folio-circulo { font-size: 30px; font-weight: bold; width: 80px; height: 80px; border: 4px solid #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 14px auto; }
+      #caratula .periodo { font-size: 16px; font-weight: bold; margin-top: 6px; }
+
+      #modoEdicion { display: none; background: #fef3c7; color: #92400e; padding: 8px; border-radius: 6px; margin-bottom: 10px; font-size: 13px; text-align: center; border: 1px solid #f59e0b; }
+      #modoEdicion.mostrar { display: block; }
+
+      /* Historial & Separador */
+      .historial-panel { margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 12px; }
+      .historial-panel summary { cursor: pointer; font-weight: bold; color: var(--azul); }
+      .historial-item { font-size: 12px; padding: 4px 0; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; }
+      .historial-item .fecha { color: #6b7280; }
+
+      .nombre-row.separador-row { background: #fef9c3; border-color: #eab308; }
+      .nombre-row.separador-row .inpSeparador { width: 100%; padding: 8px; border: 1px solid #eab308; border-radius: 6px; text-align: center; background: #fffbeb; }
+
+      .lista-folios-duplicados { margin: 10px 0 0; padding: 0; list-style: none; }
+      .lista-folios-duplicados li { padding: 9px 10px; margin-top: 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 7px; }
+      .duplicado-clicable { cursor: pointer; text-decoration: underline; text-decoration-color: #facc15; text-underline-offset: 2px; }
+      .duplicado-clicable:hover { opacity: .75; }
 
       @media print {
-        body * {
-          visibility: hidden;
-        }
-
-        #caratula,
-        #caratula * {
-          visibility: visible;
-        }
-
-        #caratula {
-          position: absolute;
-          top: 0;
-          left: 0;
-        }
-
-        .panel,
-        .btn-group,
-        #modoEdicion,
-        .historial-panel,
-        .encabezado {
-          display: none;
-        }
+        body * { visibility: hidden; }
+        #caratula, #caratula * { visibility: visible; }
+        #caratula { position: absolute; top: 0; left: 0; }
+        .panel, .btn-group, #modoEdicion, .historial-panel, .encabezado { display: none; }
       }
-      .nombre-row.separador-row {
-  background: #fef9c3;
-  border-color: #eab308;
-}
-.nombre-row.separador-row .inpSeparador {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #eab308;
-  border-radius: 6px;
-  text-align: center;
-  background: #fffbeb;
-}
-
-#caratula .nombres .separador-tema {
-  font-weight: bold;
-  text-align: center;
-  text-transform: uppercase;
-  margin: 10px 0 6px;
-  padding-left: 0;
-  color: #1e3a8a;
-  border-top: 1px solid #cbd5e1;
-  padding-top: 6px;
-}
-#caratula .nombres .separador-tema:before {
-  content: none; /* sin la flechita ➤ */
-}
-
-      /* NOTIFICACION DE DUPLICADOS */
-      #modalDuplicados {
-        display:none;
-        position:fixed;
-        inset:0;
-        background:rgba(15,23,42,.45);
-        z-index:99999;
-        align-items:center;
-        justify-content:center;
-        padding:16px;
-      }
-      #modalDuplicados.mostrar { display:flex; }
-      .modal-duplicados-caja {
-        width:min(430px, 100%);
-        background:#fff;
-        border-radius:12px;
-        box-shadow:0 20px 50px rgba(0,0,0,.25);
-        overflow:hidden;
-      }
-      .modal-duplicados-cabecera {
-        padding:14px 16px;
-        border-bottom:1px solid #e2e8f0;
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:10px;
-      }
-      .modal-duplicados-titulo {
-        font-weight:700;
-        color:#dc2626;
-        font-size:15px;
-      }
-      .btn-cerrar-duplicados {
-        border:0;
-        background:transparent;
-        font-size:20px;
-        cursor:pointer;
-        color:#64748b;
-        line-height:1;
-      }
-      .modal-duplicados-contenido {
-        padding:16px;
-        color:#334155;
-        font-size:13px;
-      }
-      .lista-folios-duplicados {
-        margin:10px 0 0;
-        padding:0;
-        list-style:none;
-      }
-      .lista-folios-duplicados li {
-        padding:9px 10px;
-        margin-top:6px;
-        background:#f8fafc;
-        border:1px solid #e2e8f0;
-        border-radius:7px;
-      }
-      .duplicado-clicable {
-        cursor:pointer;
-        text-decoration:underline;
-        text-decoration-color:#facc15;
-        text-underline-offset:2px;
-      }
-      .duplicado-clicable:hover { opacity:.75; }
-      .modal-duplicados-pie {
-        padding:10px 16px 14px;
-        text-align:right;
-      }
-      .btn-aceptar-duplicados {
-        border:0;
-        border-radius:7px;
-        padding:7px 14px;
-        background:#0ea5e9;
-        color:#fff;
-        cursor:pointer;
-        font-weight:600;
-      }
-
-      /* VENTANA PARA EXPORTAR A EXCEL */
-      #modalExportarExcel {
-        display:none;
-        position:fixed;
-        inset:0;
-        background:rgba(15,23,42,.48);
-        z-index:99998;
-        align-items:center;
-        justify-content:center;
-        padding:16px;
-        backdrop-filter:blur(2px);
-      }
-      #modalExportarExcel.mostrar { display:flex; }
-      .modal-exportar-caja {
-        width:min(460px, 100%);
-        background:#fff;
-        border-radius:14px;
-        box-shadow:0 24px 70px rgba(15,23,42,.28);
-        overflow:hidden;
-        border:1px solid #e2e8f0;
-        animation:aparecerModalExcel .16s ease-out;
-      }
-      @keyframes aparecerModalExcel {
-        from { opacity:0; transform:translateY(8px) scale(.98); }
-        to { opacity:1; transform:translateY(0) scale(1); }
-      }
-      .modal-exportar-cabecera {
-        padding:16px 18px;
-        background:#f8fafc;
-        border-bottom:1px solid #e2e8f0;
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:12px;
-      }
-      .modal-exportar-titulo {
-        font-size:17px;
-        font-weight:700;
-        color:#0f172a;
-      }
-      .btn-cerrar-exportar {
-        width:32px;
-        height:32px;
-        border:0;
-        border-radius:8px;
-        background:transparent;
-        color:#64748b;
-        font-size:23px;
-        line-height:1;
-        cursor:pointer;
-      }
-      .btn-cerrar-exportar:hover {
-        background:#e2e8f0;
-        color:#0f172a;
-      }
-      .modal-exportar-contenido {
-        padding:20px 18px 16px;
-      }
-      .modal-exportar-contenido label {
-        display:block;
-        margin-bottom:8px;
-        font-size:13px;
-        font-weight:700;
-        color:#334155;
-      }
-      #selectExportarExcel {
-        width:100%;
-        box-sizing:border-box;
-        padding:11px 12px;
-        border:1px solid #cbd5e1;
-        border-radius:9px;
-        background:#fff;
-        color:#0f172a;
-        font-size:14px;
-        outline:none;
-        cursor:pointer;
-      }
-      #selectExportarExcel:focus {
-        border-color:#0ea5e9;
-        box-shadow:0 0 0 3px rgba(14,165,233,.13);
-      }
-      .modal-exportar-ayuda {
-        margin-top:9px;
-        color:#64748b;
-        font-size:12px;
-        line-height:1.45;
-      }
-      .modal-exportar-pie {
-        padding:12px 18px 16px;
-        display:flex;
-        justify-content:flex-end;
-        gap:8px;
-        border-top:1px solid #f1f5f9;
-      }
-      .btn-cancelar-exportar,
-      .btn-confirmar-exportar {
-        border:0;
-        border-radius:8px;
-        padding:9px 15px;
-        cursor:pointer;
-        font-size:13px;
-        font-weight:700;
-      }
-      .btn-cancelar-exportar {
-        background:#e2e8f0;
-        color:#334155;
-      }
-      .btn-cancelar-exportar:hover { background:#cbd5e1; }
-      .btn-confirmar-exportar {
-        background:#0ea5e9;
-        color:#fff;
-      }
-      .btn-confirmar-exportar:hover { background:#0284c7; }
     </style>
   </head>
 
   <body>
-    <div id="modalDuplicados" role="dialog" aria-modal="true" aria-labelledby="tituloModalDuplicados">
-      <div class="modal-duplicados-caja">
-        <div class="modal-duplicados-cabecera">
-          <div id="tituloModalDuplicados" class="modal-duplicados-titulo">⚠️ Ubicación del nombre duplicado</div>
-          <button type="button" class="btn-cerrar-duplicados" onclick="cerrarModalDuplicados()" aria-label="Cerrar">×</button>
+    <!-- MODALES -->
+    <div id="modalDuplicados" class="modal-overlay" role="dialog" aria-modal="true">
+      <div class="modal-caja">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
+          <div class="modal-duplicados-titulo" style="font-weight:700; color:#dc2626;">⚠️ Ubicación del nombre duplicado</div>
+          <button type="button" style="border:0; background:transparent; font-size:20px; cursor:pointer;" onclick="cerrarModal('modalDuplicados')">×</button>
         </div>
-        <div id="contenidoModalDuplicados" class="modal-duplicados-contenido"></div>
-        <div class="modal-duplicados-pie">
-          <button type="button" class="btn-aceptar-duplicados" onclick="cerrarModalDuplicados()">Entendido</button>
+        <div id="contenidoModalDuplicados" style="padding:16px 0; color:#334155; font-size:13px;"></div>
+        <div style="text-align:right;">
+          <button type="button" class="btn btn-sky" onclick="cerrarModal('modalDuplicados')">Entendido</button>
         </div>
       </div>
     </div>
 
-
-    <div id="modalExportarExcel" role="dialog" aria-modal="true" aria-labelledby="tituloModalExportarExcel">
-      <div class="modal-exportar-caja">
-        <div class="modal-exportar-cabecera">
-          <div id="tituloModalExportarExcel" class="modal-exportar-titulo">📊 Exportar a Excel</div>
-          <button type="button" class="btn-cerrar-exportar" onclick="cerrarModalExportarExcel()" aria-label="Cerrar">×</button>
+    <div id="modalExportarExcel" class="modal-overlay" role="dialog" aria-modal="true">
+      <div class="modal-caja">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
+          <div style="font-size:17px; font-weight:700;">📊 Exportar a Excel</div>
+          <button type="button" style="border:0; background:transparent; font-size:20px; cursor:pointer;" onclick="cerrarModal('modalExportarExcel')">×</button>
         </div>
-          <div class="modal-exportar-contenido">
+        <div style="padding:16px 0;">
           <label>¿Qué deseas exportar?</label>
-          <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-bottom:8px;">
-            <input type="checkbox" id="chkExportarTodos" checked style="width:auto;">
-            📚 Todos los folios
+          <label style="display:flex; align-items:center; gap:6px; font-weight:normal; margin-bottom:8px;">
+            <input type="checkbox" id="chkExportarTodos" checked style="width:auto;"> 📚 Todos los folios
           </label>
-          <div id="listaCheckboxFolios" style="max-height:220px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:8px;display:none;"></div>
-          <div class="modal-exportar-ayuda">
-            Desmarca "Todos los folios" para elegir folios específicos.
+          <div id="listaCheckboxFolios" style="max-height:220px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; padding:8px; display:none;"></div>
+          <div style="margin-top:9px; color:#64748b; font-size:12px;">Desmarca "Todos los folios" para elegir folios específicos.</div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button type="button" class="btn btn-gray" onclick="cerrarModal('modalExportarExcel')">Cancelar</button>
+          <button type="button" class="btn btn-sky" id="btnConfirmarExportarExcel">Exportar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modalConfig" class="modal-overlay">
+      <div class="modal-caja">
+        <h3>⚙️ Configuración de plantilla</h3>
+        <div class="config-seccion">
+          <h4>Cargo</h4>
+          <input type="text" id="cfgRubroActual" />
+          <small style="color:#777;">Los nuevos nombres agregados tomarán este cargo de forma predeterminada.</small>
+        </div>
+        <div class="config-seccion">
+          <h4>Título de Área / Subgerencia</h4>
+          <input type="text" id="cfgSubgerencia" placeholder="SUB GERENCIA DE RECURSOS HUMANOS" />
+          <div class="config-fila">
+            <label>Tipo:</label>
+            <select id="cfgFuenteSubgerencia">
+              <option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option>
+              <option value="Georgia">Georgia</option><option value="Verdana">Verdana</option>
+              <option value="Tahoma">Tahoma</option><option value="Courier New">Courier New</option>
+              <option value="Trebuchet MS">Trebuchet MS</option><option value="Calibri">Calibri</option>
+              <option value="Garamond">Garamond</option><option value="Bookman Old Style">Bookman Old Style</option>
+            </select>
+          </div>
+          <div class="config-fila">
+            <label>Tamaño:</label>
+            <div class="tamano-controles">
+              <button type="button" id="btnMenosSubgerencia">−</button>
+              <span id="valorTamanoSubgerencia">18 px</span>
+              <button type="button" id="btnMasSubgerencia">+</button>
+            </div>
           </div>
         </div>
-        <div class="modal-exportar-pie">
-          <button type="button" class="btn-cancelar-exportar" onclick="cerrarModalExportarExcel()">Cancelar</button>
-          <button type="button" class="btn-confirmar-exportar" id="btnConfirmarExportarExcel">Exportar</button>
+        <div class="config-seccion">
+          <h4>Tipo de documento</h4>
+          <input type="text" id="cfgCvLabel" placeholder="Curriculum vitae" />
+          <div class="config-fila">
+            <label>Tipo:</label>
+            <select id="cfgFuenteCv">
+              <option value="Algerian">Algerian</option><option value="Arial">Arial</option>
+              <option value="Times New Roman">Times New Roman</option><option value="Georgia">Georgia</option>
+              <option value="Verdana">Verdana</option><option value="Tahoma">Tahoma</option>
+              <option value="Courier New">Courier New</option><option value="Trebuchet MS">Trebuchet MS</option>
+              <option value="Calibri">Calibri</option><option value="Garamond">Garamond</option>
+              <option value="Bookman Old Style">Bookman Old Style</option>
+            </select>
+          </div>
+          <div class="config-fila">
+            <label>Tamaño:</label>
+            <div class="tamano-controles">
+              <button type="button" id="btnMenosCv">−</button>
+              <span id="valorTamanoCv">26 px</span>
+              <button type="button" id="btnMasCv">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button id="btnCerrarConfig" class="btn btn-gray" type="button">Cancelar</button>
+          <button id="btnGuardarConfig" class="btn btn-primary" type="button">Guardar</button>
         </div>
       </div>
     </div>
 
-    <!-- BOTON DE CONFIGURACION -->
-
+    <!-- ENCABEZADO Y LAYOUT -->
     <div class="encabezado">
-      <button
-        id="btnConfig"
-        type="button"
-        title="Editar textos y apariencia de la plantilla"
-      >
-        ⚙️
-      </button>
+      <button id="btnConfig" type="button" title="Editar textos y apariencia">⚙️</button>
     </div>
 
     <div class="layout">
       <!-- FORMULARIO -->
-
       <div class="panel">
         <h2>Nuevo / Editar Folio</h2>
+        <div id="modoEdicion">📝 Modo Edición - Los cambios se guardarán en el folio existente</div>
 
-        <div id="modoEdicion">
-          📝 Modo Edición - Los cambios se guardarán en el folio existente
+        <div style="display:flex; gap:10px;">
+          <div style="flex:1;">
+            <label>N° de folio</label>
+            <input type="text" id="inpNumero" />
+          </div>
+          <div style="width:110px;">
+            <label>N° de bloque</label>
+            <input type="text" id="inpBloque" placeholder="01" />
+          </div>
         </div>
-
-        <label>N° de folio</label>
-        <input type="text" id="inpNumero" />
 
         <label>Periodo</label>
         <input type="text" id="inpPeriodo" />
 
         <div class="nombres-cabecera">
           <label>Apellidos y Nombres / Cargo</label>
-          <button id="btnMostrarNotas" type="button" title="Mostrar u ocultar las notas de pago">
-            ⚙️ Notas
-          </button>
-          
+          <button id="btnMostrarNotas" type="button">⚙️ Notas</button>
         </div>
 
         <div id="contNombres"></div>
 
-        <div id="contOpcionesFilas" style="display:none;margin-bottom:8px;">
-          <label style="font-size:12px;margin:0 0 4px;color:#475569;display:block;">
-            Mostrar nombres:
-          </label>
-          <select id="selectMostrarFilas" style="
-            width:100%;
-            padding:7px;
-            border:1px solid #cbd5e1;
-            border-radius:6px;
-            background:#fff;
-            font-size:13px;
-            cursor:pointer;
-          ">
+        <div id="contOpcionesFilas" style="display:none; margin-bottom:8px;">
+          <label style="font-size:12px; margin:0 0 4px; color:#475569;">Mostrar nombres:</label>
+          <select id="selectMostrarFilas">
             <option value="primeros">Primeros 10</option>
             <option value="ultimos">Últimos 10</option>
             <option value="todos">Mostrar todo</option>
           </select>
         </div>
 
-        <button id="btnAgregarNombre" type="button">+ Agregar nombre</button>
-        <button id="btnAgregarSeparador" type="button" style="margin-top:4px;background:#eab308;color:#1e293b;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;">
-  ➕ Agregar separador / tema
-</button>
-        <button id="btnReordenar" type="button" style="margin-top:4px; background:#8b5cf6; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:13px;">
-  ↕ Reordenar
-</button>
-        
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <button id="btnAgregarNombre" class="btn btn-sky" type="button">+ Agregar nombre</button>
+          <button id="btnAgregarSeparador" class="btn" style="background:#eab308; color:#1e293b;" type="button">➕ Agregar separador / tema</button>
+          <button id="btnReordenar" class="btn" style="background:#8b5cf6; color:#fff;" type="button">↕ Reordenar</button>
+        </div>
+
         <label>Observaciones</label>
-        <textarea
-          id="inpObservaciones"
-          rows="3"
-          style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px;resize:vertical;font-family:Arial,sans-serif;"
-        ></textarea>
+        <textarea id="inpObservaciones" rows="3"></textarea>
 
-        <button id="btnGuardar" type="button">Guardar</button>
-
+        <button id="btnGuardar" class="btn btn-primary" style="margin-top:16px; width:100%;" type="button">Guardar</button>
         <input type="hidden" id="inpId" />
 
         <div class="btn-group">
-          <button id="btnImprimirPDF" type="button">🖨️ Imprimir / PDF</button>
-          <button id="btnLimpiar" type="button">🧹 Limpiar</button>
+          <button id="btnImprimirPDF" class="btn" style="background:#16a34a; color:#fff;" type="button">🖨️ Imprimir / PDF</button>
+          <button id="btnLimpiar" class="btn btn-gray" type="button">🧹 Limpiar</button>
         </div>
       </div>
 
-      <!-- CARATULA -->
-
+      <!-- CARÁTULA -->
       <div class="caratula-wrap">
         <div id="caratula">
           <div class="titulo">MUNICIPALIDAD DISTRITAL DE CHINCHAO</div>
-          <img class="escudo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiij9VKAtMBiHfcGy8Q-NeekFK54ihGvJrZXLHmxDx9CH1jUUrDz5Gfvc&s=10">
-          <div class="subgerencia" id="txtSubgerencia">
-            SUB GERENCIA DE<br />
-            RECURSOS HUMANOS
-          </div>
+          <img class="escudo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiij9VKAtMBiHfcGy8Q-NeekFK54ihGvJrZXLHmxDx9CH1jUUrDz5Gfvc&s=10" alt="Escudo">
+          <div class="subgerencia" id="txtSubgerencia">SUB GERENCIA DE<br />RECURSOS HUMANOS</div>
           <div class="cv-label" id="txtCvLabel">Curriculum vitae</div>
           <div class="nombres" id="previewNombres"></div>
           <div class="folio-circulo" id="previewNumero">01</div>
@@ -1046,236 +335,117 @@
       </div>
 
       <!-- LISTA -->
-
-      <div class="panel lista">
+      <div class="panel">
         <h2>Folios guardados</h2>
-
-        <input
-          type="search"
-          id="buscador"
-          placeholder="🔍 Buscar por N°, periodo, nombre, cargo"
-          style="margin-bottom: 12px"
-        />
-
+        <input type="search" id="buscador" placeholder="🔍 Buscar por N°, bloque, periodo, nombre, cargo" style="margin-bottom: 8px" />
+        <div class="controles-lista-folios">
+          <button id="btnOrdenarBloque" class="btn-orden-lista" type="button">↕ Ordenar por bloque</button>
+        </div>
         <div id="listaFolios">Cargando...</div>
 
-        <!-- PAGINACION -->
-
+        <!-- PAGINACIÓN MEJORADA -->
         <div class="paginacion">
-          <button id="btnPagAnterior" disabled>◀</button>
-          <span id="infoPagina"> Página 1 </span>
-          <button id="btnPagSiguiente">▶</button>
+          <button id="btnPagPrimera" title="Primera página">|◀</button>
+          <button id="btnPagAnterior" title="Página anterior">◀</button>
+          
+          <div class="info-paginacion">
+            <span>Pág.</span>
+            <select id="selectPaginaDirecta" title="Ir a la página"></select>
+            <span id="txtTotalPaginas">de 1</span>
+          </div>
+
+          <button id="btnPagSiguiente" title="Página siguiente">▶</button>
+          <button id="btnPagUltima" title="Última página">▶|</button>
         </div>
 
-        <div style="margin-top: 10px; display: flex; gap: 8px">
-          <button
-            id="btnExportarExcel"
-            type="button"
-            style="
-              flex: 1;
-              padding: 8px;
-              background: #0ea5e9;
-              color: #fff;
-              border: none;
-              border-radius: 6px;
-              cursor: pointer;
-              font-weight: bold;
-            "
-          >
-            📊 Exportar a Excel
-          </button>
-        </div>
-
-        <!-- HISTORIAL -->
+        <button id="btnExportarExcel" class="btn btn-sky" style="width:100%; margin-top:10px;" type="button">📊 Exportar a Excel</button>
 
         <div class="historial-panel">
           <details>
             <summary>📜 Historial de acciones</summary>
-
-            <div
-              id="historialContenido"
-              style="max-height: 200px; overflow-y: auto; margin-top: 8px"
-            >
-              <p style="color: #aaa; font-size: 13px">
-                Sin acciones registradas.
-              </p>
+            <div id="historialContenido" style="max-height: 200px; overflow-y: auto; margin-top: 8px">
+              <p style="color: #aaa; font-size: 13px">Sin acciones registradas.</p>
             </div>
-
-            <button
-              id="btnLimpiarHistorial"
-              type="button"
-              style="
-                margin-top: 6px;
-                padding: 4px 12px;
-                background: #ef4444;
-                color: #fff;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 12px;
-              "
-            >
-              Limpiar historial
-            </button>
+            <button id="btnLimpiarHistorial" class="btn btn-danger" style="margin-top: 6px; padding: 4px 12px; font-size: 12px;" type="button">Limpiar historial</button>
           </details>
         </div>
       </div>
     </div>
 
-    <!-- MODAL DE CONFIGURACION -->
-
-    <div id="modalConfig">
-      <div class="modal-caja">
-        <h3>⚙️ Configuración de plantilla</h3>
-
-        <!-- CARGO ACTUAL -->
-        <div class="config-seccion">
-          <h4>Cargo</h4>
-          <input type="text" id="cfgRubroActual" />
-          <small style="color:#777;">
-            Los nuevos nombres agregados tomarán este cargo de forma predeterminada.
-          </small>
-        </div>
-
-        <!-- SUB GERENCIA -->
-        <div class="config-seccion">
-          <h4>Título de Área / Subgerencia</h4>
-          <input
-            type="text"
-            id="cfgSubgerencia"
-            placeholder="SUB GERENCIA DE RECURSOS HUMANOS"
-          />
-
-          <div class="config-fila">
-            <label> Tipo: </label>
-            <select id="cfgFuenteSubgerencia">
-              <option value="Arial">Arial</option>
-              <option value="Times New Roman">Times New Roman</option>
-              <option value="Georgia">Georgia</option>
-              <option value="Verdana">Verdana</option>
-              <option value="Tahoma">Tahoma</option>
-              <option value="Courier New">Courier New</option>
-              <option value="Trebuchet MS">Trebuchet MS</option>
-              <option value="Calibri">Calibri</option>
-              <option value="Garamond">Garamond</option>
-              <option value="Bookman Old Style">Bookman Old Style</option>
-            </select>
-          </div>
-
-          <div class="config-fila">
-            <label> Tamaño: </label>
-            <div class="tamano-controles">
-              <button type="button" id="btnMenosSubgerencia">−</button>
-              <span id="valorTamanoSubgerencia"> 18 px </span>
-              <button type="button" id="btnMasSubgerencia">+</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- CURRICULUM VITAE -->
-        <div class="config-seccion">
-          <h4>Tipo de documento</h4>
-          <input type="text" id="cfgCvLabel" placeholder="Curriculum vitae" />
-
-          <div class="config-fila">
-            <label> Tipo: </label>
-            <select id="cfgFuenteCv">
-              <option value="Algerian">Algerian</option>
-              <option value="Arial">Arial</option>
-              <option value="Times New Roman">Times New Roman</option>
-              <option value="Georgia">Georgia</option>
-              <option value="Verdana">Verdana</option>
-              <option value="Tahoma">Tahoma</option>
-              <option value="Courier New">Courier New</option>
-              <option value="Trebuchet MS">Trebuchet MS</option>
-              <option value="Calibri">Calibri</option>
-              <option value="Garamond">Garamond</option>
-              <option value="Bookman Old Style">Bookman Old Style</option>
-            </select>
-          </div>
-
-          <div class="config-fila">
-            <label> Tamaño: </label>
-            <div class="tamano-controles">
-              <button type="button" id="btnMenosCv">−</button>
-              <span id="valorTamanoCv"> 26 px </span>
-              <button type="button" id="btnMasCv">+</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- BOTONES -->
-        <div class="btn-group">
-          <button id="btnCerrarConfig" type="button">Cancelar</button>
-          <button id="btnGuardarConfig" type="button">Guardar</button>
-        </div>
-      </div>
-    </div>
-
     <script>
-      /* SUPABASE */
+      /* BASE DE DATOS SUPABASE */
       const SUPABASE_URL = "https://qxsuiutnoagglmawgpcl.supabase.co";
-      const SUPABASE_ANON_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4c3VpdXRub2FnZ2xtYXdncGNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNzE0OTEsImV4cCI6MjA5Mzc0NzQ5MX0.2w6SZZ8M1YqqyrwiwvJG-gDr0mxs0QDozhpO_zFxVLc";
+      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4c3VpdXRub2FnZ2xtYXdncGNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNzE0OTEsImV4cCI6MjA5Mzc0NzQ5MX0.2w6SZZ8M1YqqyrwiwvJG-gDr0mxs0QDozhpO_zFxVLc";
+      const clienteDB = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      const clienteDB = window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY,
-      );
+      /* ELEMENTOS DOM RECURRENTES */
+      const $ = (id) => document.getElementById(id);
+      const contNombres = $("contNombres");
+      const previewNombres = $("previewNombres");
+      const previewNumero = $("previewNumero");
+      const previewPeriodo = $("previewPeriodo");
+      const inpNumero = $("inpNumero");
+      const inpBloque = $("inpBloque");
+      const inpPeriodo = $("inpPeriodo");
+      const inpObservaciones = $("inpObservaciones");
+      const inpId = $("inpId");
+      const modoEdicion = $("modoEdicion");
+      const buscador = $("buscador");
+      const listaFolios = $("listaFolios");
+      const historialContenido = $("historialContenido");
+      const txtSubgerencia = $("txtSubgerencia");
+      const txtCvLabel = $("txtCvLabel");
 
-      /* ELEMENTOS DOM */
-      const contNombres = document.getElementById("contNombres");
-      const previewNombres = document.getElementById("previewNombres");
-      const previewNumero = document.getElementById("previewNumero");
-      const previewPeriodo = document.getElementById("previewPeriodo");
-      const inpNumero = document.getElementById("inpNumero");
-      const inpPeriodo = document.getElementById("inpPeriodo");
-      const inpObservaciones = document.getElementById("inpObservaciones");
-      const inpId = document.getElementById("inpId");
-      const modoEdicion = document.getElementById("modoEdicion");
-      const buscador = document.getElementById("buscador");
-      const listaFolios = document.getElementById("listaFolios");
-      const historialContenido = document.getElementById("historialContenido");
-      const btnPagAnterior = document.getElementById("btnPagAnterior");
-      const btnPagSiguiente = document.getElementById("btnPagSiguiente");
-      const infoPagina = document.getElementById("infoPagina");
-      const txtSubgerencia = document.getElementById("txtSubgerencia");
-      const txtCvLabel = document.getElementById("txtCvLabel");
+      const MARCADOR_SEPARADOR = "§SEP§";
+      const PAGE_SIZE = 5;
 
-      /* ELEMENTOS DE CONFIGURACION */
-      const modalConfig = document.getElementById("modalConfig");
-      const cfgSubgerencia = document.getElementById("cfgSubgerencia");
-      const cfgCvLabel = document.getElementById("cfgCvLabel");
-      const cfgRubroActual = document.getElementById("cfgRubroActual");
-      const cfgFuenteSubgerencia = document.getElementById("cfgFuenteSubgerencia");
-      const cfgFuenteCv = document.getElementById("cfgFuenteCv");
-      const valorTamanoSubgerencia = document.getElementById("valorTamanoSubgerencia");
-      const valorTamanoCv = document.getElementById("valorTamanoCv");
-      const MARCADOR_SEPARADOR = "§SEP§"; // prefijo interno, no se muestra al usuario
+      let configVisual = { fuenteSubgerencia: "Arial", tamanoSubgerencia: 18, fuenteCv: "Algerian", tamanoCv: 26 };
+      let paginaActual = 0, totalPaginas = 1, filtroActivo = "", totalRegistros = 0, cargoActual = "", bloqueActual = "01";
+      let notasPagoVisibles = false, modoMostrarFilas = "ultimos", duplicadosGlobales = {};
+      let ordenarListaPorBloque = false;
+      const foliosAbiertos = new Set();
+      let filaSeleccionada = null, filaArrastrada = null;
 
+      /* UTILIDADES GENERALES */
+      function normalizarTexto(texto) {
+        return String(texto ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      }
 
-      /* CONFIGURACION VISUAL */
-      let configVisual = {
-        fuenteSubgerencia: "Arial",
-        tamanoSubgerencia: 18,
-        fuenteCv: "Algerian",
-        tamanoCv: 26,
-      };
+      function escaparHtml(valor = "") {
+        return String(valor).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+      }
 
+      function esSeparador(nombre) {
+        return typeof nombre === "string" && (nombre.startsWith(MARCADOR_SEPARADOR) || nombre.startsWith("$SEPS$"));
+      }
+
+      function numeroParaOrden(valor) {
+        const texto = String(valor ?? "").trim();
+        const match = texto.match(/\d+/);
+        return match ? Number(match[0]) : Number.POSITIVE_INFINITY;
+      }
+
+      function compararNumericoNatural(a, b) {
+        const na = numeroParaOrden(a), nb = numeroParaOrden(b);
+        if (na !== nb) return na - nb;
+        return String(a ?? "").localeCompare(String(b ?? ""), "es", { numeric: true, sensitivity: "base" });
+      }
+
+      function limpiarNombreParaExportar(nombre) {
+        return esSeparador(nombre) ? "" : (nombre ?? "");
+      }
+
+      function cerrarModal(idModal) { $(idModal).classList.remove("mostrar"); }
+
+      /* CONFIGURACIÓN VISUAL */
       function cargarConfigVisual() {
         try {
           const guardado = localStorage.getItem("configVisualCaratula");
-          if (guardado) {
-            configVisual = { ...configVisual, ...JSON.parse(guardado) };
-          }
-        } catch (error) {
-          console.warn("No se pudo cargar configuración visual:", error);
-        }
+          if (guardado) configVisual = { ...configVisual, ...JSON.parse(guardado) };
+        } catch (e) { console.warn("Error al cargar config visual:", e); }
       }
 
-      function guardarConfigVisual() {
-        localStorage.setItem("configVisualCaratula", JSON.stringify(configVisual));
-      }
+      function guardarConfigVisual() { localStorage.setItem("configVisualCaratula", JSON.stringify(configVisual)); }
 
       function aplicarConfigVisual() {
         txtSubgerencia.style.fontFamily = `"${configVisual.fuenteSubgerencia}", Arial, sans-serif`;
@@ -1283,411 +453,234 @@
         txtCvLabel.style.fontFamily = `"${configVisual.fuenteCv}", Algerian, "Bookman Old Style", serif`;
         txtCvLabel.style.fontSize = `${configVisual.tamanoCv}px`;
 
-        valorTamanoSubgerencia.textContent = `${configVisual.tamanoSubgerencia} px`;
-        valorTamanoCv.textContent = `${configVisual.tamanoCv} px`;
+        $("valorTamanoSubgerencia").textContent = `${configVisual.tamanoSubgerencia} px`;
+        $("valorTamanoCv").textContent = `${configVisual.tamanoCv} px`;
       }
 
-      /* PAGINACION */
-      const PAGE_SIZE = 5;
-      let paginaActual = 0;
-      let totalPaginas = 1;
-      let filtroActivo = "";
-      let totalRegistros = 0;
-      let cargoActual = ""; // Inicia limpio cada vez que recarga la página
+      /* LÓGICA DE BÚSQUEDA INTELIGENTE */
+      function cumpleFiltroInteligente(f, texto) {
+        if (!texto) return true;
+        const query = normalizarTexto(texto);
 
-      function normalizarTexto(texto) {
-        return String(texto ?? "")
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .trim();
-      }
-            async function obtenerTotalRegistros(filtro = "") {
-        const { data, error } = await clienteDB
-          .from("folios_cv")
-          .select("numero_folio, periodo, nombres, cargos");
-
-        if (error || !data) {
-          if (error) console.error("Error al contar:", error);
-          return 0;
+        if (query.startsWith("bloque")) {
+          const numBloqueBuscado = query.replace("bloque", "").trim();
+          const bloqFolio = normalizarTexto(f.numero_bloque);
+          
+          if (!numBloqueBuscado) return bloqFolio.length > 0;
+          
+          const intBuscado = parseInt(numBloqueBuscado, 10);
+          const intFolio = parseInt(bloqFolio, 10);
+          
+          if (!isNaN(intBuscado) && !isNaN(intFolio)) {
+            return intBuscado === intFolio || bloqFolio.includes(numBloqueBuscado);
+          }
+          return bloqFolio.includes(numBloqueBuscado);
         }
 
-        const texto = normalizarTexto(filtro);
-        if (!texto) return data.length;
+        if (/^\d{1,2}$/.test(query)) {
+          const numFolio = normalizarTexto(f.numero_folio);
+          const intQuery = parseInt(query, 10);
+          const intFolio = parseInt(numFolio, 10);
+          return numFolio === query || (!isNaN(intFolio) && intFolio === intQuery);
+        }
 
-        const resultados = data.filter((folio) => {
-          const numero = normalizarTexto(folio.numero_folio);
-          const periodo = normalizarTexto(folio.periodo);
-          const nombres = Array.isArray(folio.nombres) ? folio.nombres : [folio.nombres || ""];
-          const cargos = Array.isArray(folio.cargos) ? folio.cargos : [folio.cargos || ""];
+        if (/^\d{4}$/.test(query) || /^\d{4}\s*-\s*\d{4}$/.test(query)) {
+          return normalizarTexto(f.periodo).includes(query);
+        }
 
-          const coincideNombre = nombres.some((nombre) => normalizarTexto(nombre).includes(texto));
-          const coincideCargo = cargos.some((cargo) => normalizarTexto(cargo).includes(texto));
+        const num = normalizarTexto(f.numero_folio);
+        const bloq = normalizarTexto(f.numero_bloque);
+        const per = normalizarTexto(f.periodo);
+        const obs = normalizarTexto(f.observaciones);
+        const nombres = Array.isArray(f.nombres) ? f.nombres : [f.nombres || ""];
+        const cargos = Array.isArray(f.cargos) ? f.cargos : [f.cargos || ""];
 
-          return numero.includes(texto) || periodo.includes(texto) || coincideNombre || coincideCargo;
-        });
-
-        return resultados.length;
-      }
-function obtenerDuplicadosPorFolio(folios) {
-  const mapa = new Map();
-
-  folios.forEach((folio) => {
-    const nombres = Array.isArray(folio.nombres) ? folio.nombres : [];
-    const idFolio = String(folio.id);
-
-    nombres.forEach((nombre, index) => {
-      if (!nombre || !nombre.trim() || esSeparador(nombre)) return;
-
-      const clave = normalizarTexto(nombre);
-      if (!mapa.has(clave)) mapa.set(clave, new Map());
-
-      if (!mapa.get(clave).has(idFolio)) {
-        mapa.get(clave).set(idFolio, {
-          id: idFolio,
-          numero_folio: folio.numero_folio,
-          periodo: folio.periodo,
-          posiciones: []
-        });
+        return num.includes(query) || 
+               bloq.includes(query) || 
+               per.includes(query) || 
+               obs.includes(query) ||
+               nombres.some(n => normalizarTexto(n).includes(query)) || 
+               cargos.some(c => normalizarTexto(c).includes(query));
       }
 
-      mapa.get(clave).get(idFolio).posiciones.push(index + 1);
-    });
-  });
+      async function obtenerTotalRegistros(filtro = "") {
+        const { data, error } = await clienteDB.from("folios_cv").select("numero_folio, numero_bloque, periodo, nombres, cargos, observaciones");
+        if (error || !data) return 0;
+        if (!filtro.trim()) return data.length;
+        return data.filter(f => cumpleFiltroInteligente(f, filtro)).length;
+      }
 
-  const duplicados = {};
+      function obtenerDuplicadosPorFolio(folios) {
+        const mapa = new Map();
+        folios.forEach((f) => {
+          const nombres = Array.isArray(f.nombres) ? f.nombres : [];
+          const idFolio = String(f.id);
+          nombres.forEach((nombre, index) => {
+            if (!nombre || !nombre.trim() || esSeparador(nombre)) return;
+            const clave = normalizarTexto(nombre);
+            if (!mapa.has(clave)) mapa.set(clave, new Map());
+            if (!mapa.get(clave).has(idFolio)) {
+              mapa.get(clave).set(idFolio, { id: idFolio, numero_folio: f.numero_folio, numero_bloque: f.numero_bloque, periodo: f.periodo, posiciones: [] });
+            }
+            mapa.get(clave).get(idFolio).posiciones.push(index + 1);
+          });
+        });
 
-  for (const [nombre, foliosMap] of mapa.entries()) {
-    const lista = Array.from(foliosMap.values());
-    const totalOcurrencias = lista.reduce((total, folio) => total + folio.posiciones.length, 0);
+        const duplicados = {};
+        for (const [nombre, foliosMap] of mapa.entries()) {
+          const lista = Array.from(foliosMap.values());
+          const totalOcurrencias = lista.reduce((sum, f) => sum + f.posiciones.length, 0);
+          if (lista.length > 1 || lista.some(f => f.posiciones.length > 1)) {
+            duplicados[nombre] = { cantidadFolios: lista.length, totalOcurrencias, folios: lista };
+          }
+        }
+        return duplicados;
+      }
 
-    // Es duplicado si aparece más de una vez en el mismo folio
-    // o si aparece en dos o más folios diferentes.
-    const esDuplicado = lista.length > 1 || lista.some((folio) => folio.posiciones.length > 1);
+      /* ACTUALIZACIÓN DEL CONTROL DE PAGINACIÓN */
+      function actualizarBarraPaginacion() {
+        const select = $("selectPaginaDirecta");
+        select.innerHTML = "";
 
-    if (esDuplicado) {
-      duplicados[nombre] = {
-        cantidadFolios: lista.length,
-        totalOcurrencias,
-        folios: lista
-      };
-    }
-  }
+        for (let i = 0; i < totalPaginas; i++) {
+          const opt = document.createElement("option");
+          opt.value = i;
+          opt.textContent = i + 1;
+          if (i === paginaActual) opt.selected = true;
+          select.appendChild(opt);
+        }
 
-  return duplicados;
-}
+        $("txtTotalPaginas").textContent = `de ${totalPaginas}`;
+        $("btnPagPrimera").disabled = paginaActual === 0;
+        $("btnPagAnterior").disabled = paginaActual === 0;
+        $("btnPagSiguiente").disabled = paginaActual >= totalPaginas - 1 || totalPaginas === 0;
+        $("btnPagUltima").disabled = paginaActual >= totalPaginas - 1 || totalPaginas === 0;
+      }
 
- async function cargarPagina(pagina) {
-  if (pagina < 0 || (pagina >= totalPaginas && totalPaginas > 0)) return;
+      async function cargarPagina(pagina) {
+        if (pagina < 0 || (pagina >= totalPaginas && totalPaginas > 0)) return;
+        const { data, error } = await clienteDB.from("folios_cv").select("*").order("creado_en", { ascending: false });
+        if (error) { listaFolios.innerHTML = "Error: " + error.message; return; }
 
-  const { data, error } = await clienteDB
-    .from("folios_cv")
-    .select("*")
-    .order("creado_en", { ascending: false });
+        let foliosFiltrados = data || [];
+        if (filtroActivo) {
+          foliosFiltrados = foliosFiltrados.filter(f => cumpleFiltroInteligente(f, filtroActivo));
+        }
 
-  if (error) {
-    listaFolios.innerHTML = "Error: " + error.message;
-    return;
-  }
-  
+        if (ordenarListaPorBloque) {
+          foliosFiltrados.sort((a, b) => {
+            const porBloque = compararNumericoNatural(a.numero_bloque, b.numero_bloque);
+            if (porBloque !== 0) return porBloque;
+            return compararNumericoNatural(a.numero_folio, b.numero_folio);
+          });
+        }
 
-  // 1. Filtrar según el texto de búsqueda
-  let foliosFiltrados = data || [];
+        totalRegistros = foliosFiltrados.length;
+        totalPaginas = Math.ceil(totalRegistros / PAGE_SIZE) || 1;
+        if (pagina >= totalPaginas) pagina = 0;
 
-  if (filtroActivo) {
-    const texto = normalizarTexto(filtroActivo);
-    foliosFiltrados = foliosFiltrados.filter((folio) => {
-      const numero = normalizarTexto(folio.numero_folio);
-      const periodo = normalizarTexto(folio.periodo);
-      const nombres = Array.isArray(folio.nombres) ? folio.nombres : [folio.nombres || ""];
-      const cargos = Array.isArray(folio.cargos) ? folio.cargos : [folio.cargos || ""];
+        const foliosPagina = foliosFiltrados.slice(pagina * PAGE_SIZE, (pagina + 1) * PAGE_SIZE);
+        duplicadosGlobales = obtenerDuplicadosPorFolio(data || []);
+        actualizarMarcadoDuplicadosFormulario();
 
-      const coincideNombre = nombres.some((nombre) => normalizarTexto(nombre).includes(texto));
-      const coincideCargo = cargos.some((cargo) => normalizarTexto(cargo).includes(texto));
+        if (foliosPagina.length === 0) {
+          listaFolios.innerHTML = '<p style="font-size:13px;color:#888;">No se encontraron folios.</p>';
+        } else {
+          renderizarLista(foliosPagina, duplicadosGlobales);
+        }
 
-      return numero.includes(texto) || periodo.includes(texto) || coincideNombre || coincideCargo;
-    });
-  }
+        paginaActual = pagina;
+        actualizarBarraPaginacion();
+      }
 
-  // 2. Calcular total de registros y páginas
-  totalRegistros = foliosFiltrados.length;
-  totalPaginas = Math.ceil(totalRegistros / PAGE_SIZE) || 1;
+      function mostrarFoliosDuplicados(nombre, folioActualId = null) {
+        const clave = normalizarTexto(nombre);
+        const info = duplicadosGlobales[clave];
+        let posicionesFormulario = [];
 
-  if (pagina >= totalPaginas) pagina = 0;
+        if (folioActualId === null && typeof contNombres !== "undefined") {
+          Array.from(contNombres.querySelectorAll(".nombre-row")).forEach((fila, index) => {
+            if (fila.dataset.tipo === "separador") return;
+            if (normalizarTexto(fila.querySelector(".inpNombreItem")?.value || "") === clave) posicionesFormulario.push(index + 1);
+          });
+        }
 
-  // 3. Obtener los registros de la página actual
-  const desde = pagina * PAGE_SIZE;
-  const hasta = desde + PAGE_SIZE;
-  const foliosPagina = foliosFiltrados.slice(desde, hasta);
+        const listaFoliosHtml = (info && info.folios) ? info.folios.map((folio) => {
+          const esActual = folioActualId !== null && String(folio.id) === String(folioActualId);
+          const bloqTexto = folio.numero_bloque ? ` [Bloque ${escaparHtml(folio.numero_bloque)}]` : "";
+          return `<li style="${esActual ? 'border-color:#fca5a5;background:#fef2f2;' : ''}">
+            📁 <b>Folio N° ${escaparHtml(folio.numero_folio)}</b>${bloqTexto} - ${escaparHtml(folio.periodo)}
+            <div style="margin-top:4px;color:#dc2626;font-weight:bold;">📍 Posición: ${folio.posiciones.join(", ")}</div>
+          </li>`;
+        }).join("") : "";
 
-  // 4. Calcular nombres duplicados en TODOS los folios filtrados
-  // Los duplicados se buscan en TODOS los folios guardados, no solo en la página o filtro actual.
-  const duplicados = obtenerDuplicadosPorFolio(data || []);
-  duplicadosGlobales = duplicados;
-  actualizarMarcadoDuplicadosFormulario();
-
-  // 5. Renderizar
-  if (foliosPagina.length === 0) {
-    listaFolios.innerHTML = '<p style="font-size:13px;color:#888;">No se encontraron folios.</p>';
-  } else {
-    renderizarLista(foliosPagina, duplicados);
-  }
-
-  // 6. Actualizar controles de paginación
-  paginaActual = pagina;
-  infoPagina.textContent = `Página ${pagina + 1} de ${totalPaginas}`;
-  btnPagAnterior.disabled = pagina === 0;
-  btnPagSiguiente.disabled = pagina === totalPaginas - 1 || totalPaginas === 0;
-}
-
-function mostrarFoliosDuplicados(nombre, folioActualId = null) {
-  const clave = normalizarTexto(nombre);
-  const info = duplicadosGlobales[clave];
-
-  // Si el nombre todavía no existe en los folios guardados (por ejemplo,
-  // mientras se está creando uno nuevo), calculamos sus posiciones en el formulario.
-  let posicionesFormulario = [];
-  if (folioActualId === null && typeof contNombres !== "undefined") {
-    Array.from(contNombres.querySelectorAll(".nombre-row")).forEach((fila, index) => {
-      if (fila.dataset.tipo === "separador") return;
-      const valor = fila.querySelector(".inpNombreItem")?.value.trim() || "";
-      if (normalizarTexto(valor) === clave) posicionesFormulario.push(index + 1);
-    });
-  }
-
-  const bloques = [];
-
-  if (posicionesFormulario.length > 1) {
-    bloques.push(`
-      <div style="margin-bottom:10px;">
-        <b>📍 En el folio que estás registrando:</b>
-        <div style="margin-top:5px;color:#dc2626;font-weight:bold;">
-          Aparece en las posiciones: ${posicionesFormulario.join(", ")}
-        </div>
-      </div>
-    `);
-  }
-
-  if (info && info.folios) {
-    info.folios.forEach((folio) => {
-      const posiciones = folio.posiciones || [];
-      const esActual = folioActualId !== null && String(folio.id) === String(folioActualId);
-
-      bloques.push(`
-        <li style="${esActual ? 'border-color:#fca5a5;background:#fef2f2;' : ''}">
-          📁 <b>Folio N° ${escaparHtml(folio.numero_folio)}</b> - ${escaparHtml(folio.periodo)}
-          <div style="margin-top:4px;color:#dc2626;font-weight:bold;">
-            📍 Posición${posiciones.length === 1 ? '' : 'es'}: ${posiciones.join(", ")}
-          </div>
-        </li>
-      `);
-    });
-  }
-
-  if (!bloques.length) return;
-
-  const listaFolios = info && info.folios
-    ? info.folios.map((folio) => {
-        const posiciones = folio.posiciones || [];
-        const esActual = folioActualId !== null && String(folio.id) === String(folioActualId);
-        return `
-          <li style="${esActual ? 'border-color:#fca5a5;background:#fef2f2;' : ''}">
-            📁 <b>Folio N° ${escaparHtml(folio.numero_folio)}</b> - ${escaparHtml(folio.periodo)}
-            <div style="margin-top:4px;color:#dc2626;font-weight:bold;">
-              📍 Posición${posiciones.length === 1 ? '' : 'es'}: ${posiciones.join(", ")}
-            </div>
-          </li>
+        $("contenidoModalDuplicados").innerHTML = `
+          <div>El nombre <b>“${escaparHtml(nombre)}”</b> tiene más de una aparición.</div>
+          ${posicionesFormulario.length > 1 ? `<div style="margin-bottom:10px;"><b>📍 En el folio actual:</b> Posiciones ${posicionesFormulario.join(", ")}</div>` : ""}
+          ${listaFoliosHtml ? `<div style="margin-top:8px;"><b>📌 Ubicación en folios guardados:</b></div><ul class="lista-folios-duplicados">${listaFoliosHtml}</ul>` : ""}
         `;
-      }).join("")
-    : "";
+        $("modalDuplicados").classList.add("mostrar");
+      }
 
-  const contenido = document.getElementById("contenidoModalDuplicados");
-  contenido.innerHTML = `
-    <div>
-      El nombre <b>“${escaparHtml(nombre)}”</b> tiene más de una aparición.
-    </div>
-    ${posicionesFormulario.length > 1 ? bloques[0] : ""}
-    ${listaFolios ? `
-      <div style="margin-top:8px;"><b>📌 Ubicación en los folios guardados:</b></div>
-      <ul class="lista-folios-duplicados">${listaFolios}</ul>
-    ` : ""}
-  `;
+      function renderizarLista(folios, duplicados = {}) {
+        listaFolios.innerHTML = folios.map((f) => {
+          const nombres = Array.isArray(f.nombres) ? f.nombres : [];
+          const notas = Array.isArray(f.notas_pago) ? f.notas_pago : [];
+          const cargos = Array.isArray(f.cargos) ? f.cargos : [];
+          const isOpen = foliosAbiertos.has(String(f.id));
 
-  document.getElementById("modalDuplicados").classList.add("mostrar");
-}
-
-function cerrarModalDuplicados() {
-  document.getElementById("modalDuplicados").classList.remove("mostrar");
-}
-
-document.getElementById("modalDuplicados").addEventListener("click", (evento) => {
-  if (evento.target.id === "modalDuplicados") cerrarModalDuplicados();
-});
-
-document.addEventListener("keydown", (evento) => {
-  if (evento.key === "Escape") cerrarModalDuplicados();
-});
-
-function renderizarLista(folios, duplicados = {}) {
-  listaFolios.innerHTML = folios
-    .map((f) => {
-      const nombres = Array.isArray(f.nombres) ? f.nombres : [];
-      const notas = Array.isArray(f.notas_pago) ? f.notas_pago : [];
-      const cargos = Array.isArray(f.cargos) ? f.cargos : [];
-      const isOpen = foliosAbiertos.has(String(f.id));
-
-      const contenido = nombres.length
-        ? nombres
-            .map((nombre, index) => {
+          const contenido = nombres.length ? nombres.map((nombre, index) => {
             if (esSeparador(nombre)) return "";
-              const nota = notas[index] ?? "";
-              const cargo = cargos[index] ?? "";
-              const clave = normalizarTexto(nombre);
-const infoDuplicado = duplicados[clave];
-              const esDuplicado = !!infoDuplicado;
-              const posicionesActual = infoDuplicado
-                ? (infoDuplicado.folios.find((folio) => String(folio.id) === String(f.id))?.posiciones || [])
-                : [];
-              const hayDuplicadoEnEsteFolio = posicionesActual.length > 1;
-              const badgeTexto = hayDuplicadoEnEsteFolio
-                ? `${posicionesActual.length} veces`
-                : (infoDuplicado ? `${infoDuplicado.cantidadFolios} folios` : "");
-              const badge = esDuplicado
-  ? `<span class="duplicado-clicable" title="Haz clic para ver las ubicaciones" onclick='event.stopPropagation(); mostrarFoliosDuplicados(${JSON.stringify(nombre).replace(/'/g, "&#39;")}, ${JSON.stringify(f.id)})' style="background:#facc15;color:#1e293b;border-radius:12px;padding:0 8px;font-size:10px;font-weight:bold;margin-left:4px;">
-       ${badgeTexto}
-     </span>`
-  : "";
+            const nota = notas[index] ?? "", cargo = cargos[index] ?? "";
+            const infoDuplicado = duplicados[normalizarTexto(nombre)];
+            const esDuplicado = !!infoDuplicado;
+            const posicionesActual = infoDuplicado ? (infoDuplicado.folios.find((folio) => String(folio.id) === String(f.id))?.posiciones || []) : [];
+            const badgeTexto = posicionesActual.length > 1 ? `${posicionesActual.length} veces` : (infoDuplicado ? `${infoDuplicado.cantidadFolios} folios` : "");
 
-              const nombreHtml = esDuplicado
-                ? `<span class="duplicado-clicable" title="Haz clic para ver las ubicaciones" onclick='event.stopPropagation(); mostrarFoliosDuplicados(${JSON.stringify(nombre).replace(/'/g, "&#39;")}, ${JSON.stringify(f.id)})' style="color:#dc2626;font-weight:bold;">${escaparHtml(nombre)}</span>`
-                : escaparHtml(nombre);
+            const badge = esDuplicado ? `<span class="duplicado-clicable" onclick='event.stopPropagation(); mostrarFoliosDuplicados(${JSON.stringify(nombre)}, "${f.id}")' style="background:#facc15;color:#1e293b;border-radius:12px;padding:0 8px;font-size:10px;font-weight:bold;margin-left:4px;">${badgeTexto}</span>` : "";
+            const nombreHtml = esDuplicado ? `<span class="duplicado-clicable" onclick='event.stopPropagation(); mostrarFoliosDuplicados(${JSON.stringify(nombre)}, "${f.id}")' style="color:#dc2626;font-weight:bold;">${escaparHtml(nombre)}</span>` : escaparHtml(nombre);
 
-              return `
-                <div class="detalle-nombre">
-                  <div class="detalle-nombre-texto" style="${esDuplicado ? 'text-decoration:underline;text-decoration-color:#ef4444;text-underline-offset:2px;' : ''}">
-                    <b>${index + 1}.</b>
-                    <span style="${esDuplicado ? 'color:#dc2626;font-weight:bold;' : ''}">
-                      ${nombreHtml}
-                      ${badge}
-                    </span>
-                    ${
-                      cargo !== ""
-                        ? `<span style="color:#0ea5e9;font-weight:bold;margin-left:4px;">
-                             (${escaparHtml(cargo)})
-                           </span>`
-                        : ""
-                    }
-                  </div>
-                  ${
-                    nota !== ""
-                      ? `<div class="detalle-nota" style="font-size:11px;color:#64748b;margin-left:14px;">
-                           📄 Nota de pagina(s): ${escaparHtml(nota)}
-                         </div>`
-                      : ""
-                  }
-                </div>
-              `;
-            })
-            .join("")
-        : `<div class="detalle-vacio">No hay nombres registrados.</div>`;
+            return `<div class="detalle-nombre">
+              <div style="${esDuplicado ? 'text-decoration:underline;text-decoration-color:#ef4444;' : ''}">
+                <b>${index + 1}.</b> ${nombreHtml}${badge} ${cargo ? `<span style="color:#0ea5e9;font-weight:bold;">(${escaparHtml(cargo)})</span>` : ''}
+              </div>
+              ${nota ? `<div style="font-size:11px;color:#64748b;margin-left:14px;">📄 Nota: ${escaparHtml(nota)}</div>` : ''}
+            </div>`;
+          }).join("") : `<div class="detalle-vacio">No hay nombres registrados.</div>`;
 
-      const observacionesHtml = f.observaciones
-        ? `<div class="detalle-nota" style="margin-top:6px;border-top:1px dashed #cbd5e1;padding-top:6px;font-size:12px;color:#475569;">
-             📝 <b>Observaciones:</b> ${escaparHtml(f.observaciones)}
-           </div>`
-        : "";
+          const nombresReales = nombres.filter((n) => !esSeparador(n));
+          const bloqBadge = f.numero_bloque ? `<span style="background:#e2e8f0;color:#334155;padding:2px 6px;border-radius:4px;font-size:11px;margin-left:4px;">Bloque ${escaparHtml(f.numero_bloque)}</span>` : "";
 
-     const nombresReales = nombres.filter((n) => !esSeparador(n));
-
-return `
-  <div class="lista-item">
-    <div class="folio-cabecera">
-      <div>
-        <b>N° ${escaparHtml(f.numero_folio)}</b> - ${escaparHtml(f.periodo)}
-        <div class="cantidad-nombres" style="color:#64748b;font-size:12px;">
-          ${nombresReales.length} nombre${nombresReales.length === 1 ? "" : "s"}
-        </div>
-      </div>
-    </div>
-
-          <details class="detalle-folio" style="margin-top:6px;" data-folio-id="${f.id}" ${isOpen ? 'open' : ''}>
-            <summary style="cursor:pointer;color:#0ea5e9;">Ver contenido</summary>
-            <div class="contenido-folio" style="margin-top:6px;">
-              ${contenido}
-              ${observacionesHtml}
+          return `<div class="lista-item">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div><b>N° ${escaparHtml(f.numero_folio)}</b>${bloqBadge} - ${escaparHtml(f.periodo)}</div>
+              <span style="color:#64748b;font-size:12px;">${nombresReales.length} nombre(s)</span>
             </div>
-          </details>
-
-          <div class="acciones">
-            <button class="btn-accion btn-editar" onclick='editarFolio(${JSON.stringify(f).replace(/'/g, "&#39;")})'>✏️ Editar</button>
-            <button class="btn-accion btn-duplicar" onclick='duplicarFolio(${JSON.stringify(f).replace(/'/g, "&#39;")})'>📋 Duplicar</button>
-            <button class="btn-accion btn-eliminar" onclick='eliminarFolio("${f.id}", "${f.numero_folio}", "${f.periodo}")'>🗑️ Eliminar</button>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-}
+            <details style="margin-top:6px;" data-folio-id="${f.id}" ${isOpen ? 'open' : ''}>
+              <summary style="cursor:pointer;color:#0ea5e9;">Ver contenido</summary>
+              <div style="margin-top:6px;">${contenido}${f.observaciones ? `<div style="margin-top:6px;border-top:1px dashed #cbd5e1;padding-top:6px;font-size:12px;color:#475569;">📝 <b>Observaciones:</b> ${escaparHtml(f.observaciones)}</div>` : ''}</div>
+            </details>
+            <div class="acciones">
+              <button class="btn-accion btn-editar" onclick='editarFolio(${JSON.stringify(f)})'>✏️ Editar</button>
+              <button class="btn-accion btn-duplicar" onclick='duplicarFolio(${JSON.stringify(f)})'>📋 Duplicar</button>
+              <button class="btn-accion btn-eliminar" onclick='eliminarFolio("${f.id}", "${f.numero_folio}", "${f.periodo}")'>🗑️ Eliminar</button>
+            </div>
+          </div>`;
+        }).join("");
+      }
 
       async function recargarUltimaPagina() {
         totalRegistros = await obtenerTotalRegistros(filtroActivo);
         totalPaginas = Math.ceil(totalRegistros / PAGE_SIZE) || 1;
-        if (paginaActual >= totalPaginas) {
-          paginaActual = Math.max(0, totalPaginas - 1);
-        }
+        if (paginaActual >= totalPaginas) paginaActual = Math.max(0, totalPaginas - 1);
         await cargarPagina(paginaActual);
-      }
-
-      async function inicializar() {
-        filtroActivo = buscador.value.trim().toLowerCase();
-        totalRegistros = await obtenerTotalRegistros(filtroActivo);
-        totalPaginas = Math.ceil(totalRegistros / PAGE_SIZE) || 1;
-        await cargarPagina(0);
       }
 
       /* HISTORIAL */
       function obtenerHistorial() {
-        try {
-          return JSON.parse(localStorage.getItem("historialFolios")) || [];
-        } catch {
-          return [];
-        }
+        try { return JSON.parse(localStorage.getItem("historialFolios")) || []; } catch { return []; }
       }
-
-listaFolios.addEventListener('toggle', function(e) {
-  if (e.target.tagName === 'DETAILS') {
-    const detail = e.target;
-    const id = String(detail.dataset.folioId || "");
-    if (!id) return;
-
-    if (detail.open) {
-      foliosAbiertos.add(id);
-    } else {
-      foliosAbiertos.delete(id);
-    }
-  }
-}, true); // capture=true para detectar el toggle de cada folio
-
-function crearFilaSeparador(valor = "") {
-  const row = document.createElement("div");
-  row.className = "nombre-row separador-row";
-  row.dataset.tipo = "separador";
-
-  row.innerHTML = `
-    <div class="nombre-row-top">
-      <button type="button" class="btn-orden" onclick="moverArriba(this)">▲</button>
-      <button type="button" class="btn-orden" onclick="moverAbajo(this)">▼</button>
-      <input type="text" class="inpSeparador" value="${escaparHtml(valor)}">
-      <button type="button" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>
-    </div>
-  `;
-  contNombres.appendChild(row);
-}
-
-      function guardarHistorial(h) {
-        localStorage.setItem("historialFolios", JSON.stringify(h));
-      }
-
+      function guardarHistorial(h) { localStorage.setItem("historialFolios", JSON.stringify(h)); }
       function agregarHistorial(accion, detalle) {
         const h = obtenerHistorial();
         h.unshift({ fecha: new Date().toLocaleString(), accion, detalle });
@@ -1695,962 +688,537 @@ function crearFilaSeparador(valor = "") {
         guardarHistorial(h);
         renderizarHistorial();
       }
-
       function renderizarHistorial() {
         const h = obtenerHistorial();
-        if (!h.length) {
-          historialContenido.innerHTML = '<p style="color:#aaa;font-size:13px;">Sin acciones registradas.</p>';
-          return;
-        }
-
-        historialContenido.innerHTML = h
-          .map((item) => `
-            <div class="historial-item">
-              <span>${item.accion}: ${item.detalle}</span>
-              <span class="fecha">${item.fecha}</span>
-            </div>
-          `)
-          .join("");
+        historialContenido.innerHTML = h.length ? h.map((i) => `<div class="historial-item"><span>${i.accion}: ${i.detalle}</span><span class="fecha">${i.fecha}</span></div>`).join("") : '<p style="color:#aaa;font-size:13px;">Sin acciones registradas.</p>';
       }
 
-      document.getElementById("btnLimpiarHistorial").addEventListener("click", () => {
-        if (confirm("¿Eliminar todo el historial?")) {
-          localStorage.removeItem("historialFolios");
-          renderizarHistorial();
-        }
-      });
-      document.getElementById("btnAgregarSeparador").onclick = () => {
-  crearFilaSeparador();
-  actualizarPreview();
-  actualizarVisibilidadFilas();
-};
-
-      /* NOMBRES Y NOTAS DE PAGO */
-      let notasPagoVisibles = false;
-      let modoMostrarFilas = "ultimos";
-      const foliosAbiertos = new Set();
-      let duplicadosGlobales = {};
-
-      function escaparHtml(valor = "") {
-        return String(valor)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-      }
-
-      function calcularTotalNotaPago(rango) {
-        const texto = String(rango || "").trim();
-        if (!texto) return null;
-        const match = texto.match(/^\s*(\d+)\s*-\s*(\d+)\s*$/);
-        if (!match) return null;
-        const inicio = Number(match[1]);
-        const fin = Number(match[2]);
-        if (!Number.isInteger(inicio) || !Number.isInteger(fin) || inicio < 1 || fin < inicio) return null;
-        return fin - inicio + 1;
-      }
-
+      /* RANGOS Y NOTAS DE PAGO */
       function validarRangoNotaPago(rango) {
         const texto = String(rango || "").trim();
         if (!texto) return { valido: true, total: null };
         const match = texto.match(/^\s*(\d+)\s*-\s*(\d+)\s*$/);
         if (!match) return { valido: false, mensaje: "Usa el formato página inicial-página final." };
-        const inicio = Number(match[1]);
-        const fin = Number(match[2]);
+        const inicio = Number(match[1]), fin = Number(match[2]);
         if (inicio < 1 || fin < 1) return { valido: false, mensaje: "Las páginas deben ser mayores que 0." };
         if (inicio > fin) return { valido: false, mensaje: "La página inicial no puede ser mayor que la página final." };
         return { valido: true, total: fin - inicio + 1 };
       }
-function esSeparador(nombre) {
-  if (typeof nombre !== "string") return false;
-  return nombre.startsWith(MARCADOR_SEPARADOR) || nombre.startsWith("$SEPS$");
-}
 
-function limpiarNombreParaExportar(nombre) {
-  if (typeof nombre !== "string") return nombre ?? "";
-  if (nombre.startsWith(MARCADOR_SEPARADOR)) return "";
-  if (nombre.startsWith("$SEPS$")) return "";
-  return nombre;
-}
       function actualizarTotalNotaPago(row) {
-        const input = row.querySelector(".inpNotaPago");
-        const total = row.querySelector(".nota-pago-total");
+        const input = row.querySelector(".inpNotaPago"), total = row.querySelector(".nota-pago-total");
         if (!input || !total) return;
-
-        const resultado = validarRangoNotaPago(input.value);
-        if (!input.value.trim()) {
-          total.className = "nota-pago-total";
-          total.textContent = "";
-          return;
-        }
-        if (!resultado.valido) {
-          total.className = "nota-pago-total nota-pago-error";
-          total.textContent = "⚠️ " + resultado.mensaje;
-          return;
-        }
-        total.className = "nota-pago-total";
-        total.textContent = `✓ Total: ${resultado.total} página${resultado.total === 1 ? "" : "s"}`;
+        const res = validarRangoNotaPago(input.value);
+        if (!input.value.trim()) { total.className = "nota-pago-total"; total.textContent = ""; return; }
+        if (!res.valido) { total.className = "nota-pago-total nota-pago-error"; total.textContent = "⚠️ " + res.mensaje; return; }
+        total.className = "nota-pago-total"; total.textContent = `✓ Total: ${res.total} página(s)`;
       }
 
+      /* CONSTRUCCIÓN DE FILAS Y MANEJO DEL DOM */
       function crearFilaNombre(valor = "", notaPago = "", cargo = "") {
-        
-
-        
         const row = document.createElement("div");
         row.className = "nombre-row";
-        
-        // Si no hay un cargo específico para la fila, toma el cargo actual de la ventana de ajustes
         const cargoFinal = cargo !== "" ? cargo : cargoActual;
-
         row.innerHTML = `
           <div class="nombre-row-top">
-            <button type="button" class="btn-orden" onclick="moverArriba(this)">▲</button>
-            <button type="button" class="btn-orden" onclick="moverAbajo(this)">▼</button>
-            <input type="text" class="inpNombreItem" value="${escaparHtml(valor)}" >
-              <span class="indicador-mover">↕ Mover</span>
-            <input type="text" class="inpCargoItem" value="${escaparHtml(cargoFinal)}" >
-            <button type="button" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>          </div>
+            <button type="button" class="btn-orden" onclick="moverFila(this, -1)">▲</button>
+            <button type="button" class="btn-orden" onclick="moverFila(this, 1)">▼</button>
+            <input type="text" class="inpNombreItem" value="${escaparHtml(valor)}">
+            <span class="indicador-mover">↕ Mover</span>
+            <input type="text" class="inpCargoItem" value="${escaparHtml(cargoFinal)}">
+            <button type="button" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>
+          </div>
           <div class="nota-pago-wrap ${notasPagoVisibles ? "mostrar" : ""}">
             <label>📄 Nota de pagina(s)</label>
-            <input type="text" class="inpNotaPago" value="${escaparHtml(notaPago)}" inputmode="numeric" autocomplete="off">
+            <input type="text" class="inpNotaPago" value="${escaparHtml(notaPago)}" inputmode="numeric">
             <div class="nota-pago-total"></div>
-          </div>
-        `;
+          </div>`;
         contNombres.appendChild(row);
         actualizarTotalNotaPago(row);
       }
-      function moverArriba(btn) {
-    const row = btn.closest(".nombre-row");
-    const prev = row.previousElementSibling;
 
-    if (prev) {
-        contNombres.insertBefore(row, prev);
-        actualizarPreview();
-        actualizarVisibilidadFilas();
-    }
-}
+      function crearFilaSeparador(valor = "") {
+        const row = document.createElement("div");
+        row.className = "nombre-row separador-row";
+        row.dataset.tipo = "separador";
+        row.innerHTML = `
+          <div class="nombre-row-top">
+            <button type="button" class="btn-orden" onclick="moverFila(this, -1)">▲</button>
+            <button type="button" class="btn-orden" onclick="moverFila(this, 1)">▼</button>
+            <input type="text" class="inpSeparador" value="${escaparHtml(valor)}">
+            <button type="button" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>
+          </div>`;
+        contNombres.appendChild(row);
+      }
+
+      function moverFila(btn, dir) {
+        const row = btn.closest(".nombre-row");
+        const target = dir === -1 ? row.previousElementSibling : row.nextElementSibling;
+        if (target) {
+          if (dir === -1) contNombres.insertBefore(row, target);
+          else contNombres.insertBefore(target, row);
+          actualizarPreview(); actualizarVisibilidadFilas();
+        }
+      }
 
       function actualizarVisibilidadFilas() {
         const filas = Array.from(contNombres.querySelectorAll(".nombre-row"));
-        const contOpciones = document.getElementById("contOpcionesFilas");
-        const selectMostrar = document.getElementById("selectMostrarFilas");
+        const contOpciones = $("contOpcionesFilas");
         const total = filas.length;
 
         if (total <= 10) {
-          filas.forEach((fila) => fila.classList.remove("fila-oculta"));
+          filas.forEach((f) => f.classList.remove("fila-oculta"));
           contOpciones.style.display = "none";
           return;
         }
 
         contOpciones.style.display = "block";
-        selectMostrar.value = modoMostrarFilas;
-
-        if (modoMostrarFilas === "primeros") {
-          filas.forEach((fila, index) => {
-            fila.classList.toggle("fila-oculta", index >= 10);
-          });
-        } else if (modoMostrarFilas === "ultimos") {
-          filas.forEach((fila, index) => {
-            fila.classList.toggle("fila-oculta", index < total - 10);
-          });
-        } else {
-          filas.forEach((fila) => fila.classList.remove("fila-oculta"));
-        }
+        $("selectMostrarFilas").value = modoMostrarFilas;
+        filas.forEach((fila, i) => {
+          if (modoMostrarFilas === "primeros") fila.classList.toggle("fila-oculta", i >= 10);
+          else if (modoMostrarFilas === "ultimos") fila.classList.toggle("fila-oculta", i < total - 10);
+          else fila.classList.remove("fila-oculta");
+        });
       }
 
-      document.getElementById("selectMostrarFilas").addEventListener("change", function () {
-        modoMostrarFilas = this.value;
+      function obtenerUsuarios() {
+        return Array.from(document.querySelectorAll(".nombre-row")).map((row) => {
+          if (row.dataset.tipo === "separador") {
+            const texto = row.querySelector(".inpSeparador")?.value.trim() || "";
+            return { nombre: texto ? MARCADOR_SEPARADOR + texto : "", nota: "", cargo: "", separador: true };
+          }
+          return {
+            nombre: row.querySelector(".inpNombreItem")?.value.trim() || "",
+            nota: row.querySelector(".inpNotaPago")?.value.trim() || "",
+            cargo: row.querySelector(".inpCargoItem")?.value.trim() || "",
+            separador: false
+          };
+        }).filter((u) => u.nombre.length > 0);
+      }
+
+      function actualizarMarcadoDuplicadosFormulario() {
+        const inputs = contNombres.querySelectorAll(".inpNombreItem");
+        const posiciones = new Map();
+
+        inputs.forEach((input, i) => {
+          const val = input.value.trim();
+          if (!val) return;
+          const clave = normalizarTexto(val);
+          if (!posiciones.has(clave)) posiciones.set(clave, []);
+          posiciones.get(clave).push(i + 1);
+        });
+
+        inputs.forEach((input) => {
+          const val = input.value.trim(), clave = normalizarTexto(val);
+          const pos = clave ? (posiciones.get(clave) || []) : [];
+          const info = clave ? duplicadosGlobales[clave] : null;
+          const hayOtro = !!info && info.folios.some(f => String(f.id) !== String(inpId.value || "") && f.posiciones.length > 0);
+
+          if (pos.length > 1 || hayOtro) {
+            input.classList.add("nombre-duplicado-input");
+            input.title = `⚠️ Duplicado. Haz clic para ver ubicaciones.`;
+            input.onclick = () => showDuplicadosDialog(input.value.trim());
+          } else {
+            input.classList.remove("nombre-duplicado-input");
+            input.title = ""; input.onclick = null;
+          }
+        });
+      }
+
+      function showDuplicadosDialog(val) { if (val) mostrarFoliosDuplicados(val, inpId.value || null); }
+
+      function actualizarPreview() {
+        actualizarMarcadoDuplicadosFormulario();
+        const usuarios = obtenerUsuarios();
+        let visibles = modoMostrarFilas === "primeros" ? usuarios.slice(0, 10) : (modoMostrarFilas === "ultimos" ? usuarios.slice(-10) : usuarios);
+
+        previewNombres.innerHTML = visibles.length ? visibles.map((u) => `<div>${escaparHtml(u.separador ? u.nombre.slice(MARCADOR_SEPARADOR.length) : u.nombre)}</div>`).join("") : '<div style="color:#aaa"></div>';
+        previewNumero.textContent = inpNumero.value || "--";
+        previewPeriodo.textContent = inpPeriodo.value || "----";
+      }
+
+      function limpiarFormulario() {
+        inpId.value = ""; 
+        inpNumero.value = ""; 
+        inpBloque.value = bloqueActual; 
+        inpPeriodo.value = ""; 
+        contNombres.innerHTML = "";
+        crearFilaNombre(); 
+        inpObservaciones.value = "";
+        modoEdicion.classList.remove("mostrar");
+        notasPagoVisibles = false; 
+        modoMostrarFilas = "ultimos";
+        $("selectMostrarFilas").value = "ultimos";
+        actualizarVisibilidadNotas(); 
+        actualizarPreview(); 
         actualizarVisibilidadFilas();
-      });
-
-let filaSeleccionada = null;
-let filaArrastrada = null;
-
-contNombres.addEventListener("click", function(e) {
-
-    if (!contNombres.classList.contains("modo-reordenar")) return;
-
-    const fila = e.target.closest(".nombre-row");
-
-    if (!fila) return;
-
-    if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON") {
-        return;
-    }
-
-    document.querySelectorAll(".nombre-row").forEach(f => {
-        f.classList.remove("seleccionado");
-    });
-
-    fila.classList.add("seleccionado");
-    filaSeleccionada = fila;
-});
-
-document.getElementById("btnReordenar").addEventListener("click", function() {
-
-    const activo = contNombres.classList.toggle("modo-reordenar");
-
-    this.textContent = activo
-        ? "✓ Finalizar"
-        : "↕ Reordenar";
-
-    filaSeleccionada = null;
-
-    document.querySelectorAll(".nombre-row").forEach(fila => {
-
-        fila.draggable = activo;
-
-        fila.classList.remove("seleccionado");
-        fila.classList.remove("arrastrando");
-    });
-    actualizarVisibilidadFilas();
-    if (!activo) {
-        actualizarPreview();
-    }
-});
-
-contNombres.addEventListener("dragstart", function(e) {
-
-    if (!contNombres.classList.contains("modo-reordenar")) {
-        e.preventDefault();
-        return;
-    }
-    const fila = e.target.closest(".nombre-row");
-
-    if (!fila || fila !== filaSeleccionada) {
-        e.preventDefault();
-        return;
-    }
-        filaArrastrada = fila;
-    fila.classList.add("arrastrando");
-});
-
-contNombres.addEventListener("dragend", function() {
-    if (filaArrastrada) {
-        filaArrastrada.classList.remove("arrastrando");
-        actualizarPreview();
-        actualizarVisibilidadFilas();
-    }
-    filaArrastrada = null;
-});
-contNombres.addEventListener("dragover", function(e) {
-
-    if (!filaArrastrada) return;
-
-    e.preventDefault();
-
-    const fila = e.target.closest(".nombre-row");
-
-    if (!fila || fila === filaArrastrada) return;
-
-    const mitad =
-        fila.getBoundingClientRect().top +
-        fila.getBoundingClientRect().height / 2;
-
-    if (e.clientY < mitad) {
-        contNombres.insertBefore(filaArrastrada, fila);
-    } else {
-        contNombres.insertBefore(
-            filaArrastrada,
-            fila.nextSibling
-        );
-    }
-});
-
-function moverAbajo(btn) {
-    const row = btn.closest(".nombre-row");
-    const next = row.nextElementSibling;
-
-    if (next) {
-        contNombres.insertBefore(next, row);
-        actualizarPreview();
-        actualizarVisibilidadFilas();
-    }
-}
+      }
 
       function actualizarVisibilidadNotas() {
         document.querySelectorAll(".nota-pago-wrap").forEach((el) => el.classList.toggle("mostrar", notasPagoVisibles));
-        const btn = document.getElementById("btnMostrarNotas");
+        const btn = $("btnMostrarNotas");
         btn.classList.toggle("activo", notasPagoVisibles);
         btn.textContent = notasPagoVisibles ? "⚙️ Ocultar notas" : "⚙️ Notas";
       }
 
-      document.getElementById("btnMostrarNotas").onclick = () => {
-        notasPagoVisibles = !notasPagoVisibles;
-        actualizarVisibilidadNotas();
-      };
-
-            document.getElementById("btnAgregarNombre").onclick = () => {
-        crearFilaNombre();
-        actualizarPreview();
-        actualizarVisibilidadNotas();
+      /* MODO REORDENAR Y DRAG & DROP */
+      $("btnReordenar").addEventListener("click", function() {
+        const activo = contNombres.classList.toggle("modo-reordenar");
+        this.textContent = activo ? "✓ Finalizar" : "↕ Reordenar";
+        filaSeleccionada = null;
+        document.querySelectorAll(".nombre-row").forEach(f => {
+          f.draggable = activo;
+          f.classList.remove("seleccionado", "arrastrando");
+        });
         actualizarVisibilidadFilas();
-      };
-      
+        if (!activo) actualizarPreview();
+      });
 
-      function obtenerUsuarios() {
-  return Array.from(document.querySelectorAll(".nombre-row"))
-    .map((row) => {
-      if (row.dataset.tipo === "separador") {
-        const texto = row.querySelector(".inpSeparador")?.value.trim() || "";
-        return {
-          nombre: texto ? MARCADOR_SEPARADOR + texto : "",
-          nota: "",
-          cargo: "",
-          separador: true,
-        };
-      }
-      return {
-        nombre: row.querySelector(".inpNombreItem")?.value.trim() || "",
-        nota: row.querySelector(".inpNotaPago")?.value.trim() || "",
-        cargo: row.querySelector(".inpCargoItem")?.value.trim() || "",
-        separador: false,
-      };
-    })
-    .filter((u) => u.nombre.length > 0);
-}
+      contNombres.addEventListener("click", (e) => {
+        if (!contNombres.classList.contains("modo-reordenar")) return;
+        const fila = e.target.closest(".nombre-row");
+        if (!fila || ["INPUT", "BUTTON"].includes(e.target.tagName)) return;
+        document.querySelectorAll(".nombre-row").forEach(f => f.classList.remove("seleccionado"));
+        fila.classList.add("seleccionado");
+        filaSeleccionada = fila;
+      });
 
-      function obtenerNombres() { return obtenerUsuarios().map((u) => u.nombre); }
-      function obtenerNotasPago() { return obtenerUsuarios().map((u) => u.nota || null); }
-      function obtenerCargos() { return obtenerUsuarios().map((u) => u.cargo || ""); }
+      contNombres.addEventListener("dragstart", (e) => {
+        const fila = e.target.closest(".nombre-row");
+        if (!contNombres.classList.contains("modo-reordenar") || !fila || fila !== filaSeleccionada) { e.preventDefault(); return; }
+        filaArrastrada = fila; fila.classList.add("arrastrando");
+      });
 
-function actualizarMarcadoDuplicadosFormulario() {
-  const inputs = contNombres.querySelectorAll(".inpNombreItem");
-  const posicionesPorNombre = new Map();
+      contNombres.addEventListener("dragend", () => {
+        if (filaArrastrada) { filaArrastrada.classList.remove("arrastrando"); actualizarPreview(); actualizarVisibilidadFilas(); }
+        filaArrastrada = null;
+      });
 
-  Array.from(inputs).forEach((input, index) => {
-    const nombre = input.value.trim();
-    if (!nombre) return;
-    const clave = normalizarTexto(nombre);
-    if (!posicionesPorNombre.has(clave)) posicionesPorNombre.set(clave, []);
-    posicionesPorNombre.get(clave).push(index + 1);
-  });
+      contNombres.addEventListener("dragover", (e) => {
+        if (!filaArrastrada) return;
+        e.preventDefault();
+        const fila = e.target.closest(".nombre-row");
+        if (!fila || fila === filaArrastrada) return;
+        const mitad = fila.getBoundingClientRect().top + fila.getBoundingClientRect().height / 2;
+        if (e.clientY < mitad) contNombres.insertBefore(filaArrastrada, fila);
+        else contNombres.insertBefore(filaArrastrada, fila.nextSibling);
+      });
 
-  inputs.forEach((input) => {
-    const nombre = input.value.trim();
-    const clave = normalizarTexto(nombre);
-    const posicionesMismoFolio = clave ? (posicionesPorNombre.get(clave) || []) : [];
-    const infoDuplicado = clave ? duplicadosGlobales[clave] : null;
-    const hayDuplicadoMismoFolio = posicionesMismoFolio.length > 1;
-    const hayDuplicadoOtroFolio = !!infoDuplicado && infoDuplicado.folios.some((folio) => {
-      return String(folio.id) !== String(inpId.value || "") && folio.posiciones.length > 0;
-    });
+      /* EVENTOS DE BOTONES E INPUTS */
+      $("btnMostrarNotas").onclick = () => { notasPagoVisibles = !notasPagoVisibles; actualizarVisibilidadNotas(); };
+      $("btnAgregarNombre").onclick = () => { crearFilaNombre(); actualizarPreview(); actualizarVisibilidadNotas(); actualizarVisibilidadFilas(); };
+      $("btnAgregarSeparador").onclick = () => { crearFilaSeparador(); actualizarPreview(); actualizarVisibilidadFilas(); };
+      $("selectMostrarFilas").addEventListener("change", function() { modoMostrarFilas = this.value; actualizarVisibilidadFilas(); });
+      $("btnImprimirPDF").onclick = () => window.print();
+      $("btnLimpiar").onclick = () => { if (confirm("¿Limpiar todo el formulario?")) limpiarFormulario(); };
 
-    if (hayDuplicadoMismoFolio || hayDuplicadoOtroFolio) {
-      input.classList.add("nombre-duplicado-input");
-      input.title = `⚠️ Duplicado. Posiciones en este folio: ${posicionesMismoFolio.join(", ") || "ninguna"}. Haz clic para ver las ubicaciones.`;
-      input.dataset.nombreDuplicado = nombre;
-      input.onclick = () => {
-        const nombreActual = input.value.trim();
-        if (nombreActual) mostrarFoliosDuplicados(nombreActual, inpId.value || null);
-      };
-    } else {
-      input.classList.remove("nombre-duplicado-input");
-      input.title = "";
-      delete input.dataset.nombreDuplicado;
-      input.onclick = null;
-    }
-  });
-}
-
-function actualizarPreview() {
-  actualizarMarcadoDuplicadosFormulario();
-  const usuarios = obtenerUsuarios();
-  let visibles;
-  if (modoMostrarFilas === "primeros") {
-    visibles = usuarios.slice(0, 10);
-  } else if (modoMostrarFilas === "ultimos") {
-    visibles = usuarios.slice(-10);
-  } else {
-    visibles = usuarios;
-  }
-
-  const html = visibles.length
-    ? visibles.map((u) => {
-        if (u.separador) {
-          const texto = u.nombre.slice(MARCADOR_SEPARADOR.length);
-          return `<div>${escaparHtml(texto)}</div>`;
-        }
-        return `<div>${escaparHtml(u.nombre)}</div>`;
-      }).join("")
-    : '<div style="color:#aaa"></div>';
-
-  previewNombres.innerHTML = html;
-  previewNumero.textContent = inpNumero.value || "--";
-  previewPeriodo.textContent = inpPeriodo.value || "----";
-}
-
-      contNombres.addEventListener("input", actualizarPreview);
+      contNombres.addEventListener("input", (e) => {
+        if (e.target.classList.contains("inpNotaPago")) actualizarTotalNotaPago(e.target.closest(".nombre-row"));
+        actualizarPreview();
+      });
       inpNumero.addEventListener("input", actualizarPreview);
       inpPeriodo.addEventListener("input", actualizarPreview);
 
-      function validarTodasLasNotas() {
-        for (const usuario of obtenerUsuarios()) {
-          const resultado = validarRangoNotaPago(usuario.nota);
-          if (!resultado.valido) return { valido: false, mensaje: `Revisa la nota de pagina de "${usuario.nombre}": ${resultado.mensaje}` };
-        }
-        return { valido: true };
-      }
-
-      contNombres.addEventListener("input", (evento) => {
-        if (evento.target.classList.contains("inpNotaPago")) actualizarTotalNotaPago(evento.target.closest(".nombre-row"));
-        actualizarPreview();
-      });
-
-      /* PREVIEW */
-    
-      [inpNumero, inpPeriodo].forEach((el) => {
-        el.addEventListener("input", actualizarPreview);
-      });
-
-      /* IMPRESION */
-      document.getElementById("btnImprimirPDF").onclick = () => {
-        window.print();
-      };
-
-      /* LIMPIAR */
-      document.getElementById("btnLimpiar").onclick = () => {
-        if (confirm("¿Limpiar todo el formulario? Se perderán los datos no guardados.")) {
-          limpiarFormulario();
-        }
-      };
-
-      function limpiarFormulario() {
-        inpId.value = "";
-        inpNumero.value = "";
-        inpPeriodo.value = "";
-        contNombres.innerHTML = "";
-        crearFilaNombre();
-        inpObservaciones.value = "";
-
-        modoEdicion.classList.remove("mostrar");
-        notasPagoVisibles = false;
-        modoMostrarFilas = "ultimos";
-        document.getElementById("selectMostrarFilas").value = "ultimos";
-        actualizarVisibilidadNotas();
-        actualizarPreview();
-        actualizarVisibilidadFilas();
-      }
-
-      /* GUARDAR / EDITAR */
-document.getElementById("btnGuardar").onclick = async () => {
-  const payload = {
-    numero_folio: inpNumero.value.trim(),
-    periodo: inpPeriodo.value.trim(),
-    nombres: obtenerNombres(),
-    notas_pago: obtenerNotasPago(),
-    cargos: obtenerCargos(),
-    observaciones: inpObservaciones.value.trim() || null,
-    actualizado_en: new Date().toISOString(),
-  };
-
-  if (!payload.numero_folio || !payload.periodo || payload.nombres.length === 0) {
-    alert("Completa número de folio, periodo y al menos un nombre.");
-    return;
-  }
-
-  const validacionNotas = validarTodasLasNotas();
-  if (!validacionNotas.valido) {
-    alert(validacionNotas.mensaje);
-    notasPagoVisibles = true;
-    actualizarVisibilidadNotas();
-    return;
-  }
-
-  let error;
-  let data;
-  let accion;
-  let detalle;
-
-  if (inpId.value) {
-    ({ error } = await clienteDB
-      .from("folios_cv")
-      .update(payload)
-      .eq("id", inpId.value));
-
-    accion = "✏️ Edición";
-    detalle = `Folio N° ${payload.numero_folio} - ${payload.periodo}`;
-  } else {
-    ({ data, error } = await clienteDB
-      .from("folios_cv")
-      .insert(payload)
-      .select()
-      .single());  // 👈 pedimos que devuelva el registro creado, con su id
-
-    accion = "➕ Creación";
-    detalle = `Folio N° ${payload.numero_folio} - ${payload.periodo}`;
-  }
-
-  if (error) {
-    alert("Error al guardar: " + error.message);
-    return;
-  }
-
-  alert(inpId.value ? "Folio actualizado correctamente." : "Folio guardado correctamente.");
-  agregarHistorial(accion, detalle);
-
-  // Si era un folio nuevo, ahora queda "enganchado" a su id para poder seguir editándolo
-  if (!inpId.value && data) {
-    inpId.value = data.id;
-    modoEdicion.classList.add("mostrar");
-  }
-
-  await recargarUltimaPagina();
-};
-
-      /* BUSCADOR */
-      function debounce(fn, delay = 300) {
-        let timer;
-        return function (...args) {
-          clearTimeout(timer);
-          timer = setTimeout(() => fn.apply(this, args), delay);
+      /* OPERACIONES CRUD */
+      $("btnGuardar").onclick = async () => {
+        const usuarios = obtenerUsuarios();
+        const payload = {
+          numero_folio: inpNumero.value.trim(),
+          numero_bloque: inpBloque.value.trim() || null,
+          periodo: inpPeriodo.value.trim(),
+          nombres: usuarios.map(u => u.nombre),
+          notas_pago: usuarios.map(u => u.nota || null),
+          cargos: usuarios.map(u => u.cargo || ""),
+          observaciones: inpObservaciones.value.trim() || null,
+          actualizado_en: new Date().toISOString(),
         };
-      }
 
-      buscador.addEventListener(
-        "input",
-        debounce(async function () {
-          filtroActivo = this.value.trim();
-          paginaActual = 0;
-          totalRegistros = await obtenerTotalRegistros(filtroActivo);
-          totalPaginas = Math.ceil(totalRegistros / PAGE_SIZE) || 1;
-          await cargarPagina(0);
-        }, 300)
-      );
+        if (!payload.numero_folio || !payload.periodo || payload.nombres.length === 0) {
+          alert("Completa número de folio, periodo y al menos un nombre."); return;
+        }
 
-      /* PAGINACION EVENTOS */
-      btnPagAnterior.addEventListener("click", () => {
-        if (paginaActual > 0) cargarPagina(paginaActual - 1);
-      });
+        for (const u of usuarios) {
+          const r = validarRangoNotaPago(u.nota);
+          if (!r.valido) { alert(`Revisa la nota de página de "${u.nombre}": ${r.mensaje}`); notasPagoVisibles = true; actualizarVisibilidadNotas(); return; }
+        }
 
-      btnPagSiguiente.addEventListener("click", () => {
-        if (paginaActual < totalPaginas - 1) cargarPagina(paginaActual + 1);
-      });
+        let error, data, accion = inpId.value ? "✏️ Edición" : "➕ Creación";
+        const bloqueDetalle = payload.numero_bloque ? ` [Bloque ${payload.numero_bloque}]` : "";
+        const detalle = `Folio N° ${payload.numero_folio}${bloqueDetalle} - ${payload.periodo}`;
 
-      /* EDITAR */
+        if (inpId.value) {
+          ({ error } = await clienteDB.from("folios_cv").update(payload).eq("id", inpId.value));
+        } else {
+          ({ data, error } = await clienteDB.from("folios_cv").insert(payload).select().single());
+        }
+
+        if (error) { alert("Error al guardar: " + error.message); return; }
+
+        alert(inpId.value ? "Folio actualizado correctamente." : "Folio guardado correctamente.");
+        agregarHistorial(accion, detalle);
+
+        if (!inpId.value && data) { inpId.value = data.id; modoEdicion.classList.add("mostrar"); }
+        await recargarUltimaPagina();
+      };
+
       function editarFolio(folio) {
-        inpId.value = folio.id;
+        inpId.value = folio.id; 
         inpNumero.value = folio.numero_folio;
+        inpBloque.value = folio.numero_bloque || "";
         inpPeriodo.value = folio.periodo;
-        inpObservaciones.value = folio.observaciones || "";
+        inpObservaciones.value = folio.observaciones || ""; 
         contNombres.innerHTML = "";
 
-        const notas = folio.notas_pago || [];
-        const cargos = folio.cargos || [];
+        const notas = folio.notas_pago || [], cargos = folio.cargos || [];
         (folio.nombres || [""]).forEach((n, i) => {
-  if (esSeparador(n)) {
-    const textoSeparador = n.startsWith(MARCADOR_SEPARADOR)
-      ? n.slice(MARCADOR_SEPARADOR.length)
-      : n.slice("$SEPS$".length);
-    crearFilaSeparador(textoSeparador);
-  } else {
-    crearFilaNombre(n, notas[i] || "", cargos[i] || "");
-  }
-});
+          if (esSeparador(n)) crearFilaSeparador(n.startsWith(MARCADOR_SEPARADOR) ? n.slice(MARCADOR_SEPARADOR.length) : n.slice(6));
+          else crearFilaNombre(n, notas[i] || "", cargos[i] || "");
+        });
 
-        modoEdicion.classList.add("mostrar");
-        notasPagoVisibles = false;
+        modoEdicion.classList.add("mostrar"); 
+        notasPagoVisibles = false; 
         modoMostrarFilas = "primeros";
-        document.getElementById("selectMostrarFilas").value = "primeros";
-        actualizarVisibilidadNotas();
-        actualizarPreview();
-        actualizarMarcadoDuplicadosFormulario();
+        $("selectMostrarFilas").value = "primeros";
+        actualizarVisibilidadNotas(); 
+        actualizarPreview(); 
+        actualizarMarcadoDuplicadosFormulario(); 
         actualizarVisibilidadFilas();
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
 
-      /* DUPLICAR */
       function duplicarFolio(folio) {
-        inpId.value = "";
+        inpId.value = ""; 
         inpNumero.value = folio.numero_folio + " (copia)";
+        inpBloque.value = folio.numero_bloque || bloqueActual;
         inpPeriodo.value = folio.periodo;
-        inpObservaciones.value = folio.observaciones || "";
+        inpObservaciones.value = folio.observaciones || ""; 
         contNombres.innerHTML = "";
 
-        const notas = folio.notas_pago || [];
-        const cargos = folio.cargos || [];
+        const notas = folio.notas_pago || [], cargos = folio.cargos || [];
         (folio.nombres || [""]).forEach((n, i) => crearFilaNombre(n, notas[i] || "", cargos[i] || ""));
 
-                modoEdicion.classList.remove("mostrar");
-        notasPagoVisibles = false;
+        modoEdicion.classList.remove("mostrar"); 
+        notasPagoVisibles = false; 
         modoMostrarFilas = "ultimos";
-        document.getElementById("selectMostrarFilas").value = "ultimos";
-        actualizarVisibilidadNotas();
-        actualizarPreview();
+        $("selectMostrarFilas").value = "ultimos";
+        actualizarVisibilidadNotas(); 
+        actualizarPreview(); 
         actualizarVisibilidadFilas();
         window.scrollTo({ top: 0, behavior: "smooth" });
-
-        alert("Folio duplicado. Ahora puedes modificarlo y guardar como nuevo.");
+        alert("Folio duplicado. Puedes modificarlo y guardarlo como nuevo.");
       }
 
-      /* ELIMINAR */
       async function eliminarFolio(id, numero, periodo) {
         if (!confirm(`¿Eliminar el folio N° ${numero} - ${periodo}?`)) return;
-
         const { error } = await clienteDB.from("folios_cv").delete().eq("id", id);
-        if (error) {
-          alert("Error al eliminar: " + error.message);
-          return;
-        }
-
+        if (error) { alert("Error al eliminar: " + error.message); return; }
         agregarHistorial("🗑️ Eliminación", `Folio N° ${numero} - ${periodo}`);
-
-        if (inpId.value === id) {
-          limpiarFormulario();
-        }
-
+        if (inpId.value === id) limpiarFormulario();
         await recargarUltimaPagina();
       }
 
-      /* EXPORTAR EXCEL */
-      async function prepararExportacionExcel() {
-        const { data, error } = await clienteDB
-          .from("folios_cv")
-          .select("*")
-          .order("creado_en", { ascending: false });
+      /* BUSCADOR Y PAGINACIÓN LISTENERS */
+      function debounce(fn, delay = 300) {
+        let timer;
+        return function (...args) { clearTimeout(timer); timer = setTimeout(() => fn.apply(this, args), delay); };
+      }
 
-        if (error) {
-          alert("Error al cargar los folios para exportar: " + error.message);
-          return;
+      buscador.addEventListener("input", debounce(async function () {
+        filtroActivo = this.value.trim(); paginaActual = 0;
+        totalRegistros = await obtenerTotalRegistros(filtroActivo);
+        totalPaginas = Math.ceil(totalRegistros / PAGE_SIZE) || 1;
+        await cargarPagina(0);
+      }, 300));
+
+      $("btnOrdenarBloque").addEventListener("click", async () => {
+        ordenarListaPorBloque = !ordenarListaPorBloque;
+        const btn = $("btnOrdenarBloque");
+        btn.classList.toggle("activo", ordenarListaPorBloque);
+        btn.textContent = ordenarListaPorBloque ? "↕ Ordenar por reciente" : "↕ Ordenar por bloque";
+        paginaActual = 0;
+        await cargarPagina(0);
+      });
+
+      $("btnPagPrimera").addEventListener("click", () => { if (paginaActual > 0) cargarPagina(0); });
+      $("btnPagAnterior").addEventListener("click", () => { if (paginaActual > 0) cargarPagina(paginaActual - 1); });
+      $("btnPagSiguiente").addEventListener("click", () => { if (paginaActual < totalPaginas - 1) cargarPagina(paginaActual + 1); });
+      $("btnPagUltima").addEventListener("click", () => { if (paginaActual < totalPaginas - 1) cargarPagina(totalPaginas - 1); });
+      
+      $("selectPaginaDirecta").addEventListener("change", function () {
+        const pag = parseInt(this.value, 10);
+        if (!isNaN(pag)) cargarPagina(pag);
+      });
+
+      listaFolios.addEventListener('toggle', (e) => {
+        if (e.target.tagName === 'DETAILS') {
+          const id = String(e.target.dataset.folioId || "");
+          if (id) { if (e.target.open) foliosAbiertos.add(id); else foliosAbiertos.delete(id); }
         }
+      }, true);
 
-        if (!data || data.length === 0) {
-          alert("No hay folios para exportar.");
-          return;
-        }
+      /* EXPORTACIÓN A EXCEL */
+      $("btnExportarExcel").addEventListener("click", async () => {
+        const { data, error } = await clienteDB.from("folios_cv").select("*").order("creado_en", { ascending: false });
+        if (error || !data || !data.length) { alert(error ? error.message : "No hay folios para exportar."); return; }
 
-                const lista = document.getElementById("listaCheckboxFolios");
-        lista.innerHTML = data.map((f) => `
-          <label style="display:flex;align-items:center;gap:6px;padding:4px 0;font-weight:normal;">
-            <input type="checkbox" class="chkFolioExportar" value="${f.id}" style="width:auto;">
-            📁 Folio N° ${escaparHtml(f.numero_folio)} - ${escaparHtml(f.periodo)}
-          </label>
-        `).join("");
+        data.sort((a, b) => {
+          const porBloque = compararNumericoNatural(a.numero_bloque, b.numero_bloque);
+          if (porBloque !== 0) return porBloque;
+          return compararNumericoNatural(a.numero_folio, b.numero_folio);
+        });
 
-        document.getElementById("chkExportarTodos").checked = true;
-        lista.style.display = "none";
+        $("listaCheckboxFolios").innerHTML = data.map((f) => {
+          const bloqTexto = f.numero_bloque ? ` [Bloque ${escaparHtml(f.numero_bloque)}]` : "";
+          return `<label style="display:flex;align-items:center;gap:6px;padding:4px 0;font-weight:normal;">
+            <input type="checkbox" class="chkFolioExportar" value="${f.id}" style="width:auto;"> 📁 Folio N° ${escaparHtml(f.numero_folio)}${bloqTexto} - ${escaparHtml(f.periodo)}
+          </label>`;
+        }).join("");
+
+        $("chkExportarTodos").checked = true;
+        $("listaCheckboxFolios").style.display = "none";
         window.foliosDisponiblesParaExportar = data;
-        document.getElementById("modalExportarExcel").classList.add("mostrar");
-      }
-
-      function cerrarModalExportarExcel() {
-        document.getElementById("modalExportarExcel").classList.remove("mostrar");
-      }
-
-      document.getElementById("modalExportarExcel").addEventListener("click", (evento) => {
-        if (evento.target.id === "modalExportarExcel") cerrarModalExportarExcel();
+        $("modalExportarExcel").classList.add("mostrar");
       });
 
-      document.getElementById("btnExportarExcel").addEventListener("click", prepararExportacionExcel);
+      $("chkExportarTodos").addEventListener("change", function () { $("listaCheckboxFolios").style.display = this.checked ? "none" : "block"; });
 
-            document.getElementById("chkExportarTodos").addEventListener("change", function () {
-        document.getElementById("listaCheckboxFolios").style.display = this.checked ? "none" : "block";
-      });
-
-      document.getElementById("btnConfirmarExportarExcel").addEventListener("click", async function () {
+      $("btnConfirmarExportarExcel").addEventListener("click", async () => {
         const data = window.foliosDisponiblesParaExportar || [];
-        const exportarTodos = document.getElementById("chkExportarTodos").checked;
+        const exportarTodos = $("chkExportarTodos").checked;
+        const folios = exportarTodos ? data : data.filter((f) => Array.from(document.querySelectorAll(".chkFolioExportar:checked")).map(c => c.value).includes(String(f.id)));
 
-        let foliosAExportar;
-        if (exportarTodos) {
-          foliosAExportar = data;
-        } else {
-          const idsSeleccionados = Array.from(document.querySelectorAll(".chkFolioExportar:checked")).map((chk) => chk.value);
-          foliosAExportar = data.filter((f) => idsSeleccionados.includes(String(f.id)));
-        }
-
-        if (!foliosAExportar.length) {
-          alert("Selecciona al menos un folio para exportar.");
-          return;
-        }
-
-        cerrarModalExportarExcel();
-        await exportarFoliosAExcel(foliosAExportar, exportarTodos);
-      });
-
-      document.addEventListener("keydown", (evento) => {
-        if (evento.key === "Escape") cerrarModalExportarExcel();
+        if (!folios.length) { alert("Selecciona al menos un folio para exportar."); return; }
+        cerrarModal("modalExportarExcel");
+        await exportarFoliosAExcel(folios, exportarTodos);
       });
 
       async function exportarFoliosAExcel(data, exportarTodos) {
         try {
-          const { data: config } = await clienteDB
-            .from("config_caratula")
-            .select("*")
-            .eq("id", 1)
-            .single();
-
+          const { data: config } = await clienteDB.from("config_caratula").select("*").eq("id", 1).single();
           const cargoSubgerencia = config ? config.texto_subgerencia.replace(/\n/g, " ") : "";
           const tipoDocumento = config ? config.texto_cv_label : "";
 
-          const columnas = [
-            "N° Folio",
-            "Periodo",
-            "Ubicación del documento",
-            "Tipo de documento",
-            "Apellidos y Nombres",
-            "Cargo",
-            "Nota de pagina(s)",
-            "Total páginas",
-          ];
-
           const workbook = new ExcelJS.Workbook();
           const hoja = workbook.addWorksheet("Folios");
+          hoja.columns = [{ width: 12 }, { width: 15 }, { width: 18 }, { width: 35 }, { width: 25 }, { width: 30 }, { width: 35 }, { width: 25 }, { width: 18 }];
 
-          hoja.columns = [
-            { width: 15 }, { width: 18 }, { width: 45 }, { width: 25 },
-            { width: 40 }, { width: 30 }, { width: 25 }, { width: 18 },
-          ];
+          hoja.mergeCells("A1:I1");
+          const f1 = hoja.getRow(1); f1.getCell(1).value = "MUNICIPALIDAD DISTRITAL DE CHINCHAO"; f1.height = 28;
+          f1.getCell(1).font = { bold: true, color: { argb: "FFFFFFFF" }, size: 14 };
+          f1.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
+          f1.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2E7D32" } };
 
-          hoja.mergeCells("A1:H1");
-          const filaTitulo = hoja.getRow(1);
-          filaTitulo.getCell(1).value = "MUNICIPALIDAD DISTRITAL DE CHINCHAO";
-          filaTitulo.height = 28;
-          filaTitulo.getCell(1).font = { bold: true, color: { argb: "FFFFFFFF" }, size: 14 };
-          filaTitulo.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
-          filaTitulo.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2E7D32" } };
+          hoja.mergeCells("A2:I2");
+          const f2 = hoja.getRow(2); f2.getCell(1).value = cargoSubgerencia; f2.getCell(1).font = { bold: true, size: 11 };
+          f2.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
+          f2.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9EAD3" } };
 
-          hoja.mergeCells("A2:H2");
-          const filaCargo = hoja.getRow(2);
-          filaCargo.getCell(1).value = cargoSubgerencia;
-          filaCargo.getCell(1).font = { bold: true, size: 11 };
-          filaCargo.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
-          filaCargo.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9EAD3" } };
-
-          hoja.mergeCells("A3:H3");
+          hoja.mergeCells("A3:I3");
           hoja.getRow(3).getCell(1).value = `Exportado: ${new Date().toLocaleString()}`;
           hoja.getRow(3).getCell(1).font = { italic: true, size: 9, color: { argb: "FF666666" } };
           hoja.getRow(3).getCell(1).alignment = { horizontal: "center" };
 
-          const filaHeader = hoja.getRow(5);
-          columnas.forEach((titulo, i) => {
-            const celda = filaHeader.getCell(i + 1);
-            celda.value = titulo;
-            celda.font = { bold: true, size: 12, color: { argb: "FF000000" } };
-            celda.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-            celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF4C542" } };
-            celda.border = {
-              top: { style: "thin" }, bottom: { style: "thin" },
-              left: { style: "thin" }, right: { style: "thin" },
-            };
+          const fHeader = hoja.getRow(5);
+          ["N° Bloque", "N° Folio", "Periodo", "Ubicación del documento", "Tipo de documento", "Apellidos y Nombres", "Cargo", "Nota de pagina(s)", "Total páginas"].forEach((t, i) => {
+            const c = fHeader.getCell(i + 1); c.value = t; c.font = { bold: true, size: 12 };
+            c.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+            c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF4C542" } };
+            c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
           });
-          filaHeader.height = 22;
-
-                    function extraerAnios(periodo) {
-            const match = String(periodo || "").match(/(\d{4})\s*-\s*(\d{4})/);
-            if (match) {
-              return { inicio: Number(match[1]), fin: Number(match[2]) };
-            }
-            const soloUno = String(periodo || "").match(/(\d{4})/);
-            const anio = soloUno ? Number(soloUno[1]) : 0;
-            return { inicio: anio, fin: anio };
-          }
-
-          const datosOrdenados = [...data].sort((a, b) => {
-            const numA = parseInt(a.numero_folio, 10);
-            const numB = parseInt(b.numero_folio, 10);
-            if (numA !== numB) return numA - numB;
-
-            const aAnios = extraerAnios(a.periodo);
-            const bAnios = extraerAnios(b.periodo);
-            if (aAnios.inicio !== bAnios.inicio) return aAnios.inicio - bAnios.inicio;
-            return aAnios.fin - bAnios.fin;
-          });
+          fHeader.height = 22;
 
           let filaExcel = 6;
-          datosOrdenados.forEach((f) => {
-            const nombres = f.nombres || [];
-            const notas = f.notas_pago || [];
-            const cargos = f.cargos || [];
+          data.forEach((f) => {
+            (f.nombres || []).forEach((nombre, idx) => {
+              if (esSeparador(nombre) || !nombre || !String(nombre).trim()) return;
+              const row = hoja.getRow(filaExcel++);
+              const nota = (f.notas_pago || [])[idx] ?? "", cargoItem = (f.cargos || [])[idx] ?? "";
+              const resNota = validarRangoNotaPago(nota);
+              const valores = [f.numero_bloque || "", f.numero_folio, f.periodo, cargoSubgerencia, tipoDocumento, limpiarNombreParaExportar(nombre), cargoItem, nota, resNota.total || ""];
 
-            nombres.forEach((nombre, nombreIndex) => {
-              // Los separadores son marcadores internos y nunca deben aparecer en Excel.
-              if (esSeparador(nombre)) return;
-              if (!nombre || !String(nombre).trim()) return;
-
-              const fila = hoja.getRow(filaExcel++);
-              const nota = notas[nombreIndex] ?? "";
-              const cargoItem = cargos[nombreIndex] ?? "";
-              const totalPaginas = calcularTotalNotaPago(nota) ?? "";
-
-              const valores = [
-                f.numero_folio, f.periodo, cargoSubgerencia, tipoDocumento,
-                limpiarNombreParaExportar(nombre), cargoItem, nota, totalPaginas,
-              ];
-
-              const colorFondo = (filaExcel - 6) % 2 === 1 ? "FFD9E7F5" : "FFFFFFFF";
-              valores.forEach((val, i) => {
-                const celda = fila.getCell(i + 1);
-                celda.value = val;
-                celda.alignment = {
-                  vertical: "middle",
-                  horizontal: i >= 5 ? "center" : i >= 2 ? "left" : "center",
-                  wrapText: i !== 3,
-                  shrinkToFit: i === 3,
-                };
-                celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colorFondo } };
-                celda.border = {
-                  top: { style: "thin", color: { argb: "FFCCCCCC" } },
-                  bottom: { style: "thin", color: { argb: "FFCCCCCC" } },
-                  left: { style: "thin", color: { argb: "FFCCCCCC" } },
-                  right: { style: "thin", color: { argb: "FFCCCCCC" } },
-                };
+              valores.forEach((v, i) => {
+                const cel = row.getCell(i + 1); cel.value = v;
+                cel.alignment = { vertical: "middle", horizontal: (i === 0 || i === 1 || i === 2 || i === 8) ? "center" : "left", wrapText: true };
+                cel.fill = { type: "pattern", pattern: "solid", fgColor: { argb: filaExcel % 2 === 0 ? "FFD9E7F5" : "FFFFFFFF" } };
+                cel.border = { top: { style: "thin", color: { argb: "FFCCCCCC" } }, bottom: { style: "thin", color: { argb: "FFCCCCCC" } }, left: { style: "thin", color: { argb: "FFCCCCCC" } }, right: { style: "thin", color: { argb: "FFCCCCCC" } } };
               });
-              fila.height = 30;
+              const cargoLineas = Math.max(1, Math.ceil(String(cargoItem || "").length / 48));
+              const nombreLineas = Math.max(1, Math.ceil(String(nombre || "").length / 52));
+              row.height = Math.max(32, Math.min(52, 18 * Math.max(cargoLineas, nombreLineas)));
             });
           });
 
-          const historial = obtenerHistorial();
-          if (historial.length > 0) {
-            const hojaHist = workbook.addWorksheet("Historial");
-            hojaHist.columns = [{ width: 20 }, { width: 16 }, { width: 40 }];
-            hojaHist.addRow(["Fecha", "Acción", "Detalle"]).font = { bold: true };
-            historial.forEach((h) => hojaHist.addRow([h.fecha, h.accion, h.detalle]));
-          }
-
           const buffer = await workbook.xlsx.writeBuffer();
-          const blob = new Blob([buffer], { type: "application/octet-stream" });
-          const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
-          a.href = url;
-          a.download = exportarTodos
-            ? `Folios_Todos_${new Date().toISOString().slice(0, 10)}.xlsx`
-            : `Folio_${String(data[0].numero_folio).replace(/[^a-zA-Z0-9_-]/g, "_")}_${String(data[0].periodo).replace(/[^a-zA-Z0-9_-]/g, "_")}.xlsx`;
+          a.href = URL.createObjectURL(new Blob([buffer], { type: "application/octet-stream" }));
+          a.download = exportarTodos ? `Folios_Todos_${new Date().toISOString().slice(0, 10)}.xlsx` : `Folio_${data[0].numero_folio}.xlsx`;
           a.click();
-          URL.revokeObjectURL(url);
-        } catch (error) {
-          console.error(error);
-          alert("Error al exportar: " + (error.message || error));
-        }
+        } catch (err) { alert("Error al exportar: " + err.message); }
       }
 
-      /* CONFIGURACION DE TEXTOS MODAL */
-      document.getElementById("btnConfig").onclick = async () => {
-        const { data, error } = await clienteDB
-          .from("config_caratula")
-          .select("*")
-          .eq("id", 1)
-          .single();
-
-        if (!error && data) {
-          cfgSubgerencia.value = data.texto_subgerencia;
-          cfgCvLabel.value = data.texto_cv_label;
-        }
-
-        cfgRubroActual.value = cargoActual; // Refleja la variable limpia o configurada previamente
-        cfgFuenteSubgerencia.value = configVisual.fuenteSubgerencia;
-        cfgFuenteCv.value = configVisual.fuenteCv;
-        valorTamanoSubgerencia.textContent = `${configVisual.tamanoSubgerencia} px`;
-        valorTamanoCv.textContent = `${configVisual.tamanoCv} px`;
-
-        modalConfig.classList.add("mostrar");
+      /* CONFIGURACIÓN Y MODAL DE PLANTILLA */
+      $("btnConfig").onclick = async () => {
+        const { data } = await clienteDB.from("config_caratula").select("*").eq("id", 1).single();
+        if (data) { $("cfgSubgerencia").value = data.texto_subgerencia; $("cfgCvLabel").value = data.texto_cv_label; }
+        $("cfgRubroActual").value = cargoActual;
+        $("cfgFuenteSubgerencia").value = configVisual.fuenteSubgerencia;
+        $("cfgFuenteCv").value = configVisual.fuenteCv;
+        $("valorTamanoSubgerencia").textContent = `${configVisual.tamanoSubgerencia} px`;
+        $("valorTamanoCv").textContent = `${configVisual.tamanoCv} px`;
+        $("modalConfig").classList.add("mostrar");
       };
 
-      document.getElementById("btnCerrarConfig").onclick = () => {
-        modalConfig.classList.remove("mostrar");
-      };
+      $("btnCerrarConfig").onclick = () => cerrarModal("modalConfig");
+      $("btnMenosSubgerencia").onclick = () => { if (configVisual.tamanoSubgerencia > 10) { configVisual.tamanoSubgerencia--; aplicarConfigVisual(); } };
+      $("btnMasSubgerencia").onclick = () => { if (configVisual.tamanoSubgerencia < 50) { configVisual.tamanoSubgerencia++; aplicarConfigVisual(); } };
+      $("btnMenosCv").onclick = () => { if (configVisual.tamanoCv > 10) { configVisual.tamanoCv--; aplicarConfigVisual(); } };
+      $("btnMasCv").onclick = () => { if (configVisual.tamanoCv < 60) { configVisual.tamanoCv++; aplicarConfigVisual(); } };
 
-      document.getElementById("btnMenosSubgerencia").onclick = () => {
-        if (configVisual.tamanoSubgerencia > 10) {
-          configVisual.tamanoSubgerencia -= 1;
-          aplicarConfigVisual();
-        }
-      };
+      $("cfgFuenteSubgerencia").onchange = (e) => { configVisual.fuenteSubgerencia = e.target.value; aplicarConfigVisual(); };
+      $("cfgFuenteCv").onchange = (e) => { configVisual.fuenteCv = e.target.value; aplicarConfigVisual(); };
 
-      document.getElementById("btnMasSubgerencia").onclick = () => {
-        if (configVisual.tamanoSubgerencia < 50) {
-          configVisual.tamanoSubgerencia += 1;
-          aplicarConfigVisual();
-        }
-      };
+      $("btnGuardarConfig").onclick = async () => {
+        const sub = $("cfgSubgerencia").value.trim(), cv = $("cfgCvLabel").value.trim();
+        if (!sub || !cv) { alert("Completa ambos textos."); return; }
+        
+        cargoActual = $("cfgRubroActual").value.trim();
 
-      document.getElementById("btnMenosCv").onclick = () => {
-        if (configVisual.tamanoCv > 10) {
-          configVisual.tamanoCv -= 1;
-          aplicarConfigVisual();
-        }
-      };
+        const { error } = await clienteDB.from("config_caratula").update({ 
+          texto_subgerencia: sub, 
+          texto_cv_label: cv, 
+          actualizado_en: new Date().toISOString() 
+        }).eq("id", 1);
+        
+        if (error) { alert("Error al guardar: " + error.message); return; }
 
-      document.getElementById("btnMasCv").onclick = () => {
-        if (configVisual.tamanoCv < 60) {
-          configVisual.tamanoCv += 1;
-          aplicarConfigVisual();
-        }
-      };
-
-      cfgFuenteSubgerencia.addEventListener("change", () => {
-        configVisual.fuenteSubgerencia = cfgFuenteSubgerencia.value;
-        aplicarConfigVisual();
-      });
-
-      cfgFuenteCv.addEventListener("change", () => {
-        configVisual.fuenteCv = cfgFuenteCv.value;
-        aplicarConfigVisual();
-      });
-
-      document.getElementById("btnGuardarConfig").onclick = async () => {
-        const nuevaSubgerencia = cfgSubgerencia.value.trim();
-        const nuevoCvLabel = cfgCvLabel.value.trim();
-
-        if (!nuevaSubgerencia || !nuevoCvLabel) {
-          alert("Completa ambos textos.");
-          return;
-        }
-
-        // Guarda el cargo por defecto en la variable en memoria para esta sesión
-        cargoActual = cfgRubroActual.value.trim();
-
-        const { error } = await clienteDB
-          .from("config_caratula")
-          .update({
-            texto_subgerencia: nuevaSubgerencia,
-            texto_cv_label: nuevoCvLabel,
-            actualizado_en: new Date().toISOString(),
-          })
-          .eq("id", 1);
-
-        if (error) {
-          alert("Error al guardar en base de datos: " + error.message);
-          return;
-        }
-
-        configVisual.fuenteSubgerencia = cfgFuenteSubgerencia.value;
-        configVisual.fuenteCv = cfgFuenteCv.value;
         guardarConfigVisual();
-
-        aplicarConfig(nuevaSubgerencia, nuevoCvLabel);
-        aplicarConfigVisual();
-
-        modalConfig.classList.remove("mostrar");
+        txtSubgerencia.innerHTML = sub.replace(/\n/g, "<br>");
+        txtCvLabel.textContent = cv;
+        cerrarModal("modalConfig");
       };
 
-      function aplicarConfig(subgerencia, cvLabel) {
-        txtSubgerencia.innerHTML = subgerencia.replace(/\n/g, "<br>");
-        txtCvLabel.textContent = cvLabel;
-      }
+      /* TECLAS ESCAPE PARA MODALES */
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") ["modalDuplicados", "modalExportarExcel", "modalConfig"].forEach(cerrarModal);
+      });
 
-      async function cargarConfig() {
-        const { data, error } = await clienteDB
-          .from("config_caratula")
-          .select("*")
-          .eq("id", 1)
-          .single();
+      /* INICIALIZACIÓN GLOBAL */
+      (async function init() {
+        inpBloque.value = bloqueActual;
+        crearFilaNombre();
+        cargarConfigVisual();
+        aplicarConfigVisual();
+        actualizarPreview();
+        renderizarHistorial();
 
-        if (!error && data) {
-          aplicarConfig(data.texto_subgerencia, data.texto_cv_label);
-        }
-      }
+        const { data } = await clienteDB.from("config_caratula").select("*").eq("id", 1).single();
+        if (data) { txtSubgerencia.innerHTML = data.texto_subgerencia.replace(/\n/g, "<br>"); txtCvLabel.textContent = data.texto_cv_label; }
 
-      /* INICIALIZACION */
-      crearFilaNombre();
-      actualizarVisibilidadFilas();
-      cargarConfigVisual();
-      aplicarConfigVisual();
-      actualizarPreview();
-      renderizarHistorial();
-      cargarConfig();
-      inicializar();
+        filtroActivo = buscador.value.trim().toLowerCase();
+        totalRegistros = await obtenerTotalRegistros(filtroActivo);
+        totalPaginas = Math.ceil(totalRegistros / PAGE_SIZE) || 1;
+        await cargarPagina(0);
+      })();
     </script>
   </body>
 </html>
