@@ -89,6 +89,17 @@
       .tamano-controles { display: flex; align-items: center; gap: 6px; }
       .tamano-controles button { width: 34px; height: 32px; border: none; border-radius: 6px; background: var(--azul); color: white; font-size: 18px; font-weight: bold; cursor: pointer; }
       .tamano-controles span { min-width: 55px; text-align: center; font-weight: bold; font-size: 14px; }
+      .config-vista-previa { margin-top: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: #f8fafc; text-align: center; overflow: hidden; }
+      .config-vista-previa h4 { margin: 0 0 8px; color: var(--azul); font-size: 14px; }
+      .config-vista-previa .caratula { width: 300px; height: 900px; min-height: 900px; max-height: 900px; margin: 0 auto; zoom: 0.68; }
+      #modalConfig .modal-caja { width: 860px; max-width: 95vw; display: grid; grid-template-columns: 390px minmax(300px, 1fr); gap: 16px; align-items: start; }
+      #modalConfig .modal-caja > :not(.config-vista-previa) { grid-column: 1; }
+      #modalConfig .config-vista-previa { grid-column: 2; grid-row: 1 / span 20; position: sticky; top: 0; width: 100%; margin-top: 0; }
+      @media (max-width: 700px) {
+        #modalConfig .modal-caja { display: block; width: 420px; }
+        #modalConfig .config-vista-previa { position: static; width: 100%; margin-top: 12px; }
+        .config-vista-previa .caratula { zoom: 0.55; }
+      }
 
       /* Paginación Mejorada */
       .paginacion { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 12px; }
@@ -127,18 +138,18 @@
       .nota-pago-total { margin-top: 4px; font-size: 11px; color: #475569; font-weight: bold; }
       .nota-pago-error { color: #b91c1c; font-weight: normal; }
 
-      /* Carátula */
+      /* Carátula Componente Base */
       .caratula-wrap { display: flex; flex-direction: column; align-items: center; }
-      #caratula { width: 300px; min-height: 760px; border: 5px solid #000; border-radius: 40px; padding: 25px 20px; text-align: center; background: #fff; display: flex; flex-direction: column; }
-      #caratula .titulo { font-family: "Monotype Corsiva", cursive; font-size: 24px; font-weight: bold; line-height: 1.15; margin-bottom: 8px; }
-      #caratula img.escudo { width: 140px; margin: 6px auto 14px; display: block; }
-      #caratula .subgerencia { font-weight: bold; margin-bottom: 12px; line-height: 1.2; }
-      #caratula .cv-label { font-weight: bold; margin-bottom: 14px; letter-spacing: 1px; text-align: center; }
-      #caratula .nombres { font-size: 16px; text-align: left; padding-left: 8px; flex-grow: 1; }
-      #caratula .nombres div { margin-bottom: 6px; padding-left: 14px; position: relative; }
-      #caratula .nombres div:before { content: "➤"; position: absolute; left: -4px; color: var(--sky); font-size: 11px; }
-      #caratula .folio-circulo { font-size: 30px; font-weight: bold; width: 80px; height: 80px; border: 4px solid #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 14px auto; }
-      #caratula .periodo { font-size: 16px; font-weight: bold; margin-top: 6px; }
+      .caratula { width: 300px; height: 900px; min-height: 900px; max-height: 900px; border: 5px solid #000; border-radius: 40px; padding: 25px 20px; text-align: center; background: #fff; display: flex; flex-direction: column; box-sizing: border-box; }
+      .caratula .titulo { font-family: "Monotype Corsiva", cursive; font-size: var(--tamano-titulo, 22px); font-weight: bold; line-height: 1.15; margin-bottom: var(--espacio-titulo, 8px); }
+      .caratula img.escudo { width: var(--tamano-escudo, 120px); margin: 6px auto 14px; display: block; }
+      .caratula .subgerencia { font-weight: bold; margin-top: var(--espacio-gerencia, 0px); margin-bottom: 12px; line-height: 1.2; font-size: 14px; }
+      .caratula .cv-label { font-weight: bold; margin-top: var(--espacio-curriculum, 0px); margin-bottom: 14px; letter-spacing: 1px; text-align: center; font-size: 22px; }
+      .caratula .nombres { font-size: 15px; text-align: left; padding-left: 8px; padding-top: var(--espacio-nombres, 0px); flex-grow: 1; }
+      .caratula .nombres div { margin-bottom: 6px; padding-left: 14px; position: relative; }
+      .caratula .nombres div:before { content: "➤"; position: absolute; left: -4px; color: var(--sky); font-size: 11px; }
+      .caratula .folio-circulo { font-size: 28px; font-weight: bold; width: 70px; height: 70px; border: 4px solid #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 14px auto; }
+      .caratula .periodo { font-size: 15px; font-weight: bold; margin-top: 6px; }
 
       #modoEdicion { display: none; background: #fef3c7; color: #92400e; padding: 8px; border-radius: 6px; margin-bottom: 10px; font-size: 13px; text-align: center; border: 1px solid #f59e0b; }
       #modoEdicion.mostrar { display: block; }
@@ -157,12 +168,99 @@
       .duplicado-clicable { cursor: pointer; text-decoration: underline; text-decoration-color: #facc15; text-underline-offset: 2px; }
       .duplicado-clicable:hover { opacity: .75; }
 
-      @media print {
-        body * { visibility: hidden; }
-        #caratula, #caratula * { visibility: visible; }
-        #caratula { position: absolute; top: 0; left: 0; }
-        .panel, .btn-group, #modoEdicion, .historial-panel, .encabezado { display: none; }
+      /* ESTILOS PARA IMPRESIÓN MÚLTIPLE EN 1 HOJA */
+      .modal-impresion-caja {
+        background: #e2e8f0; width: 95vw; max-width: 1200px; height: 90vh; border-radius: 12px; display: flex; overflow: hidden;
       }
+      .panel-seleccion-impresion {
+        width: 380px; background: #fff; padding: 20px; display: flex; flex-direction: column; border-right: 1px solid #cbd5e1;
+      }
+      .panel-vista-impresion {
+        flex: 1; padding: 20px; overflow-y: auto; display: flex; justify-content: center; align-items: flex-start; background: #525659;
+      }
+      .hojas-impresion-preview {
+        display: flex; flex-direction: column; align-items: center; gap: 16px;
+      }
+      .hoja-impresion-pagina {
+        background: #fff; width: 210mm; min-height: 297mm; padding: 10mm; display: flex; flex-direction: row; justify-content: space-evenly; align-items: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); transform: scale(0.65); transform-origin: top center;
+      }
+      .hoja-impresion-pagina .caratula {
+        transform: scale(0.9);
+      }
+
+      /* ESTILOS EXCLUSIVOS DE IMPRESIÓN FÍSICA / PDF */
+      @media print {
+    @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  body * { visibility: hidden; }
+  #hojaImpresionImprimible, #hojaImpresionImprimible * { visibility: visible; }
+
+    .modal-overlay, .panel, .btn-group, #modoEdicion, .historial-panel, .encabezado, .caratula-wrap {
+    display: none !important;
+  }
+
+  /* 👇 esto es lo que faltaba: sacar el modal de impresión de ese apagón */
+  #modalImpresion,
+  #modalImpresion .modal-impresion-caja,
+  #modalImpresion .panel-vista-impresion {
+    display: block !important;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #modalImpresion {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  #modalImpresion .modal-impresion-caja {
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    border-radius: 0 !important;
+  }
+
+  #modalImpresion .panel-seleccion-impresion {
+    display: none !important;
+  }
+
+  #modalImpresion .panel-vista-impresion {
+    width: auto !important;
+    height: auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  #hojaImpresionImprimible {
+    position: static !important; width: 100% !important; height: auto !important;
+    display: block !important; background: #fff !important; padding: 0 !important;
+  }
+
+  .hoja-impresion-pagina {
+    width: 210mm !important; height: auto !important; min-height: 0 !important;
+    padding: 10mm 0 !important; display: flex !important;
+    justify-content: space-around !important; align-items: center !important;
+    box-shadow: none !important; transform: none !important;
+    page-break-after: auto; break-after: auto;
+    page-break-inside: avoid; break-inside: avoid;
+  }
+
+  .hoja-impresion-pagina:not(:last-child) {
+    page-break-after: always !important; break-after: page !important;
+  }
+
+}
     </style>
   </head>
 
@@ -177,6 +275,56 @@
         <div id="contenidoModalDuplicados" style="padding:16px 0; color:#334155; font-size:13px;"></div>
         <div style="text-align:right;">
           <button type="button" class="btn btn-sky" onclick="cerrarModal('modalDuplicados')">Entendido</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL SELECCIÓN DE IMPRESIÓN (2 EN 1 PÁGINA) -->
+    <div id="modalImpresion" class="modal-overlay" role="dialog" aria-modal="true">
+      <div class="modal-impresion-caja">
+        <div class="panel-seleccion-impresion">
+          <h3>🖨️ Selección para Impresión</h3>
+          <input type="search" id="buscadorImpresion" placeholder="🔍 Buscar" style="width:100%; margin-bottom:8px;" />
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px;">
+            <label style="display:flex; align-items:center; gap:6px; margin:0; font-size:12px; color:#334155; font-weight:600;">
+              <input type="checkbox" id="chkMarcarTodosVisibles" style="width:auto;" />
+              Marcar todos visibles
+            </label>
+            <span id="contadorImpresion" style="font-size:11px; color:#64748b;">0 visibles</span>
+          </div>
+          <div id="listaSeleccionImprimir" style="flex:1; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; padding:10px; background:#f8fafc;">
+            <!-- Folios para marcar -->
+          </div>
+
+          <div id="seccionFoliosImpresos" style="margin-top:12px; border-top:1px solid #e2e8f0; padding-top:10px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
+              <span style="font-size:12px; color:#334155; font-weight:600;">📌 Impresos</span>
+              <button type="button" id="btnToggleFoliosImpresos" class="btn btn-gray" style="padding:6px 10px; font-size:11px; min-width:140px;">Ocultar impresos</button>
+            </div>
+            <div id="listaFoliosImpresos" style="max-height:120px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; padding:8px; background:#f8fafc; display:block;">
+              <!-- Impresos -->
+            </div>
+          </div>
+
+          <div id="confirmarImpresionWrap" style="display:none; margin-top:12px; padding:10px; border:1px solid #16a34a; border-radius:8px; background:#f0fdf4;">
+            <div style="font-size:13px; font-weight:600; color:#166534; margin-bottom:8px;">
+              ¿La impresión salió correctamente?
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="btn btn-primary" style="flex:1; background:#16a34a;" onclick="confirmarImpresionOk()">✅ Sí, imprimió</button>
+              <button type="button" class="btn btn-gray" style="flex:1;" onclick="confirmarImpresionCancelar()">❌ No / Cancelar</button>
+            </div>
+          </div>
+
+          <div style="margin-top:15px; display:flex; gap:10px;">
+            <button type="button" class="btn btn-gray" style="flex:1;" onclick="cerrarModal('modalImpresion')">Cancelar</button>
+            <button type="button" class="btn btn-primary" style="flex:1; background:#16a34a;" onclick="ejecutarImpresionDosFolios()">Imprimir/PDF</button>
+          </div>
+        </div>
+        <div class="panel-vista-impresion">
+          <div class="hojas-impresion-preview" id="hojaImpresionImprimible">
+            <!-- Dos carátulas renderizadas dinámicamente -->
+          </div>
         </div>
       </div>
     </div>
@@ -205,13 +353,44 @@
     <div id="modalConfig" class="modal-overlay">
       <div class="modal-caja">
         <h3>⚙️ Configuración de plantilla</h3>
+        <div class="config-vista-previa">
+          <h4>Vista previa del diseño actual</h4>
+          <div class="caratula" id="configVistaCaratula">
+            <div class="titulo">MUNICIPALIDAD DISTRITAL DE CHINCHAO</div>
+            <img class="escudo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiij9VKAtMBiHfcGy8Q-NeekFK54ihGvJrZXLHmxDx9CH1jUUrDz5Gfvc&s=10" alt="Escudo">
+            <div class="subgerencia" id="configVistaSubgerencia"></div>
+            <div class="cv-label" id="configVistaCvLabel"></div>
+            <div class="nombres" id="configVistaNombres"></div>
+            <div class="folio-circulo">01</div>
+            <div class="periodo">2023-2024</div>
+          </div>
+        </div>
         <div class="config-seccion">
           <h4>Cargo</h4>
           <input type="text" id="cfgRubroActual" />
           <small style="color:#777;">Los nuevos nombres agregados tomarán este cargo de forma predeterminada.</small>
         </div>
         <div class="config-seccion">
-          <h4>Título de Área / Subgerencia</h4>
+          <h4>Municipalidad Distrital de Chinchao</h4>
+          <div class="config-fila">
+            <label>Tamaño:</label>
+            <div class="tamano-controles">
+              <button type="button" id="btnMenosTitulo">−</button>
+              <span id="valorTamanoTitulo">22 px</span>
+              <button type="button" id="btnMasTitulo">+</button>
+            </div>
+          </div>
+          <div class="config-fila">
+            <label>Espacio debajo:</label>
+            <div class="tamano-controles">
+              <button type="button" id="btnMenosEspacioTitulo">−</button>
+              <span id="valorEspacioTitulo">8 px</span>
+              <button type="button" id="btnMasEspacioTitulo">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="config-seccion">
+          <h4>Título del Área</h4>
           <input type="text" id="cfgSubgerencia" placeholder="SUB GERENCIA DE RECURSOS HUMANOS" />
           <div class="config-fila">
             <label>Tipo:</label>
@@ -229,6 +408,14 @@
               <button type="button" id="btnMenosSubgerencia">−</button>
               <span id="valorTamanoSubgerencia">18 px</span>
               <button type="button" id="btnMasSubgerencia">+</button>
+            </div>
+          </div>
+          <div class="config-fila">
+            <label>Espacio antes:</label>
+            <div class="tamano-controles">
+              <button type="button" id="btnMenosEspacioGerencia">−</button>
+              <span id="valorEspacioGerencia">0 px</span>
+              <button type="button" id="btnMasEspacioGerencia">+</button>
             </div>
           </div>
         </div>
@@ -252,6 +439,33 @@
               <button type="button" id="btnMenosCv">−</button>
               <span id="valorTamanoCv">26 px</span>
               <button type="button" id="btnMasCv">+</button>
+            </div>
+          </div>
+          <div class="config-fila">
+            <label>Espacio antes:</label>
+            <div class="tamano-controles">
+              <button type="button" id="btnMenosEspacioCurriculum">−</button>
+              <span id="valorEspacioCurriculum">0 px</span>
+              <button type="button" id="btnMasEspacioCurriculum">+</button>
+            </div>
+          </div>
+          <div class="config-fila">
+            <label>Imagen:</label>
+            <div class="tamano-controles">
+              <button type="button" id="btnMenosEscudo">−</button>
+              <span id="valorTamanoEscudo">120 px</span>
+              <button type="button" id="btnMasEscudo">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="config-seccion">
+          <h4>Lista de nombres</h4>
+          <div class="config-fila">
+            <label>Espacio antes:</label>
+            <div class="tamano-controles">
+              <button type="button" id="btnMenosEspacioNombres">−</button>
+              <span id="valorEspacioNombres">0 px</span>
+              <button type="button" id="btnMasEspacioNombres">+</button>
             </div>
           </div>
         </div>
@@ -323,7 +537,7 @@
 
       <!-- CARÁTULA -->
       <div class="caratula-wrap">
-        <div id="caratula">
+        <div class="caratula" id="caratula">
           <div class="titulo">MUNICIPALIDAD DISTRITAL DE CHINCHAO</div>
           <img class="escudo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiij9VKAtMBiHfcGy8Q-NeekFK54ihGvJrZXLHmxDx9CH1jUUrDz5Gfvc&s=10" alt="Escudo">
           <div class="subgerencia" id="txtSubgerencia">SUB GERENCIA DE<br />RECURSOS HUMANOS</div>
@@ -337,7 +551,7 @@
       <!-- LISTA -->
       <div class="panel">
         <h2>Folios guardados</h2>
-        <input type="search" id="buscador" placeholder="🔍 Buscar por N°, bloque, periodo, nombre, cargo" style="margin-bottom: 8px" />
+        <input type="search" id="buscador" placeholder="🔍 Buscar" style="margin-bottom: 8px" />
         <div class="controles-lista-folios">
           <button id="btnOrdenarBloque" class="btn-orden-lista" type="button">↕ Ordenar por bloque</button>
         </div>
@@ -382,6 +596,8 @@
       const $ = (id) => document.getElementById(id);
       const contNombres = $("contNombres");
       const previewNombres = $("previewNombres");
+      let foliosImpresos = [];
+      foliosImpresos = cargarFoliosImpresos();
       const previewNumero = $("previewNumero");
       const previewPeriodo = $("previewPeriodo");
       const inpNumero = $("inpNumero");
@@ -391,6 +607,7 @@
       const inpId = $("inpId");
       const modoEdicion = $("modoEdicion");
       const buscador = $("buscador");
+      const buscadorImpresion = $("buscadorImpresion");
       const listaFolios = $("listaFolios");
       const historialContenido = $("historialContenido");
       const txtSubgerencia = $("txtSubgerencia");
@@ -399,12 +616,22 @@
       const MARCADOR_SEPARADOR = "§SEP§";
       const PAGE_SIZE = 5;
 
-      let configVisual = { fuenteSubgerencia: "Arial", tamanoSubgerencia: 18, fuenteCv: "Algerian", tamanoCv: 26 };
+      let configVisual = {
+        tamanoTitulo: 22, espacioTitulo: 8,
+        fuenteSubgerencia: "Arial", tamanoSubgerencia: 18, espacioGerencia: 0,
+        fuenteCv: "Algerian", tamanoCv: 26, espacioCurriculum: 0,
+        tamanoEscudo: 120, espacioNombres: 0
+      };
       let paginaActual = 0, totalPaginas = 1, filtroActivo = "", totalRegistros = 0, cargoActual = "", bloqueActual = "01";
       let notasPagoVisibles = false, modoMostrarFilas = "ultimos", duplicadosGlobales = {};
       let ordenarListaPorBloque = false;
       const foliosAbiertos = new Set();
       let filaSeleccionada = null, filaArrastrada = null;
+      let todosLosFoliosCache = [];
+      let foliosMarcadosParaImprimir = [];
+      let mostrarFoliosImpresos = true;
+      let idsPendientesDeConfirmarImpresion = [];
+      const KEY_FOLIOS_IMPRESOS = "foliosImpresosGuardados";
 
       /* UTILIDADES GENERALES */
       function normalizarTexto(texto) {
@@ -435,7 +662,77 @@
         return esSeparador(nombre) ? "" : (nombre ?? "");
       }
 
-      function cerrarModal(idModal) { $(idModal).classList.remove("mostrar"); }
+      function cerrarModal(idModal) {
+        $(idModal).classList.remove("mostrar");
+        if (idModal === "modalImpresion") {
+          idsPendientesDeConfirmarImpresion = [];
+          const wrap = $("confirmarImpresionWrap");
+          if (wrap) wrap.style.display = "none";
+        }
+      }
+
+      function cargarFoliosImpresos() {
+        try {
+          const guardado = localStorage.getItem(KEY_FOLIOS_IMPRESOS);
+          const datos = guardado ? JSON.parse(guardado) : [];
+          return Array.isArray(datos) ? datos.map(String) : [];
+        } catch (e) {
+          console.warn("Error al cargar folios impresos:", e);
+          return [];
+        }
+      }
+
+      function guardarFoliosImpresos() {
+        localStorage.setItem(KEY_FOLIOS_IMPRESOS, JSON.stringify([...new Set(foliosImpresos.map(String))]));
+      }
+
+      function esFolioImpreso(id) {
+        return foliosImpresos.includes(String(id));
+      }
+
+      function registrarFoliosImpresos(ids) {
+        const idsNuevos = [...new Set((ids || []).map(String).filter(Boolean))];
+        idsNuevos.forEach((id) => {
+          if (!foliosImpresos.includes(id)) foliosImpresos.push(id);
+        });
+        foliosMarcadosParaImprimir = foliosMarcadosParaImprimir.filter((id) => !idsNuevos.includes(String(id)));
+        guardarFoliosImpresos();
+
+        const foliosDisponibles = [...todosLosFoliosCache];
+        if (!inpId.value && inpNumero.value.trim()) {
+          foliosDisponibles.unshift(obtenerFolioActualFormulario());
+        }
+        renderizarListaFoliosImpresos(foliosDisponibles);
+        renderizarListaImpresion(foliosDisponibles);
+      }
+
+      function actualizarContadorImpresion(foliosDisponibles) {
+        const contador = $("contadorImpresion");
+        if (!contador) return;
+        const textoBusqueda = (buscadorImpresion?.value || "").trim();
+        const visibles = obtenerFoliosFiltradosParaImpresion(foliosDisponibles, textoBusqueda);
+        const idsVisibles = visibles.map((f) => String(f.id));
+        const seleccionados = idsVisibles.filter((id) => foliosMarcadosParaImprimir.includes(id)).length;
+        contador.textContent = `${idsVisibles.length} visibles · ${seleccionados} marcados`;
+      }
+
+      function actualizarEstadoMarcarTodosVisibles(foliosDisponibles) {
+        const chk = $("chkMarcarTodosVisibles");
+        if (!chk) return;
+        const textoBusqueda = (buscadorImpresion?.value || "").trim();
+        const visibles = obtenerFoliosFiltradosParaImpresion(foliosDisponibles, textoBusqueda);
+        const idsVisibles = visibles.map((f) => String(f.id));
+
+        if (!idsVisibles.length) {
+          chk.checked = false;
+          chk.indeterminate = false;
+          return;
+        }
+
+        const marcados = idsVisibles.filter((id) => foliosMarcadosParaImprimir.includes(id)).length;
+        chk.checked = marcados === idsVisibles.length;
+        chk.indeterminate = marcados > 0 && marcados < idsVisibles.length;
+      }
 
       /* CONFIGURACIÓN VISUAL */
       function cargarConfigVisual() {
@@ -447,14 +744,48 @@
 
       function guardarConfigVisual() { localStorage.setItem("configVisualCaratula", JSON.stringify(configVisual)); }
 
+      function actualizarVistaPreviaConfiguracion() {
+        const vista = $("configVistaCaratula");
+        if (!vista) return;
+        const subgerencia = $("configVistaSubgerencia");
+        const cvLabel = $("configVistaCvLabel");
+        const nombres = $("configVistaNombres");
+        subgerencia.innerHTML = ($("cfgSubgerencia")?.value || txtSubgerencia.innerHTML).replace(/\n/g, "<br>");
+        cvLabel.textContent = $("cfgCvLabel")?.value || txtCvLabel.textContent;
+        nombres.innerHTML = previewNombres.innerHTML || '<div style="color:#94a3b8;">Agrega nombres para verlos aquí</div>';
+        vista.style.setProperty("--tamano-titulo", `${configVisual.tamanoTitulo}px`);
+        vista.style.setProperty("--espacio-titulo", `${configVisual.espacioTitulo}px`);
+        vista.style.setProperty("--tamano-escudo", `${configVisual.tamanoEscudo}px`);
+        vista.style.setProperty("--espacio-gerencia", `${configVisual.espacioGerencia}px`);
+        vista.style.setProperty("--espacio-curriculum", `${configVisual.espacioCurriculum}px`);
+        vista.style.setProperty("--espacio-nombres", `${configVisual.espacioNombres}px`);
+        subgerencia.style.setProperty("font-family", `"${configVisual.fuenteSubgerencia}", Arial, sans-serif`, "important");
+        subgerencia.style.setProperty("font-size", `${configVisual.tamanoSubgerencia}px`, "important");
+        cvLabel.style.setProperty("font-family", `"${configVisual.fuenteCv}", Algerian, "Bookman Old Style", serif`, "important");
+        cvLabel.style.setProperty("font-size", `${configVisual.tamanoCv}px`, "important");
+      }
+
       function aplicarConfigVisual() {
+        $("caratula").style.setProperty("--tamano-titulo", `${configVisual.tamanoTitulo}px`);
+        $("caratula").style.setProperty("--espacio-titulo", `${configVisual.espacioTitulo}px`);
         txtSubgerencia.style.fontFamily = `"${configVisual.fuenteSubgerencia}", Arial, sans-serif`;
         txtSubgerencia.style.fontSize = `${configVisual.tamanoSubgerencia}px`;
+        txtSubgerencia.style.marginTop = `${configVisual.espacioGerencia}px`;
         txtCvLabel.style.fontFamily = `"${configVisual.fuenteCv}", Algerian, "Bookman Old Style", serif`;
         txtCvLabel.style.fontSize = `${configVisual.tamanoCv}px`;
+        txtCvLabel.style.marginTop = `${configVisual.espacioCurriculum}px`;
+        $("caratula").style.setProperty("--tamano-escudo", `${configVisual.tamanoEscudo}px`);
+        previewNombres.style.paddingTop = `${configVisual.espacioNombres}px`;
 
         $("valorTamanoSubgerencia").textContent = `${configVisual.tamanoSubgerencia} px`;
         $("valorTamanoCv").textContent = `${configVisual.tamanoCv} px`;
+        $("valorTamanoTitulo").textContent = `${configVisual.tamanoTitulo} px`;
+        $("valorEspacioTitulo").textContent = `${configVisual.espacioTitulo} px`;
+        $("valorEspacioGerencia").textContent = `${configVisual.espacioGerencia} px`;
+        $("valorEspacioCurriculum").textContent = `${configVisual.espacioCurriculum} px`;
+        $("valorTamanoEscudo").textContent = `${configVisual.tamanoEscudo} px`;
+        $("valorEspacioNombres").textContent = `${configVisual.espacioNombres} px`;
+        actualizarVistaPreviaConfiguracion();
       }
 
       /* LÓGICA DE BÚSQUEDA INTELIGENTE */
@@ -561,6 +892,8 @@
         if (pagina < 0 || (pagina >= totalPaginas && totalPaginas > 0)) return;
         const { data, error } = await clienteDB.from("folios_cv").select("*").order("creado_en", { ascending: false });
         if (error) { listaFolios.innerHTML = "Error: " + error.message; return; }
+
+        todosLosFoliosCache = data || [];
 
         let foliosFiltrados = data || [];
         if (filtroActivo) {
@@ -909,7 +1242,265 @@
       $("btnAgregarNombre").onclick = () => { crearFilaNombre(); actualizarPreview(); actualizarVisibilidadNotas(); actualizarVisibilidadFilas(); };
       $("btnAgregarSeparador").onclick = () => { crearFilaSeparador(); actualizarPreview(); actualizarVisibilidadFilas(); };
       $("selectMostrarFilas").addEventListener("change", function() { modoMostrarFilas = this.value; actualizarVisibilidadFilas(); });
-      $("btnImprimirPDF").onclick = () => window.print();
+      
+      /* IMPRESIÓN PERSONALIZADA DE 2 CARÁTULAS EN 1 HOJA */
+      $("btnImprimirPDF").onclick = () => {
+        abrirModalImpresion();
+      };
+
+      function obtenerHtmlCaratula(folio) {
+        const nombres = Array.isArray(folio.nombres) ? folio.nombres.slice(0, 10) : [folio.nombres || ""];
+        const nombresHtml = nombres.map(n => `<div>${escaparHtml(esSeparador(n) ? n.slice(MARCADOR_SEPARADOR.length) : n)}</div>`).join("");
+        return `
+          <div class="caratula" style="--tamano-titulo:${configVisual.tamanoTitulo}px; --espacio-titulo:${configVisual.espacioTitulo}px; --tamano-escudo:${configVisual.tamanoEscudo}px; --espacio-gerencia:${configVisual.espacioGerencia}px; --espacio-curriculum:${configVisual.espacioCurriculum}px; --espacio-nombres:${configVisual.espacioNombres}px;">
+            <div class="titulo">MUNICIPALIDAD DISTRITAL DE CHINCHAO</div>
+            <img class="escudo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiij9VKAtMBiHfcGy8Q-NeekFK54ihGvJrZXLHmxDx9CH1jUUrDz5Gfvc&s=10" alt="Escudo">
+                        <div class="subgerencia" style="font-family:'${configVisual.fuenteSubgerencia}', Arial, sans-serif; font-size:${configVisual.tamanoSubgerencia}px;">${txtSubgerencia.innerHTML}</div>
+            <div class="cv-label" style="font-family:'${configVisual.fuenteCv}', Algerian, 'Bookman Old Style', serif; font-size:${configVisual.tamanoCv}px;">${txtCvLabel.textContent}</div>
+            <div class="nombres">${nombresHtml}</div>
+            <div class="folio-circulo">${escaparHtml(folio.numero_folio || '--')}</div>
+            <div class="periodo">${escaparHtml(folio.periodo || '----')}</div>
+          </div>
+        `;
+      }
+
+      function obtenerFoliosFiltradosParaImpresion(folios, texto) {
+        const query = texto.trim();
+        const base = query ? folios.filter((f) => cumpleFiltroInteligente(f, query)) : [...folios];
+        return base.filter((f) => !esFolioImpreso(String(f.id)));
+      }
+
+      function renderizarListaFoliosImpresos(foliosDisponibles) {
+        const contenedor = $("listaFoliosImpresos");
+        const boton = $("btnToggleFoliosImpresos");
+        if (!contenedor || !boton) return;
+
+        const impresos = foliosDisponibles.filter((f) => esFolioImpreso(String(f.id)));
+        boton.textContent = mostrarFoliosImpresos ? "Ocultar impresos" : "Ver todos los impresos";
+        contenedor.style.display = mostrarFoliosImpresos ? "block" : "none";
+
+        if (!impresos.length) {
+          contenedor.innerHTML = '<div style="color:#64748b;font-size:12px;">No hay folios impresos.</div>';
+          return;
+        }
+
+        if (!mostrarFoliosImpresos) {
+          contenedor.innerHTML = "";
+          return;
+        }
+
+        contenedor.innerHTML = impresos.map((f) => `
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #e2e8f0;">
+            <span style="font-size:12px; font-weight:bold;">N° ${escaparHtml(f.numero_folio)}</span>
+            ${f.numero_bloque ? `<span style="font-size:11px; color:#334155; background:#e2e8f0; padding:2px 6px; border-radius:4px;">Bloque ${escaparHtml(f.numero_bloque)}</span>` : ""}
+            <span style="font-size:11px; color:#64748b;">Periodo: ${escaparHtml(f.periodo)}</span>
+            <span style="font-size:10px; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:999px; font-weight:700;">Impreso</span>
+            <button type="button" onclick="desmarcarFolioImpreso('${f.id}')" title="Quitar de impresos (por error o impresión fallida)" style="margin-left:auto; border:1px solid #dc2626; background:#fff; color:#dc2626; border-radius:6px; padding:3px 8px; font-size:11px; font-weight:600; cursor:pointer;">↩️ Deshacer</button>
+          </div>
+        `).join("");
+      }
+
+      function desmarcarFolioImpreso(id) {
+        const idStr = String(id);
+        const foliosDisponibles = [...todosLosFoliosCache];
+        if (!inpId.value && inpNumero.value.trim()) {
+          foliosDisponibles.unshift(obtenerFolioActualFormulario());
+        }
+        const folio = foliosDisponibles.find((f) => String(f.id) === idStr);
+        const etiqueta = folio ? `N° ${folio.numero_folio}${folio.numero_bloque ? ` [Bloque ${folio.numero_bloque}]` : ""} - ${folio.periodo}` : `ID ${idStr}`;
+
+        if (!confirm(`¿Quitar "${etiqueta}" de Impresos?\n\nVolverá a la lista de selección para poder imprimirlo de nuevo.`)) return;
+
+        foliosImpresos = foliosImpresos.filter((f) => f !== idStr);
+        guardarFoliosImpresos();
+
+        renderizarListaFoliosImpresos(foliosDisponibles);
+        renderizarListaImpresion(foliosDisponibles);
+        agregarHistorial("↩️ Deshecho", `Se quitó de Impresos: ${etiqueta}`);
+      }
+
+      function renderizarListaImpresion(foliosDisponibles) {
+        const contenedorLista = $("listaSeleccionImprimir");
+        const textoBusqueda = (buscadorImpresion?.value || "").trim();
+        const foliosMostrados = obtenerFoliosFiltradosParaImpresion(foliosDisponibles, textoBusqueda);
+
+        contenedorLista.innerHTML = "";
+
+        if (!foliosMostrados.length) {
+          contenedorLista.innerHTML = '<div style="color:#64748b; font-size:13px;">No se encontraron folios con ese criterio.</div>';
+          actualizarContadorImpresion(foliosDisponibles);
+          actualizarEstadoMarcarTodosVisibles(foliosDisponibles);
+          return;
+        }
+
+        foliosMostrados.forEach((f) => {
+          const idStr = String(f.id);
+          const checked = foliosMarcadosParaImprimir.includes(idStr) ? "checked" : "";
+          const yaImpreso = esFolioImpreso(idStr);
+          const item = document.createElement("label");
+          item.style.cssText = "display:flex; align-items:center; gap:8px; padding:6px; border-bottom:1px solid #e2e8f0; cursor:pointer;";
+          item.innerHTML = `
+            <input type="checkbox" class="chkFolioImprimir" value="${f.id}" ${checked} style="width:auto;">
+            <span style="font-size:13px; font-weight:bold;">N° ${escaparHtml(f.numero_folio)}</span>
+            ${f.numero_bloque ? `<span style="font-size:11px; color:#334155; background:#e2e8f0; padding:2px 6px; border-radius:4px;">Bloque ${escaparHtml(f.numero_bloque)}</span>` : ""}
+            <span style="font-size:11px; color:#64748b;">Periodo: ${escaparHtml(f.periodo)}</span>
+            ${yaImpreso ? '<span style="font-size:10px; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:999px; font-weight:700;">Impreso</span>' : ''}
+          `;
+          contenedorLista.appendChild(item);
+        });
+
+        contenedorLista.querySelectorAll(".chkFolioImprimir").forEach((chk) => {
+          chk.addEventListener("change", (e) => {
+            const idVal = String(e.target.value);
+            if (e.target.checked) {
+              if (!foliosMarcadosParaImprimir.includes(idVal)) foliosMarcadosParaImprimir.push(idVal);
+            } else {
+              foliosMarcadosParaImprimir = foliosMarcadosParaImprimir.filter((id) => id !== idVal);
+            }
+            actualizarContadorImpresion(foliosDisponibles);
+            actualizarEstadoMarcarTodosVisibles(foliosDisponibles);
+            renderizarVistaPreviaHojaImpresion(foliosDisponibles);
+          });
+        });
+
+        actualizarContadorImpresion(foliosDisponibles);
+        actualizarEstadoMarcarTodosVisibles(foliosDisponibles);
+      }
+
+      function abrirModalImpresion() {
+        const folioActualForm = obtenerFolioActualFormulario();
+
+        let foliosDisponibles = [...todosLosFoliosCache];
+        if (!inpId.value && inpNumero.value.trim()) {
+          foliosDisponibles.unshift(folioActualForm);
+        }
+
+        foliosMarcadosParaImprimir = inpId.value ? [String(inpId.value)] : [];
+        if (buscadorImpresion) buscadorImpresion.value = "";
+
+        if ($("chkMarcarTodosVisibles")) $("chkMarcarTodosVisibles").checked = false;
+        const btnToggle = $("btnToggleFoliosImpresos");
+        if (btnToggle) btnToggle.textContent = mostrarFoliosImpresos ? "Ocultar impresos" : "Ver todos los impresos";
+        renderizarListaFoliosImpresos(foliosDisponibles);
+        renderizarListaImpresion(foliosDisponibles);
+        renderizarVistaPreviaHojaImpresion(foliosDisponibles);
+        $("modalImpresion").classList.add("mostrar");
+      }
+
+      if (buscadorImpresion) {
+        buscadorImpresion.addEventListener("input", () => {
+          const foliosDisponibles = [...todosLosFoliosCache];
+          if (!inpId.value && inpNumero.value.trim()) {
+            foliosDisponibles.unshift(obtenerFolioActualFormulario());
+          }
+          renderizarListaFoliosImpresos(foliosDisponibles);
+          renderizarListaImpresion(foliosDisponibles);
+        });
+      }
+
+      const chkMarcarTodosVisibles = $("chkMarcarTodosVisibles");
+      if (chkMarcarTodosVisibles) {
+        chkMarcarTodosVisibles.addEventListener("change", () => {
+          const foliosDisponibles = [...todosLosFoliosCache];
+          if (!inpId.value && inpNumero.value.trim()) {
+            foliosDisponibles.unshift(obtenerFolioActualFormulario());
+          }
+
+          const textoBusqueda = (buscadorImpresion?.value || "").trim();
+          const visibles = obtenerFoliosFiltradosParaImpresion(foliosDisponibles, textoBusqueda);
+          const idsVisibles = visibles.map((f) => String(f.id));
+
+          if (chkMarcarTodosVisibles.checked) {
+            idsVisibles.forEach((id) => {
+              if (!foliosMarcadosParaImprimir.includes(id)) foliosMarcadosParaImprimir.push(id);
+            });
+          } else {
+            foliosMarcadosParaImprimir = foliosMarcadosParaImprimir.filter((id) => !idsVisibles.includes(id));
+          }
+
+          renderizarListaFoliosImpresos(foliosDisponibles);
+          renderizarListaImpresion(foliosDisponibles);
+          renderizarVistaPreviaHojaImpresion(foliosDisponibles);
+        });
+      }
+
+      const btnToggleFoliosImpresos = $("btnToggleFoliosImpresos");
+      if (btnToggleFoliosImpresos) {
+        btnToggleFoliosImpresos.addEventListener("click", () => {
+          mostrarFoliosImpresos = !mostrarFoliosImpresos;
+          const foliosDisponibles = [...todosLosFoliosCache];
+          if (!inpId.value && inpNumero.value.trim()) {
+            foliosDisponibles.unshift(obtenerFolioActualFormulario());
+          }
+          renderizarListaFoliosImpresos(foliosDisponibles);
+          renderizarListaImpresion(foliosDisponibles);
+        });
+      }
+
+      function obtenerFolioActualFormulario() {
+        return {
+          id: 'actual_form',
+          numero_folio: inpNumero.value.trim() || '--',
+          numero_bloque: inpBloque.value.trim(),
+          periodo: inpPeriodo.value.trim() || '----',
+          nombres: obtenerUsuarios().map(u => u.nombre)
+        };
+      }
+
+      function renderizarVistaPreviaHojaImpresion(foliosDisponibles) {
+        const hoja = $("hojaImpresionImprimible");
+        hoja.innerHTML = "";
+
+        const seleccionados = foliosDisponibles.filter(f => foliosMarcadosParaImprimir.includes(String(f.id)));
+
+        const foliosParaVista = seleccionados.length ? seleccionados : [
+          foliosDisponibles.find(f => String(f.id) === 'actual_form') || obtenerFolioActualFormulario()
+        ];
+
+        for (let inicio = 0; inicio < foliosParaVista.length; inicio += 2) {
+          const pagina = document.createElement("div");
+          pagina.className = "hoja-impresion-pagina";
+          foliosParaVista.slice(inicio, inicio + 2).forEach(f => {
+            pagina.innerHTML += obtenerHtmlCaratula(f);
+          });
+          hoja.appendChild(pagina);
+        }
+      }
+
+      function ejecutarImpresionDosFolios() {
+        const idsSeleccionados = [...new Set(foliosMarcadosParaImprimir.map(String))];
+
+        // Si no hay nada marcado en la lista, se imprime la carátula actual del
+        // formulario (la que se ve en la vista previa), aunque esté vacía o sin guardar.
+        // Solo se registra como "Impreso" lo que corresponde a un folio real guardado.
+        idsPendientesDeConfirmarImpresion = idsSeleccionados;
+        window.print();
+
+        // Ya no usamos "afterprint" para preguntar automáticamente, porque ese evento
+        // se dispara igual si el usuario imprime o si cancela el diálogo del sistema.
+        // En su lugar, mostramos un bloque de confirmación manual que el propio
+        // usuario decide cuándo cerrar.
+        const wrap = $("confirmarImpresionWrap");
+        if (wrap) wrap.style.display = "block";
+      }
+
+      function confirmarImpresionOk() {
+        const ids = idsPendientesDeConfirmarImpresion;
+        idsPendientesDeConfirmarImpresion = [];
+        const wrap = $("confirmarImpresionWrap");
+        if (wrap) wrap.style.display = "none";
+        if (!ids.length) return; // No había folios guardados marcados (era solo la carátula actual)
+
+        registrarFoliosImpresos(ids);
+        agregarHistorial("🖨️ Impresión", `Folios registrados como impresos: ${ids.length}`);
+      }
+
+      function confirmarImpresionCancelar() {
+        idsPendientesDeConfirmarImpresion = [];
+        const wrap = $("confirmarImpresionWrap");
+        if (wrap) wrap.style.display = "none";
+      }
+
       $("btnLimpiar").onclick = () => { if (confirm("¿Limpiar todo el formulario?")) limpiarFormulario(); };
 
       contNombres.addEventListener("input", (e) => {
@@ -1163,19 +1754,40 @@
         $("cfgRubroActual").value = cargoActual;
         $("cfgFuenteSubgerencia").value = configVisual.fuenteSubgerencia;
         $("cfgFuenteCv").value = configVisual.fuenteCv;
+        $("valorTamanoTitulo").textContent = `${configVisual.tamanoTitulo} px`;
+        $("valorEspacioTitulo").textContent = `${configVisual.espacioTitulo} px`;
         $("valorTamanoSubgerencia").textContent = `${configVisual.tamanoSubgerencia} px`;
         $("valorTamanoCv").textContent = `${configVisual.tamanoCv} px`;
+        $("valorEspacioGerencia").textContent = `${configVisual.espacioGerencia} px`;
+        $("valorEspacioCurriculum").textContent = `${configVisual.espacioCurriculum} px`;
+        $("valorTamanoEscudo").textContent = `${configVisual.tamanoEscudo} px`;
+        $("valorEspacioNombres").textContent = `${configVisual.espacioNombres} px`;
+        actualizarVistaPreviaConfiguracion();
         $("modalConfig").classList.add("mostrar");
       };
 
       $("btnCerrarConfig").onclick = () => cerrarModal("modalConfig");
+      $("btnMenosTitulo").onclick = () => { if (configVisual.tamanoTitulo > 12) { configVisual.tamanoTitulo--; aplicarConfigVisual(); } };
+      $("btnMasTitulo").onclick = () => { if (configVisual.tamanoTitulo < 40) { configVisual.tamanoTitulo++; aplicarConfigVisual(); } };
+      $("btnMenosEspacioTitulo").onclick = () => { if (configVisual.espacioTitulo > 0) { configVisual.espacioTitulo -= 2; aplicarConfigVisual(); } };
+      $("btnMasEspacioTitulo").onclick = () => { if (configVisual.espacioTitulo < 60) { configVisual.espacioTitulo += 2; aplicarConfigVisual(); } };
       $("btnMenosSubgerencia").onclick = () => { if (configVisual.tamanoSubgerencia > 10) { configVisual.tamanoSubgerencia--; aplicarConfigVisual(); } };
       $("btnMasSubgerencia").onclick = () => { if (configVisual.tamanoSubgerencia < 50) { configVisual.tamanoSubgerencia++; aplicarConfigVisual(); } };
       $("btnMenosCv").onclick = () => { if (configVisual.tamanoCv > 10) { configVisual.tamanoCv--; aplicarConfigVisual(); } };
       $("btnMasCv").onclick = () => { if (configVisual.tamanoCv < 60) { configVisual.tamanoCv++; aplicarConfigVisual(); } };
+      $("btnMenosEspacioGerencia").onclick = () => { if (configVisual.espacioGerencia > 0) { configVisual.espacioGerencia -= 2; aplicarConfigVisual(); } };
+      $("btnMasEspacioGerencia").onclick = () => { if (configVisual.espacioGerencia < 80) { configVisual.espacioGerencia += 2; aplicarConfigVisual(); } };
+      $("btnMenosEspacioCurriculum").onclick = () => { if (configVisual.espacioCurriculum > 0) { configVisual.espacioCurriculum -= 2; aplicarConfigVisual(); } };
+      $("btnMasEspacioCurriculum").onclick = () => { if (configVisual.espacioCurriculum < 80) { configVisual.espacioCurriculum += 2; aplicarConfigVisual(); } };
+      $("btnMenosEscudo").onclick = () => { if (configVisual.tamanoEscudo > 60) { configVisual.tamanoEscudo -= 5; aplicarConfigVisual(); } };
+      $("btnMasEscudo").onclick = () => { if (configVisual.tamanoEscudo < 220) { configVisual.tamanoEscudo += 5; aplicarConfigVisual(); } };
+      $("btnMenosEspacioNombres").onclick = () => { if (configVisual.espacioNombres > 0) { configVisual.espacioNombres -= 2; aplicarConfigVisual(); } };
+      $("btnMasEspacioNombres").onclick = () => { if (configVisual.espacioNombres < 80) { configVisual.espacioNombres += 2; aplicarConfigVisual(); } };
 
       $("cfgFuenteSubgerencia").onchange = (e) => { configVisual.fuenteSubgerencia = e.target.value; aplicarConfigVisual(); };
       $("cfgFuenteCv").onchange = (e) => { configVisual.fuenteCv = e.target.value; aplicarConfigVisual(); };
+      $("cfgSubgerencia").oninput = actualizarVistaPreviaConfiguracion;
+      $("cfgCvLabel").oninput = actualizarVistaPreviaConfiguracion;
 
       $("btnGuardarConfig").onclick = async () => {
         const sub = $("cfgSubgerencia").value.trim(), cv = $("cfgCvLabel").value.trim();
@@ -1199,7 +1811,7 @@
 
       /* TECLAS ESCAPE PARA MODALES */
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") ["modalDuplicados", "modalExportarExcel", "modalConfig"].forEach(cerrarModal);
+        if (e.key === "Escape") ["modalDuplicados", "modalExportarExcel", "modalConfig", "modalImpresion"].forEach(cerrarModal);
       });
 
       /* INICIALIZACIÓN GLOBAL */
