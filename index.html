@@ -57,6 +57,21 @@
       }
       .nombre-duplicado-input:focus { box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15); }
 
+      .lista-folios-duplicados { list-style: none; padding: 0; margin: 8px 0 0; }
+      .ubicacion-duplicado {
+        border: 1px solid #dbe3ee; background: #f8fafc; border-radius: 8px;
+        padding: 10px; margin-bottom: 6px; font-size: 13px;
+      }
+      .ubicacion-duplicado.ubicacion-actual { border-color: #fca5a5; background: #fef2f2; }
+      .ubicacion-duplicado b { color: #334155; }
+      .posicion-duplicado { margin-top: 5px; color: #dc2626; font-weight: 700; }
+      .titulo-ubicaciones { margin-top: 10px; font-weight: 700; color: #334155; }
+      .ubicacion-formulario {
+        margin-top: 10px; padding: 10px; border: 1px solid #facc15;
+        background: #fffbeb; border-radius: 8px;
+      }
+      .sin-ubicaciones { margin-top: 10px; padding: 10px; border-radius: 8px; background: #f8fafc; color: #64748b; }
+
       /* Modo Reordenar */
       .btn-orden { display: none; }
       .modo-reordenar .nombre-row { cursor: pointer; transition: .2s; background: #bfdbfe; border: 2px solid #3b82f6; }
@@ -615,6 +630,7 @@
 
       const MARCADOR_SEPARADOR = "§SEP§";
       const PAGE_SIZE = 5;
+      const MAX_NOMBRES_VISIBLES = 10;
 
       let configVisual = {
         tamanoTitulo: 22, espacioTitulo: 8,
@@ -635,7 +651,12 @@
 
       /* UTILIDADES GENERALES */
       function normalizarTexto(texto) {
-        return String(texto ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        return String(texto ?? "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .replace(/\s+/g, " ")
+          .trim();
       }
 
       function escaparHtml(valor = "") {
@@ -786,6 +807,7 @@
         $("valorTamanoEscudo").textContent = `${configVisual.tamanoEscudo} px`;
         $("valorEspacioNombres").textContent = `${configVisual.espacioNombres} px`;
         actualizarVistaPreviaConfiguracion();
+        guardarConfigVisual();
       }
 
       /* LÓGICA DE BÚSQUEDA INTELIGENTE */
@@ -926,32 +948,96 @@
         actualizarBarraPaginacion();
       }
 
-      function mostrarFoliosDuplicados(nombre, folioActualId = null) {
+      async function mostrarFoliosDuplicados(nombre, folioActualId = null) {
         const clave = normalizarTexto(nombre);
-        const info = duplicadosGlobales[clave];
-        let posicionesFormulario = [];
+        if (!clave) return;
 
-        if (folioActualId === null && typeof contNombres !== "undefined") {
+        // Siempre consultamos los folios guardados al abrir el cuadro.
+        // Así no dependemos de una caché que pueda estar desactualizada.
+        let foliosGuardados = Array.isArray(todosLosFoliosCache) ? todosLosFoliosCache : [];
+        try {
+          const { data, error } = await clienteDB
+            .from("folios_cv")
+            .select("id, numero_folio, numero_bloque, periodo, nombres");
+
+          if (!error && Array.isArray(data)) {
+            foliosGuardados = data;
+            todosLosFoliosCache = data;
+            duplicadosGlobales = obtenerDuplicadosPorFolio(data);
+          }
+        } catch (error) {
+          console.warn("No se pudieron consultar las ubicaciones del duplicado:", error);
+        }
+
+        // Buscamos TODAS las apariciones del nombre, indicando folio y posición.
+        const ubicaciones = [];
+        foliosGuardados.forEach((folio) => {
+          const nombres = Array.isArray(folio.nombres)
+            ? folio.nombres
+            : (folio.nombres ? [folio.nombres] : []);
+
+          const posiciones = [];
+          nombres.forEach((nombreGuardado, index) => {
+            if (esSeparador(nombreGuardado)) return;
+            if (normalizarTexto(nombreGuardado) === clave) {
+              posiciones.push(index + 1);
+            }
+          });
+
+          if (posiciones.length) {
+            ubicaciones.push({
+              id: String(folio.id ?? ""),
+              numero_folio: folio.numero_folio,
+              numero_bloque: folio.numero_bloque,
+              periodo: folio.periodo,
+              posiciones
+            });
+          }
+        });
+
+        // También mostramos las posiciones del formulario actual si el usuario
+        // está escribiendo un nombre que aparece más de una vez allí.
+        const posicionesFormulario = [];
+        if (typeof contNombres !== "undefined") {
           Array.from(contNombres.querySelectorAll(".nombre-row")).forEach((fila, index) => {
             if (fila.dataset.tipo === "separador") return;
-            if (normalizarTexto(fila.querySelector(".inpNombreItem")?.value || "") === clave) posicionesFormulario.push(index + 1);
+            const valor = fila.querySelector(".inpNombreItem")?.value || "";
+            if (normalizarTexto(valor) === clave) posicionesFormulario.push(index + 1);
           });
         }
 
-        const listaFoliosHtml = (info && info.folios) ? info.folios.map((folio) => {
+        const ubicacionesHtml = ubicaciones.map((folio) => {
           const esActual = folioActualId !== null && String(folio.id) === String(folioActualId);
-          const bloqTexto = folio.numero_bloque ? ` [Bloque ${escaparHtml(folio.numero_bloque)}]` : "";
-          return `<li style="${esActual ? 'border-color:#fca5a5;background:#fef2f2;' : ''}">
-            📁 <b>Folio N° ${escaparHtml(folio.numero_folio)}</b>${bloqTexto} - ${escaparHtml(folio.periodo)}
-            <div style="margin-top:4px;color:#dc2626;font-weight:bold;">📍 Posición: ${folio.posiciones.join(", ")}</div>
-          </li>`;
-        }).join("") : "";
+          const bloqTexto = folio.numero_bloque
+            ? ` <span style="color:#64748b;">[Bloque ${escaparHtml(folio.numero_bloque)}]</span>`
+            : "";
 
-        $("contenidoModalDuplicados").innerHTML = `
+          return `
+            <li class="ubicacion-duplicado ${esActual ? "ubicacion-actual" : ""}">
+              <div>📁 <b>Folio N° ${escaparHtml(folio.numero_folio)}</b>${bloqTexto} - ${escaparHtml(folio.periodo || "----")}</div>
+              <div class="posicion-duplicado">📍 Posición: ${folio.posiciones.join(", ")}</div>
+            </li>`;
+        }).join("");
+
+        const formularioHtml = posicionesFormulario.length > 1
+          ? `<div class="ubicacion-formulario">
+               <div><b>📝 En el folio que estás editando</b></div>
+               <div class="posicion-duplicado">📍 Posiciones: ${posicionesFormulario.join(", ")}</div>
+             </div>`
+          : "";
+
+        const contenido = $("contenidoModalDuplicados");
+        contenido.innerHTML = `
           <div>El nombre <b>“${escaparHtml(nombre)}”</b> tiene más de una aparición.</div>
-          ${posicionesFormulario.length > 1 ? `<div style="margin-bottom:10px;"><b>📍 En el folio actual:</b> Posiciones ${posicionesFormulario.join(", ")}</div>` : ""}
-          ${listaFoliosHtml ? `<div style="margin-top:8px;"><b>📌 Ubicación en folios guardados:</b></div><ul class="lista-folios-duplicados">${listaFoliosHtml}</ul>` : ""}
+          ${formularioHtml}
+          ${ubicacionesHtml ? `
+            <div class="titulo-ubicaciones">📌 Ubicación en folios guardados:</div>
+            <ul class="lista-folios-duplicados">${ubicacionesHtml}</ul>
+          ` : `
+            <div class="sin-ubicaciones">No se encontraron ubicaciones guardadas para este nombre.</div>
+          `}
         `;
+
         $("modalDuplicados").classList.add("mostrar");
       }
 
@@ -1099,7 +1185,7 @@
         const contOpciones = $("contOpcionesFilas");
         const total = filas.length;
 
-        if (total <= 10) {
+        if (total <= MAX_NOMBRES_VISIBLES) {
           filas.forEach((f) => f.classList.remove("fila-oculta"));
           contOpciones.style.display = "none";
           return;
@@ -1108,8 +1194,8 @@
         contOpciones.style.display = "block";
         $("selectMostrarFilas").value = modoMostrarFilas;
         filas.forEach((fila, i) => {
-          if (modoMostrarFilas === "primeros") fila.classList.toggle("fila-oculta", i >= 10);
-          else if (modoMostrarFilas === "ultimos") fila.classList.toggle("fila-oculta", i < total - 10);
+          if (modoMostrarFilas === "primeros") fila.classList.toggle("fila-oculta", i >= MAX_NOMBRES_VISIBLES);
+          else if (modoMostrarFilas === "ultimos") fila.classList.toggle("fila-oculta", i < total - MAX_NOMBRES_VISIBLES);
           else fila.classList.remove("fila-oculta");
         });
       }
@@ -1130,40 +1216,201 @@
       }
 
       function actualizarMarcadoDuplicadosFormulario() {
-        const inputs = contNombres.querySelectorAll(".inpNombreItem");
+        const inputs = Array.from(contNombres.querySelectorAll(".inpNombreItem"));
         const posiciones = new Map();
 
+        // Duplicados dentro del formulario actual.
         inputs.forEach((input, i) => {
-          const val = input.value.trim();
-          if (!val) return;
-          const clave = normalizarTexto(val);
+          const clave = normalizarTexto(input.value);
+          if (!clave) return;
           if (!posiciones.has(clave)) posiciones.set(clave, []);
           posiciones.get(clave).push(i + 1);
         });
 
-        inputs.forEach((input) => {
-          const val = input.value.trim(), clave = normalizarTexto(val);
-          const pos = clave ? (posiciones.get(clave) || []) : [];
-          const info = clave ? duplicadosGlobales[clave] : null;
-          const hayOtro = !!info && info.folios.some(f => String(f.id) !== String(inpId.value || "") && f.posiciones.length > 0);
+        // Comprobamos directamente TODOS los folios cargados.
+        // Esto evita depender de que duplicadosGlobales se haya actualizado.
+        const foliosGuardados = Array.isArray(todosLosFoliosCache) ? todosLosFoliosCache : [];
 
-          if (pos.length > 1 || hayOtro) {
+        function buscarCoincidenciasGuardadas(clave) {
+          const encontrados = [];
+
+          foliosGuardados.forEach((folio) => {
+            const nombres = Array.isArray(folio.nombres)
+              ? folio.nombres
+              : (folio.nombres ? [folio.nombres] : []);
+
+            const posiciones = [];
+            nombres.forEach((nombre, index) => {
+              if (esSeparador(nombre)) return;
+              if (normalizarTexto(nombre) === clave) posiciones.push(index + 1);
+            });
+
+            if (posiciones.length > 0) {
+              encontrados.push({
+                id: String(folio.id ?? ""),
+                numero_folio: folio.numero_folio,
+                numero_bloque: folio.numero_bloque,
+                periodo: folio.periodo,
+                posiciones
+              });
+            }
+          });
+
+          return encontrados;
+        }
+
+        inputs.forEach((input) => {
+          const clave = normalizarTexto(input.value);
+
+          if (!clave) {
+            input.classList.remove("nombre-duplicado-input");
+            input.title = "";
+            input.onclick = null;
+            return;
+          }
+
+          const posicionesActuales = posiciones.get(clave) || [];
+          const coincidencias = buscarCoincidenciasGuardadas(clave);
+
+          // Al editar un folio, el propio folio no cuenta como "otro folio".
+          // En un folio nuevo, cualquier coincidencia guardada sí es duplicado.
+          const existeEnOtroFolio = coincidencias.some((folio) => {
+            return !inpId.value || folio.id !== String(inpId.value);
+          });
+
+          const esDuplicado = posicionesActuales.length > 1 || existeEnOtroFolio;
+
+          if (esDuplicado) {
             input.classList.add("nombre-duplicado-input");
-            input.title = `⚠️ Duplicado. Haz clic para ver ubicaciones.`;
-            input.onclick = () => showDuplicadosDialog(input.value.trim());
+            // El nombre solo se marca en rojo mientras se escribe.
+            // La ubicación del duplicado se muestra al guardar.
+            input.title = "⚠️ Nombre duplicado. Al guardar se mostrará dónde está.";
+            input.onclick = null;
           } else {
             input.classList.remove("nombre-duplicado-input");
-            input.title = ""; input.onclick = null;
+            input.title = "";
+            input.onclick = null;
           }
         });
       }
 
+      let temporizadorDuplicados = null;
+      function actualizarDuplicadosEnTiempoReal() {
+        // Primero marcamos de inmediato lo que ya está disponible en memoria.
+        actualizarMarcadoDuplicadosFormulario();
+
+        clearTimeout(temporizadorDuplicados);
+        temporizadorDuplicados = setTimeout(async () => {
+          try {
+            const { data, error } = await clienteDB
+              .from("folios_cv")
+              .select("id, numero_folio, numero_bloque, periodo, nombres");
+
+            if (error || !Array.isArray(data)) {
+              console.warn("No se pudieron actualizar los duplicados:", error?.message || "sin datos");
+              return;
+            }
+
+            // Actualizamos también la caché completa.
+            todosLosFoliosCache = data;
+            duplicadosGlobales = obtenerDuplicadosPorFolio(data);
+            actualizarMarcadoDuplicadosFormulario();
+          } catch (error) {
+            console.warn("Error actualizando duplicados:", error);
+          }
+        }, 200);
+      }
+
       function showDuplicadosDialog(val) { if (val) mostrarFoliosDuplicados(val, inpId.value || null); }
+
+      async function mostrarDuplicadosAlGuardar(nombres, folioActualId) {
+        const claves = [...new Set((nombres || [])
+          .filter((n) => n && !esSeparador(n))
+          .map((n) => normalizarTexto(n))
+          .filter(Boolean))];
+
+        if (!claves.length) return;
+
+        let foliosGuardados = [];
+        try {
+          const { data, error } = await clienteDB
+            .from("folios_cv")
+            .select("id, numero_folio, numero_bloque, periodo, nombres");
+
+          if (error || !Array.isArray(data)) return;
+          foliosGuardados = data;
+          todosLosFoliosCache = data;
+          duplicadosGlobales = obtenerDuplicadosPorFolio(data);
+        } catch (error) {
+          console.warn("No se pudieron consultar las ubicaciones de los duplicados al guardar:", error);
+          return;
+        }
+
+        const bloques = [];
+
+        claves.forEach((clave) => {
+          const nombreOriginal = nombres.find((n) => !esSeparador(n) && normalizarTexto(n) === clave) || clave;
+          const ubicaciones = [];
+
+          foliosGuardados.forEach((folio) => {
+            const lista = Array.isArray(folio.nombres)
+              ? folio.nombres
+              : (folio.nombres ? [folio.nombres] : []);
+            const posiciones = [];
+
+            lista.forEach((nombre, index) => {
+              if (esSeparador(nombre)) return;
+              if (normalizarTexto(nombre) === clave) posiciones.push(index + 1);
+            });
+
+            if (posiciones.length) {
+              ubicaciones.push({
+                id: String(folio.id ?? ""),
+                numero_folio: folio.numero_folio,
+                numero_bloque: folio.numero_bloque,
+                periodo: folio.periodo,
+                posiciones
+              });
+            }
+          });
+
+          const totalApariciones = ubicaciones.reduce((sum, f) => sum + f.posiciones.length, 0);
+          if (totalApariciones < 2) return;
+
+          const ubicacionesHtml = ubicaciones.map((folio) => {
+            const esActual = String(folio.id) === String(folioActualId);
+            const bloque = folio.numero_bloque
+              ? ` <span style="color:#64748b;">[Bloque ${escaparHtml(folio.numero_bloque)}]</span>`
+              : "";
+
+            return `
+              <li class="ubicacion-duplicado ${esActual ? "ubicacion-actual" : ""}">
+                <div>📁 <b>Folio N° ${escaparHtml(folio.numero_folio)}</b>${bloque} - ${escaparHtml(folio.periodo || "----")}</div>
+                <div class="posicion-duplicado">📍 Posición: ${folio.posiciones.join(", ")}</div>
+              </li>`;
+          }).join("");
+
+          bloques.push(`
+            <div style="margin-bottom:14px;">
+              <div style="margin-bottom:6px;">👤 <b>“${escaparHtml(nombreOriginal)}”</b></div>
+              <div class="titulo-ubicaciones">📌 Se encontró duplicado en:</div>
+              <ul class="lista-folios-duplicados">${ubicacionesHtml}</ul>
+            </div>`);
+        });
+
+        if (!bloques.length) return;
+
+        $("contenidoModalDuplicados").innerHTML = `
+          <div style="margin-bottom:12px;">⚠️ Se encontraron <b>nombres duplicados</b> en los folios guardados.</div>
+          ${bloques.join("")}
+        `;
+        $("modalDuplicados").classList.add("mostrar");
+      }
 
       function actualizarPreview() {
         actualizarMarcadoDuplicadosFormulario();
         const usuarios = obtenerUsuarios();
-        let visibles = modoMostrarFilas === "primeros" ? usuarios.slice(0, 10) : (modoMostrarFilas === "ultimos" ? usuarios.slice(-10) : usuarios);
+        const visibles = usuarios.slice(0, MAX_NOMBRES_VISIBLES);
 
         previewNombres.innerHTML = visibles.length ? visibles.map((u) => `<div>${escaparHtml(u.separador ? u.nombre.slice(MARCADOR_SEPARADOR.length) : u.nombre)}</div>`).join("") : '<div style="color:#aaa"></div>';
         previewNumero.textContent = inpNumero.value || "--";
@@ -1506,6 +1753,11 @@
       contNombres.addEventListener("input", (e) => {
         if (e.target.classList.contains("inpNotaPago")) actualizarTotalNotaPago(e.target.closest(".nombre-row"));
         actualizarPreview();
+        if (e.target.classList.contains("inpNombreItem")) {
+          // Se ejecuta con cada tecla, por lo que el rojo aparece sin guardar.
+          actualizarMarcadoDuplicadosFormulario();
+          actualizarDuplicadosEnTiempoReal();
+        }
       });
       inpNumero.addEventListener("input", actualizarPreview);
       inpPeriodo.addEventListener("input", actualizarPreview);
@@ -1519,7 +1771,7 @@
           periodo: inpPeriodo.value.trim(),
           nombres: usuarios.map(u => u.nombre),
           notas_pago: usuarios.map(u => u.nota || null),
-          cargos: usuarios.map(u => u.cargo || ""),
+          cargos: usuarios.map(u => u.cargo || null),
           observaciones: inpObservaciones.value.trim() || null,
           actualizado_en: new Date().toISOString(),
         };
@@ -1545,6 +1797,11 @@
 
         if (error) { alert("Error al guardar: " + error.message); return; }
 
+        const idGuardado = inpId.value || data?.id || null;
+
+        // Guardar es normal: NO abrimos ninguna ventana de duplicados aquí.
+        // Los nombres duplicados quedan marcados en rojo en "Folios guardados".
+        // Al tocar el nombre rojo se muestran sus ubicaciones.
         alert(inpId.value ? "Folio actualizado correctamente." : "Folio guardado correctamente.");
         agregarHistorial(accion, detalle);
 
@@ -1590,8 +1847,8 @@
 
         modoEdicion.classList.remove("mostrar"); 
         notasPagoVisibles = false; 
-        modoMostrarFilas = "ultimos";
-        $("selectMostrarFilas").value = "ultimos";
+        modoMostrarFilas = "primeros";
+        $("selectMostrarFilas").value = "primeros";
         actualizarVisibilidadNotas(); 
         actualizarPreview(); 
         actualizarVisibilidadFilas();
