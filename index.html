@@ -163,8 +163,23 @@
       .caratula .nombres { font-size: 15px; text-align: left; padding-left: 8px; padding-top: var(--espacio-nombres, 0px); flex-grow: 1; }
       .caratula .nombres div { margin-bottom: 6px; padding-left: 14px; position: relative; }
       .caratula .nombres div:before { content: "➤"; position: absolute; left: -4px; color: var(--sky); font-size: 11px; }
-      .caratula .folio-circulo { font-size: 28px; font-weight: bold; width: 70px; height: 70px; border: 4px solid #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 14px auto; }
-      .caratula .periodo { font-size: 15px; font-weight: bold; margin-top: 6px; }
+      .caratula .folio-circulo {
+        font-size: var(--tamano-folio, 28px); font-weight: bold;
+        /* El círculo crece proporcionalmente cuando aumenta el número del folio.
+           28px de texto = 70px de círculo (tamaño original). */
+        width: clamp(70px, calc(var(--tamano-folio, 28px) * 2.5), 180px);
+        height: clamp(70px, calc(var(--tamano-folio, 28px) * 2.5), 180px);
+        border: 4px solid #000; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        margin: 14px auto; transform: translateY(var(--posicion-folio, 0px)); flex-shrink: 0;
+      }
+      .caratula .periodo {
+        font-size: var(--tamano-periodo, 15px); font-weight: bold; margin-top: 6px;
+        transform: translateY(var(--posicion-periodo, 0px)); flex-shrink: 0;
+      }
+      .caratula.orden-periodo-arriba .folio-circulo { order: 6; }
+      .caratula.orden-periodo-arriba .periodo { order: 5; }
+      .caratula.orden-folio-arriba .periodo { order: 6; }
+      .caratula.orden-folio-arriba .folio-circulo { order: 5; }
 
       #modoEdicion { display: none; background: #fef3c7; color: #92400e; padding: 8px; border-radius: 6px; margin-bottom: 10px; font-size: 13px; text-align: center; border: 1px solid #f59e0b; }
       #modoEdicion.mostrar { display: block; }
@@ -376,8 +391,8 @@
             <div class="subgerencia" id="configVistaSubgerencia"></div>
             <div class="cv-label" id="configVistaCvLabel"></div>
             <div class="nombres" id="configVistaNombres"></div>
-            <div class="folio-circulo">01</div>
-            <div class="periodo">2023-2024</div>
+            <div class="folio-circulo" id="configVistaNumero">01</div>
+            <div class="periodo" id="configVistaPeriodo">2023-2024</div>
           </div>
         </div>
         <div class="config-seccion">
@@ -484,6 +499,73 @@
             </div>
           </div>
         </div>
+
+        <div class="config-seccion">
+          <h4>📌 Folio y año/periodo</h4>
+          <div class="config-fila">
+            <label>Aplicar cambios:</label>
+            <select id="cfgAlcanceVisual">
+              <option value="uno">Solo este folio</option>
+              <option value="todos">Todos los folios</option>
+              <option value="todos-excepto-editados" selected>Todos, excepto folios editados</option>
+            </select>
+          </div>
+          <small style="display:block; margin-top:8px; color:#64748b;">
+            Un folio editado conserva su configuración propia cuando eliges la tercera opción.
+          </small>
+          <div class="config-fila">
+            <label>Orden:</label>
+            <select id="cfgOrdenFolioPeriodo">
+              <option value="periodo-arriba">Año / periodo arriba, folio abajo</option>
+              <option value="folio-arriba">Folio arriba, año / periodo abajo</option>
+            </select>
+          </div>
+
+          <div class="config-fila">
+            <label>Tamaño folio:</label>
+            <div class="tamano-controles">
+              <button type="button" id="btnMenosFolio">−</button>
+              <span id="valorTamanoFolio">28 px</span>
+              <button type="button" id="btnMasFolio">+</button>
+            </div>
+          </div>
+
+          <div class="config-fila">
+            <label>Mover folio:</label>
+            <div class="tamano-controles">
+              <button type="button" id="btnSubirFolio">↑</button>
+              <span id="valorPosicionFolio">0 px</span>
+              <button type="button" id="btnBajarFolio">↓</button>
+            </div>
+          </div>
+
+          <div class="config-fila">
+            <label>Tamaño año:</label>
+            <div class="tamano-controles">
+              <button type="button" id="btnMenosPeriodo">−</button>
+              <span id="valorTamanoPeriodo">15 px</span>
+              <button type="button" id="btnMasPeriodo">+</button>
+            </div>
+          </div>
+
+          <div class="config-fila">
+            <label>Mover año:</label>
+            <div class="tamano-controles">
+              <button type="button" id="btnSubirPeriodo">↑</button>
+              <span id="valorPosicionPeriodo">0 px</span>
+              <button type="button" id="btnBajarPeriodo">↓</button>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;">
+            <button type="button" id="btnDefectoFolioPeriodo" class="btn btn-gray" style="width:100%;">↩ Volver por defecto</button>
+          </div>
+
+          <small style="display:block; margin-top:8px; color:#64748b;">
+            Puedes cambiar el orden, agrandar cada número por separado y moverlos arriba o abajo de forma independiente.
+          </small>
+        </div>
+
         <div class="btn-group">
           <button id="btnCerrarConfig" class="btn btn-gray" type="button">Cancelar</button>
           <button id="btnGuardarConfig" class="btn btn-primary" type="button">Guardar</button>
@@ -636,8 +718,17 @@
         tamanoTitulo: 22, espacioTitulo: 8,
         fuenteSubgerencia: "Arial", tamanoSubgerencia: 18, espacioGerencia: 0,
         fuenteCv: "Algerian", tamanoCv: 26, espacioCurriculum: 0,
-        tamanoEscudo: 120, espacioNombres: 0
+        tamanoEscudo: 120, espacioNombres: 0,
+        // Controles independientes de folio y año/periodo
+        ordenFolioPeriodo: "folio-arriba",
+        tamanoFolio: 28,
+        posicionFolio: 0,
+        tamanoPeriodo: 15,
+        posicionPeriodo: 0
       };
+      let configuracionGlobal = { ...configVisual };
+      let configuracionesPorFolio = {};
+      let estadoConfigAntesModal = null;
       let paginaActual = 0, totalPaginas = 1, filtroActivo = "", totalRegistros = 0, cargoActual = "", bloqueActual = "01";
       let notasPagoVisibles = false, modoMostrarFilas = "ultimos", duplicadosGlobales = {};
       let ordenarListaPorBloque = false;
@@ -684,6 +775,7 @@
       }
 
       function cerrarModal(idModal) {
+        if (idModal === "modalConfig") restaurarConfigAntesModal();
         $(idModal).classList.remove("mostrar");
         if (idModal === "modalImpresion") {
           idsPendientesDeConfirmarImpresion = [];
@@ -760,42 +852,125 @@
         try {
           const guardado = localStorage.getItem("configVisualCaratula");
           if (guardado) configVisual = { ...configVisual, ...JSON.parse(guardado) };
-        } catch (e) { console.warn("Error al cargar config visual:", e); }
+          const configuracionesGuardadas = localStorage.getItem("configuracionesPorFolioCaratula");
+          if (configuracionesGuardadas) configuracionesPorFolio = JSON.parse(configuracionesGuardadas) || {};
+
+          // Compatibilidad con configuraciones antiguas que no tenían estos campos.
+          configVisual.ordenFolioPeriodo = configVisual.ordenFolioPeriodo === "periodo-arriba" ? "periodo-arriba" : "folio-arriba";
+          configVisual.tamanoFolio = Number.isFinite(Number(configVisual.tamanoFolio)) ? Number(configVisual.tamanoFolio) : 28;
+          configVisual.posicionFolio = Number.isFinite(Number(configVisual.posicionFolio)) ? Number(configVisual.posicionFolio) : 0;
+          configVisual.tamanoPeriodo = Number.isFinite(Number(configVisual.tamanoPeriodo)) ? Number(configVisual.tamanoPeriodo) : 15;
+          configVisual.posicionPeriodo = Number.isFinite(Number(configVisual.posicionPeriodo)) ? Number(configVisual.posicionPeriodo) : 0;
+        } catch (e) {
+          console.warn("Error al cargar config visual:", e);
+          configVisual.tamanoFolio = 28;
+          configVisual.posicionFolio = 0;
+          configVisual.tamanoPeriodo = 15;
+          configVisual.posicionPeriodo = 0;
+        }
+        configuracionGlobal = { ...configVisual };
       }
 
-      function guardarConfigVisual() { localStorage.setItem("configVisualCaratula", JSON.stringify(configVisual)); }
+      function obtenerClaveFolioActual() { return inpId.value ? String(inpId.value) : "actual_form"; }
+
+      function obtenerConfiguracionParaFolio(id) {
+        const clave = String(id || "actual_form");
+        return { ...configuracionGlobal, ...(configuracionesPorFolio[clave] || {}) };
+      }
+
+      function cargarConfiguracionParaFolio(id, aplicar = true) {
+        configVisual = obtenerConfiguracionParaFolio(id);
+        if (aplicar) aplicarConfigVisual(false);
+      }
+
+      function guardarConfigVisual() {
+        const alcance = $("cfgAlcanceVisual")?.value || "todos-excepto-editados";
+        if (alcance === "uno") {
+          configuracionesPorFolio[obtenerClaveFolioActual()] = { ...configVisual };
+          localStorage.setItem("configuracionesPorFolioCaratula", JSON.stringify(configuracionesPorFolio));
+        } else {
+          configuracionGlobal = { ...configVisual };
+          localStorage.setItem("configVisualCaratula", JSON.stringify(configuracionGlobal));
+          if (alcance === "todos") {
+            configuracionesPorFolio = {};
+            localStorage.removeItem("configuracionesPorFolioCaratula");
+          }
+        }
+      }
+
+      function restaurarConfigAntesModal() {
+        if (!estadoConfigAntesModal) return;
+        configVisual = { ...estadoConfigAntesModal.configVisual };
+        configuracionGlobal = { ...estadoConfigAntesModal.configuracionGlobal };
+        configuracionesPorFolio = { ...estadoConfigAntesModal.configuracionesPorFolio };
+        localStorage.setItem("configVisualCaratula", JSON.stringify(configuracionGlobal));
+        if (Object.keys(configuracionesPorFolio).length) {
+          localStorage.setItem("configuracionesPorFolioCaratula", JSON.stringify(configuracionesPorFolio));
+        } else {
+          localStorage.removeItem("configuracionesPorFolioCaratula");
+        }
+        aplicarConfigVisual(false);
+        estadoConfigAntesModal = null;
+      }
 
       function actualizarVistaPreviaConfiguracion() {
         const vista = $("configVistaCaratula");
         if (!vista) return;
+
         const subgerencia = $("configVistaSubgerencia");
         const cvLabel = $("configVistaCvLabel");
         const nombres = $("configVistaNombres");
-        subgerencia.innerHTML = ($("cfgSubgerencia")?.value || txtSubgerencia.innerHTML).replace(/\n/g, "<br>");
+        const numero = $("configVistaNumero");
+        const periodo = $("configVistaPeriodo");
+
+        subgerencia.innerHTML = ($("cfgSubgerencia")?.value || txtSubgerencia.innerHTML).replace(/\\n/g, "<br>");
         cvLabel.textContent = $("cfgCvLabel")?.value || txtCvLabel.textContent;
         nombres.innerHTML = previewNombres.innerHTML || '<div style="color:#94a3b8;">Agrega nombres para verlos aquí</div>';
+
+        // En la vista de configuración usamos siempre los valores actuales del formulario.
+        numero.textContent = inpNumero.value.trim() || "--";
+        periodo.textContent = inpPeriodo.value.trim() || "----";
+
+        vista.classList.remove("orden-periodo-arriba", "orden-folio-arriba");
+        vista.classList.add(configVisual.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba");
+
         vista.style.setProperty("--tamano-titulo", `${configVisual.tamanoTitulo}px`);
         vista.style.setProperty("--espacio-titulo", `${configVisual.espacioTitulo}px`);
         vista.style.setProperty("--tamano-escudo", `${configVisual.tamanoEscudo}px`);
         vista.style.setProperty("--espacio-gerencia", `${configVisual.espacioGerencia}px`);
         vista.style.setProperty("--espacio-curriculum", `${configVisual.espacioCurriculum}px`);
         vista.style.setProperty("--espacio-nombres", `${configVisual.espacioNombres}px`);
+        vista.style.setProperty("--tamano-folio", `${configVisual.tamanoFolio}px`);
+        vista.style.setProperty("--posicion-folio", `${configVisual.posicionFolio}px`);
+        vista.style.setProperty("--tamano-periodo", `${configVisual.tamanoPeriodo}px`);
+        vista.style.setProperty("--posicion-periodo", `${configVisual.posicionPeriodo}px`);
+
         subgerencia.style.setProperty("font-family", `"${configVisual.fuenteSubgerencia}", Arial, sans-serif`, "important");
         subgerencia.style.setProperty("font-size", `${configVisual.tamanoSubgerencia}px`, "important");
         cvLabel.style.setProperty("font-family", `"${configVisual.fuenteCv}", Algerian, "Bookman Old Style", serif`, "important");
         cvLabel.style.setProperty("font-size", `${configVisual.tamanoCv}px`, "important");
       }
 
-      function aplicarConfigVisual() {
-        $("caratula").style.setProperty("--tamano-titulo", `${configVisual.tamanoTitulo}px`);
-        $("caratula").style.setProperty("--espacio-titulo", `${configVisual.espacioTitulo}px`);
+      function aplicarConfigVisual(guardar = true) {
+        const caratula = $("caratula");
+
+        caratula.style.setProperty("--tamano-titulo", `${configVisual.tamanoTitulo}px`);
+        caratula.style.setProperty("--espacio-titulo", `${configVisual.espacioTitulo}px`);
+        caratula.style.setProperty("--tamano-escudo", `${configVisual.tamanoEscudo}px`);
+        caratula.style.setProperty("--tamano-folio", `${configVisual.tamanoFolio}px`);
+        caratula.style.setProperty("--posicion-folio", `${configVisual.posicionFolio}px`);
+        caratula.style.setProperty("--tamano-periodo", `${configVisual.tamanoPeriodo}px`);
+        caratula.style.setProperty("--posicion-periodo", `${configVisual.posicionPeriodo}px`);
+
+        caratula.classList.remove("orden-periodo-arriba", "orden-folio-arriba");
+        caratula.classList.add(configVisual.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba");
+
         txtSubgerencia.style.fontFamily = `"${configVisual.fuenteSubgerencia}", Arial, sans-serif`;
         txtSubgerencia.style.fontSize = `${configVisual.tamanoSubgerencia}px`;
         txtSubgerencia.style.marginTop = `${configVisual.espacioGerencia}px`;
         txtCvLabel.style.fontFamily = `"${configVisual.fuenteCv}", Algerian, "Bookman Old Style", serif`;
         txtCvLabel.style.fontSize = `${configVisual.tamanoCv}px`;
         txtCvLabel.style.marginTop = `${configVisual.espacioCurriculum}px`;
-        $("caratula").style.setProperty("--tamano-escudo", `${configVisual.tamanoEscudo}px`);
         previewNombres.style.paddingTop = `${configVisual.espacioNombres}px`;
 
         $("valorTamanoSubgerencia").textContent = `${configVisual.tamanoSubgerencia} px`;
@@ -806,8 +981,21 @@
         $("valorEspacioCurriculum").textContent = `${configVisual.espacioCurriculum} px`;
         $("valorTamanoEscudo").textContent = `${configVisual.tamanoEscudo} px`;
         $("valorEspacioNombres").textContent = `${configVisual.espacioNombres} px`;
+
+        // Aseguramos valores numéricos antes de mostrarlos en configuración.
+        if (!Number.isFinite(Number(configVisual.tamanoFolio))) configVisual.tamanoFolio = 28;
+        if (!Number.isFinite(Number(configVisual.posicionFolio))) configVisual.posicionFolio = 0;
+        if (!Number.isFinite(Number(configVisual.tamanoPeriodo))) configVisual.tamanoPeriodo = 15;
+        if (!Number.isFinite(Number(configVisual.posicionPeriodo))) configVisual.posicionPeriodo = 0;
+        $("valorTamanoFolio").textContent = `${configVisual.tamanoFolio} px`;
+        $("valorPosicionFolio").textContent = `${configVisual.posicionFolio} px`;
+        $("valorTamanoPeriodo").textContent = `${configVisual.tamanoPeriodo} px`;
+        $("valorPosicionPeriodo").textContent = `${configVisual.posicionPeriodo} px`;
+        $("cfgOrdenFolioPeriodo").value = configVisual.ordenFolioPeriodo;
+
         actualizarVistaPreviaConfiguracion();
-        guardarConfigVisual();
+        if (guardar) guardarConfigVisual();
+        actualizarPreview();
       }
 
       /* LÓGICA DE BÚSQUEDA INTELIGENTE */
@@ -1415,10 +1603,17 @@
         previewNombres.innerHTML = visibles.length ? visibles.map((u) => `<div>${escaparHtml(u.separador ? u.nombre.slice(MARCADOR_SEPARADOR.length) : u.nombre)}</div>`).join("") : '<div style="color:#aaa"></div>';
         previewNumero.textContent = inpNumero.value || "--";
         previewPeriodo.textContent = inpPeriodo.value || "----";
+
+        // Si la configuración está abierta, la vista previa usa inmediatamente
+        // el número de folio y el año/periodo actuales.
+        if ($("modalConfig")?.classList.contains("mostrar")) {
+          actualizarVistaPreviaConfiguracion();
+        }
       }
 
       function limpiarFormulario() {
         inpId.value = ""; 
+        cargarConfiguracionParaFolio("actual_form");
         inpNumero.value = ""; 
         inpBloque.value = bloqueActual; 
         inpPeriodo.value = ""; 
@@ -1496,14 +1691,15 @@
       };
 
       function obtenerHtmlCaratula(folio) {
+        const config = obtenerConfiguracionParaFolio(folio.id);
         const nombres = Array.isArray(folio.nombres) ? folio.nombres.slice(0, 10) : [folio.nombres || ""];
         const nombresHtml = nombres.map(n => `<div>${escaparHtml(esSeparador(n) ? n.slice(MARCADOR_SEPARADOR.length) : n)}</div>`).join("");
         return `
-          <div class="caratula" style="--tamano-titulo:${configVisual.tamanoTitulo}px; --espacio-titulo:${configVisual.espacioTitulo}px; --tamano-escudo:${configVisual.tamanoEscudo}px; --espacio-gerencia:${configVisual.espacioGerencia}px; --espacio-curriculum:${configVisual.espacioCurriculum}px; --espacio-nombres:${configVisual.espacioNombres}px;">
+          <div class="caratula ${config.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba"}" style="--tamano-titulo:${config.tamanoTitulo}px; --espacio-titulo:${config.espacioTitulo}px; --tamano-escudo:${config.tamanoEscudo}px; --espacio-gerencia:${config.espacioGerencia}px; --espacio-curriculum:${config.espacioCurriculum}px; --espacio-nombres:${config.espacioNombres}px; --tamano-folio:${config.tamanoFolio}px; --posicion-folio:${config.posicionFolio}px; --tamano-periodo:${config.tamanoPeriodo}px; --posicion-periodo:${config.posicionPeriodo}px;">
             <div class="titulo">MUNICIPALIDAD DISTRITAL DE CHINCHAO</div>
             <img class="escudo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiij9VKAtMBiHfcGy8Q-NeekFK54ihGvJrZXLHmxDx9CH1jUUrDz5Gfvc&s=10" alt="Escudo">
-                        <div class="subgerencia" style="font-family:'${configVisual.fuenteSubgerencia}', Arial, sans-serif; font-size:${configVisual.tamanoSubgerencia}px;">${txtSubgerencia.innerHTML}</div>
-            <div class="cv-label" style="font-family:'${configVisual.fuenteCv}', Algerian, 'Bookman Old Style', serif; font-size:${configVisual.tamanoCv}px;">${txtCvLabel.textContent}</div>
+                        <div class="subgerencia" style="font-family:'${config.fuenteSubgerencia}', Arial, sans-serif; font-size:${config.tamanoSubgerencia}px;">${txtSubgerencia.innerHTML}</div>
+            <div class="cv-label" style="font-family:'${config.fuenteCv}', Algerian, 'Bookman Old Style', serif; font-size:${config.tamanoCv}px;">${txtCvLabel.textContent}</div>
             <div class="nombres">${nombresHtml}</div>
             <div class="folio-circulo">${escaparHtml(folio.numero_folio || '--')}</div>
             <div class="periodo">${escaparHtml(folio.periodo || '----')}</div>
@@ -1811,6 +2007,7 @@
 
       function editarFolio(folio) {
         inpId.value = folio.id; 
+        cargarConfiguracionParaFolio(folio.id);
         inpNumero.value = folio.numero_folio;
         inpBloque.value = folio.numero_bloque || "";
         inpPeriodo.value = folio.periodo;
@@ -1836,6 +2033,7 @@
 
       function duplicarFolio(folio) {
         inpId.value = ""; 
+        cargarConfiguracionParaFolio("actual_form");
         inpNumero.value = folio.numero_folio + " (copia)";
         inpBloque.value = folio.numero_bloque || bloqueActual;
         inpPeriodo.value = folio.periodo;
@@ -2006,6 +2204,15 @@
 
       /* CONFIGURACIÓN Y MODAL DE PLANTILLA */
       $("btnConfig").onclick = async () => {
+        estadoConfigAntesModal = {
+          configVisual: { ...configVisual },
+          configuracionGlobal: { ...configuracionGlobal },
+          configuracionesPorFolio: { ...configuracionesPorFolio }
+        };
+        cargarConfiguracionParaFolio(obtenerClaveFolioActual());
+        $("cfgAlcanceVisual").value = configuracionesPorFolio[obtenerClaveFolioActual()]
+          ? "uno"
+          : "todos-excepto-editados";
         const { data } = await clienteDB.from("config_caratula").select("*").eq("id", 1).single();
         if (data) { $("cfgSubgerencia").value = data.texto_subgerencia; $("cfgCvLabel").value = data.texto_cv_label; }
         $("cfgRubroActual").value = cargoActual;
@@ -2019,6 +2226,11 @@
         $("valorEspacioCurriculum").textContent = `${configVisual.espacioCurriculum} px`;
         $("valorTamanoEscudo").textContent = `${configVisual.tamanoEscudo} px`;
         $("valorEspacioNombres").textContent = `${configVisual.espacioNombres} px`;
+        $("valorTamanoFolio").textContent = `${configVisual.tamanoFolio} px`;
+        $("valorPosicionFolio").textContent = `${configVisual.posicionFolio} px`;
+        $("valorTamanoPeriodo").textContent = `${configVisual.tamanoPeriodo} px`;
+        $("valorPosicionPeriodo").textContent = `${configVisual.posicionPeriodo} px`;
+        $("cfgOrdenFolioPeriodo").value = configVisual.ordenFolioPeriodo;
         actualizarVistaPreviaConfiguracion();
         $("modalConfig").classList.add("mostrar");
       };
@@ -2040,6 +2252,41 @@
       $("btnMasEscudo").onclick = () => { if (configVisual.tamanoEscudo < 220) { configVisual.tamanoEscudo += 5; aplicarConfigVisual(); } };
       $("btnMenosEspacioNombres").onclick = () => { if (configVisual.espacioNombres > 0) { configVisual.espacioNombres -= 2; aplicarConfigVisual(); } };
       $("btnMasEspacioNombres").onclick = () => { if (configVisual.espacioNombres < 80) { configVisual.espacioNombres += 2; aplicarConfigVisual(); } };
+
+      $("cfgAlcanceVisual").onchange = (e) => {
+        if (e.target.value === "uno") {
+          cargarConfiguracionParaFolio(obtenerClaveFolioActual());
+          return;
+        }
+        configVisual = { ...configuracionGlobal };
+        aplicarConfigVisual(false);
+      };
+
+      // Controles independientes del folio y del año/periodo.
+      $("btnDefectoFolioPeriodo").onclick = () => {
+        configVisual.ordenFolioPeriodo = "folio-arriba";
+        configVisual.tamanoFolio = 28;
+        configVisual.posicionFolio = 0;
+        configVisual.tamanoPeriodo = 15;
+        configVisual.posicionPeriodo = 0;
+        aplicarConfigVisual();
+        actualizarVistaPreviaConfiguracion();
+      };
+
+      $("btnMenosFolio").onclick = () => { if (configVisual.tamanoFolio > 14) { configVisual.tamanoFolio--; aplicarConfigVisual(); } };
+      $("btnMasFolio").onclick = () => { if (configVisual.tamanoFolio < 70) { configVisual.tamanoFolio++; aplicarConfigVisual(); } };
+      $("btnSubirFolio").onclick = () => { if (configVisual.posicionFolio > -80) { configVisual.posicionFolio -= 2; aplicarConfigVisual(); } };
+      $("btnBajarFolio").onclick = () => { if (configVisual.posicionFolio < 80) { configVisual.posicionFolio += 2; aplicarConfigVisual(); } };
+
+      $("btnMenosPeriodo").onclick = () => { if (configVisual.tamanoPeriodo > 8) { configVisual.tamanoPeriodo--; aplicarConfigVisual(); } };
+      $("btnMasPeriodo").onclick = () => { if (configVisual.tamanoPeriodo < 50) { configVisual.tamanoPeriodo++; aplicarConfigVisual(); } };
+      $("btnSubirPeriodo").onclick = () => { if (configVisual.posicionPeriodo > -80) { configVisual.posicionPeriodo -= 2; aplicarConfigVisual(); } };
+      $("btnBajarPeriodo").onclick = () => { if (configVisual.posicionPeriodo < 80) { configVisual.posicionPeriodo += 2; aplicarConfigVisual(); } };
+
+      $("cfgOrdenFolioPeriodo").onchange = (e) => {
+        configVisual.ordenFolioPeriodo = e.target.value === "folio-arriba" ? "folio-arriba" : "periodo-arriba";
+        aplicarConfigVisual();
+      };
 
       $("cfgFuenteSubgerencia").onchange = (e) => { configVisual.fuenteSubgerencia = e.target.value; aplicarConfigVisual(); };
       $("cfgFuenteCv").onchange = (e) => { configVisual.fuenteCv = e.target.value; aplicarConfigVisual(); };
@@ -2063,6 +2310,7 @@
         guardarConfigVisual();
         txtSubgerencia.innerHTML = sub.replace(/\n/g, "<br>");
         txtCvLabel.textContent = cv;
+        estadoConfigAntesModal = null;
         cerrarModal("modalConfig");
       };
 
