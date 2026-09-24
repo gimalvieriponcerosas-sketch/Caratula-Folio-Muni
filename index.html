@@ -162,6 +162,9 @@
 
       .lista-item { border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 13px; transition: background 0.2s; }
       .lista-item:hover { background: #f8fafc; }
+      .lista-item.bloque-duplicado { border: 2px solid #ef4444; background: #fff1f2; }
+      .lista-item.bloque-duplicado:hover { background: #ffe4e6; }
+      .marcador-bloque-duplicado { color: #b91c1c; font-size: 11px; font-weight: bold; margin-left: 6px; }
       .lista-item b { color: var(--azul); }
       .lista-item .acciones { display: flex; gap: 5px; margin-top: 8px; }
       .lista-item .btn-accion { flex: 1; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; color: #fff; }
@@ -1384,6 +1387,7 @@
           const notas = Array.isArray(f.notas_pago) ? f.notas_pago : [];
           const cargos = Array.isArray(f.cargos) ? f.cargos : [];
           const isOpen = foliosAbiertos.has(String(f.id));
+          const bloqueTieneDuplicados = nombres.some((nombre) => nombre && !esSeparador(nombre) && duplicados[normalizarTexto(nombre)]);
 
           const contenido = nombres.length ? nombres.map((nombre, index) => {
             if (esSeparador(nombre)) return "";
@@ -1407,9 +1411,9 @@
           const nombresReales = nombres.filter((n) => !esSeparador(n));
           const bloqBadge = f.numero_bloque ? `<span style="background:#e2e8f0;color:#334155;padding:2px 6px;border-radius:4px;font-size:11px;margin-left:4px;">Bloque ${escaparHtml(f.numero_bloque)}</span>` : "";
 
-          return `<div class="lista-item">
+          return `<div class="lista-item${bloqueTieneDuplicados ? ' bloque-duplicado' : ''}">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div><b>N° ${escaparHtml(f.numero_folio)}</b>${bloqBadge} - ${escaparHtml(f.periodo)}</div>
+              <div><b>N° ${escaparHtml(f.numero_folio)}</b>${bloqBadge} - ${escaparHtml(f.periodo)}${bloqueTieneDuplicados ? '<span class="marcador-bloque-duplicado">⚠️</span>' : ''}</div>
               <span style="color:#64748b;font-size:12px;">${nombresReales.length} nombre(s)</span>
             </div>
             <details style="margin-top:6px;" data-folio-id="${f.id}" ${isOpen ? 'open' : ''}>
