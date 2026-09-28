@@ -1432,8 +1432,10 @@
       async function recargarUltimaPagina() {
         totalRegistros = await obtenerTotalRegistros(filtroActivo);
         totalPaginas = Math.ceil(totalRegistros / PAGE_SIZE) || 1;
-        if (paginaActual >= totalPaginas) paginaActual = Math.max(0, totalPaginas - 1);
-        await cargarPagina(paginaActual);
+        const ultimaPagina = Math.max(0, totalPaginas - 1);
+        paginaActual = ultimaPagina;
+        await cargarPagina(ultimaPagina);
+        listaFolios.scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
       /* HISTORIAL */
@@ -1544,6 +1546,22 @@
           else if (modoMostrarFilas === "ultimos") fila.classList.toggle("fila-oculta", i < total - MAX_NOMBRES_VISIBLES);
           else fila.classList.remove("fila-oculta");
         });
+      }
+
+      function mostrarUltimosNombres(autoScroll = true) {
+        modoMostrarFilas = "ultimos";
+        $("selectMostrarFilas").value = "ultimos";
+        actualizarVisibilidadFilas();
+
+        if (!autoScroll) return;
+
+        const filasVisibles = Array.from(contNombres.querySelectorAll(".nombre-row:not(.fila-oculta)"));
+        const ultimaFila = filasVisibles[filasVisibles.length - 1];
+        if (ultimaFila) {
+          ultimaFila.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        } else {
+          contNombres.scrollIntoView({ behavior: "smooth", block: "end" });
+        }
       }
 
       function obtenerUsuarios() {
@@ -1839,8 +1857,17 @@
 
       /* EVENTOS DE BOTONES E INPUTS */
       $("btnMostrarNotas").onclick = () => { notasPagoVisibles = !notasPagoVisibles; actualizarVisibilidadNotas(); };
-      $("btnAgregarNombre").onclick = () => { crearFilaNombre(); actualizarPreview(); actualizarVisibilidadNotas(); actualizarVisibilidadFilas(); };
-      $("btnAgregarSeparador").onclick = () => { crearFilaSeparador(); actualizarPreview(); actualizarVisibilidadFilas(); };
+      $("btnAgregarNombre").onclick = () => {
+        crearFilaNombre();
+        mostrarUltimosNombres(true);
+        actualizarPreview();
+        actualizarVisibilidadNotas();
+      };
+      $("btnAgregarSeparador").onclick = () => {
+        crearFilaSeparador();
+        mostrarUltimosNombres(true);
+        actualizarPreview();
+      };
       $("selectMostrarFilas").addEventListener("change", function() { modoMostrarFilas = this.value; actualizarVisibilidadFilas(); });
       
       /* IMPRESIÓN PERSONALIZADA DE 2 CARÁTULAS EN 1 HOJA */
@@ -2160,6 +2187,10 @@
         agregarHistorial(accion, detalle);
 
         if (!inpId.value && data) { inpId.value = data.id; modoEdicion.classList.add("mostrar"); }
+        modoMostrarFilas = "ultimos";
+        $("selectMostrarFilas").value = "ultimos";
+        actualizarVisibilidadFilas();
+        mostrarUltimosNombres(true);
         await recargarUltimaPagina();
       };
 
@@ -2180,12 +2211,13 @@
 
         modoEdicion.classList.add("mostrar"); 
         notasPagoVisibles = false; 
-        modoMostrarFilas = "primeros";
-        $("selectMostrarFilas").value = "primeros";
+        modoMostrarFilas = "ultimos";
+        $("selectMostrarFilas").value = "ultimos";
         actualizarVisibilidadNotas(); 
         actualizarPreview(); 
         actualizarMarcadoDuplicadosFormulario(); 
         actualizarVisibilidadFilas();
+        mostrarUltimosNombres(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
 
@@ -2203,11 +2235,12 @@
 
         modoEdicion.classList.remove("mostrar"); 
         notasPagoVisibles = false; 
-        modoMostrarFilas = "primeros";
-        $("selectMostrarFilas").value = "primeros";
+        modoMostrarFilas = "ultimos";
+        $("selectMostrarFilas").value = "ultimos";
         actualizarVisibilidadNotas(); 
         actualizarPreview(); 
         actualizarVisibilidadFilas();
+        mostrarUltimosNombres(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
         alert("Folio duplicado. Puedes modificarlo y guardarlo como nuevo.");
       }
