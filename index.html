@@ -1432,10 +1432,8 @@
       async function recargarUltimaPagina() {
         totalRegistros = await obtenerTotalRegistros(filtroActivo);
         totalPaginas = Math.ceil(totalRegistros / PAGE_SIZE) || 1;
-        const ultimaPagina = Math.max(0, totalPaginas - 1);
-        paginaActual = ultimaPagina;
-        await cargarPagina(ultimaPagina);
-        listaFolios.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (paginaActual >= totalPaginas) paginaActual = Math.max(0, totalPaginas - 1);
+        await cargarPagina(paginaActual);
       }
 
       /* HISTORIAL */
