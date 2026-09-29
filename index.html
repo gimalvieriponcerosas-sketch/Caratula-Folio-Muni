@@ -203,6 +203,9 @@
       .caratula .nombres { font-size: 15px; text-align: left; padding-left: 8px; padding-top: var(--espacio-nombres, 0px); flex-grow: 1; }
       .caratula .nombres div { margin-bottom: 6px; padding-left: 14px; position: relative; }
       .caratula .nombres div:before { content: "➤"; position: absolute; left: -4px; color: var(--sky); font-size: 11px; }
+      .caratula .nombres div.separador { padding-left: 0; margin: 14px 0 8px; text-align: center; font-weight: bold; }
+      .caratula .nombres div.separador:before { content: none; }
+      .caratula .nombres div.separador-cv { letter-spacing: 1px; }
       .caratula .folio-circulo {
         font-size: var(--tamano-folio, 28px); font-weight: bold;
         /* El círculo crece proporcionalmente cuando aumenta el número del folio.
@@ -474,7 +477,7 @@
           </div>
         </details>
 
-        <details class="config-seccion config-acordeon" open>
+        <details class="config-seccion config-acordeon">
           <summary class="config-seccion-titulo">Título del Área</summary>
           <div class="config-cuerpo-seccion">
             <input type="text" id="cfgSubgerencia" placeholder="SUB GERENCIA DE RECURSOS HUMANOS" />
@@ -557,6 +560,44 @@
                   <button type="button" id="btnMenosEscudo">−</button>
                   <span id="valorTamanoEscudo">120 px</span>
                   <button type="button" id="btnMasEscudo">+</button>
+                </div>
+              </div>
+            </details>
+          </div>
+        </details>
+
+        <details class="config-seccion config-acordeon">
+          <summary class="config-seccion-titulo">Separador</summary>
+          <div class="config-cuerpo-seccion">
+            <details class="opcion">
+              <summary>Tipo</summary>
+              <div class="opcion-cuerpo">
+                <select id="cfgFuenteSeparador">
+                  <option value="Algerian">Algerian</option><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option>
+                  <option value="Georgia">Georgia</option><option value="Verdana">Verdana</option>
+                  <option value="Tahoma">Tahoma</option><option value="Courier New">Courier New</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option><option value="Calibri">Calibri</option>
+                  <option value="Garamond">Garamond</option><option value="Bookman Old Style">Bookman Old Style</option>
+                </select>
+              </div>
+            </details>
+            <details class="opcion">
+              <summary>Tamaño</summary>
+              <div class="opcion-cuerpo">
+                <div class="tamano-controles">
+                  <button type="button" id="btnMenosSeparador">−</button>
+                  <span id="valorTamanoSeparador">18 px</span>
+                  <button type="button" id="btnMasSeparador">+</button>
+                </div>
+              </div>
+            </details>
+            <details class="opcion">
+              <summary>Espacio antes</summary>
+              <div class="opcion-cuerpo">
+                <div class="tamano-controles">
+                  <button type="button" id="btnMenosEspacioSeparador">−</button>
+                  <span id="valorEspacioSeparador">0 px</span>
+                  <button type="button" id="btnMasEspacioSeparador">+</button>
                 </div>
               </div>
             </details>
@@ -800,6 +841,8 @@
       const txtCvLabel = $("txtCvLabel");
 
       const MARCADOR_SEPARADOR = "§SEP§";
+      const MARCADOR_SEPARADOR_AREA = "§SEP_AREA§";
+      const MARCADOR_SEPARADOR_CV = "§SEP_CV§";
       const PAGE_SIZE = 5;
       const MAX_NOMBRES_VISIBLES = 10;
 
@@ -808,6 +851,10 @@
         fuenteSubgerencia: "Arial", tamanoSubgerencia: 18, espacioGerencia: 0,
         fuenteCv: "Algerian", tamanoCv: 26, espacioCurriculum: 0,
         tamanoEscudo: 120, espacioNombres: 0,
+        // Configuración global de separadores
+        fuenteSeparador: "Arial",
+        tamanoSeparador: 18,
+        espacioSeparador: 0,
         // Controles independientes de folio y año/periodo
         ordenFolioPeriodo: "folio-arriba",
         tamanoFolio: 28,
@@ -844,7 +891,35 @@
       }
 
       function esSeparador(nombre) {
-        return typeof nombre === "string" && (nombre.startsWith(MARCADOR_SEPARADOR) || nombre.startsWith("$SEPS$"));
+        return typeof nombre === "string" && (
+          nombre.startsWith(MARCADOR_SEPARADOR) ||
+          nombre.startsWith(MARCADOR_SEPARADOR_AREA) ||
+          nombre.startsWith(MARCADOR_SEPARADOR_CV) ||
+          nombre.startsWith("$SEPS$")
+        );
+      }
+
+      function obtenerDatosSeparador(nombre) {
+        if (typeof nombre !== "string") return { texto: "", estilo: "normal" };
+        if (nombre.startsWith(MARCADOR_SEPARADOR_AREA)) {
+          return { texto: nombre.slice(MARCADOR_SEPARADOR_AREA.length), estilo: "area" };
+        }
+        if (nombre.startsWith(MARCADOR_SEPARADOR_CV)) {
+          return { texto: nombre.slice(MARCADOR_SEPARADOR_CV.length), estilo: "cv" };
+        }
+        if (nombre.startsWith(MARCADOR_SEPARADOR)) {
+          return { texto: nombre.slice(MARCADOR_SEPARADOR.length), estilo: "normal" };
+        }
+        return { texto: nombre.startsWith("$SEPS$") ? nombre.slice(6) : nombre, estilo: "normal" };
+      }
+
+      function obtenerHtmlSeparador(texto, estilo = "normal", config = configVisual) {
+        // El formato del separador es global y se configura únicamente desde Ajustes.
+        const fuente = config.fuenteSeparador || "Arial";
+        const tamano = Number(config.tamanoSeparador) || 18;
+        const espacio = Number(config.espacioSeparador) || 0;
+        const formato = ` style="font-family:'${escaparHtml(fuente)}', Arial, sans-serif; font-size:${tamano}px; margin-top:${espacio}px;"`;
+        return `<div class="separador"${formato}>${escaparHtml(texto)}</div>`;
       }
 
       function numeroParaOrden(valor) {
@@ -984,12 +1059,18 @@
           configVisual.posicionFolio = Number.isFinite(Number(configVisual.posicionFolio)) ? Number(configVisual.posicionFolio) : 0;
           configVisual.tamanoPeriodo = Number.isFinite(Number(configVisual.tamanoPeriodo)) ? Number(configVisual.tamanoPeriodo) : 15;
           configVisual.posicionPeriodo = Number.isFinite(Number(configVisual.posicionPeriodo)) ? Number(configVisual.posicionPeriodo) : 0;
+          configVisual.fuenteSeparador = configVisual.fuenteSeparador || "Arial";
+          configVisual.tamanoSeparador = Number.isFinite(Number(configVisual.tamanoSeparador)) ? Number(configVisual.tamanoSeparador) : 18;
+          configVisual.espacioSeparador = Number.isFinite(Number(configVisual.espacioSeparador)) ? Number(configVisual.espacioSeparador) : 0;
         } catch (e) {
           console.warn("Error al cargar config visual:", e);
           configVisual.tamanoFolio = 28;
           configVisual.posicionFolio = 0;
           configVisual.tamanoPeriodo = 15;
           configVisual.posicionPeriodo = 0;
+          configVisual.fuenteSeparador = "Arial";
+          configVisual.tamanoSeparador = 18;
+          configVisual.espacioSeparador = 0;
         }
         configuracionGlobal = { ...configVisual };
       }
@@ -1133,6 +1214,12 @@
         $("valorEspacioCurriculum").textContent = `${configVisual.espacioCurriculum} px`;
         $("valorTamanoEscudo").textContent = `${configVisual.tamanoEscudo} px`;
         $("valorEspacioNombres").textContent = `${configVisual.espacioNombres} px`;
+        configVisual.fuenteSeparador = configVisual.fuenteSeparador || "Arial";
+        if (!Number.isFinite(Number(configVisual.tamanoSeparador))) configVisual.tamanoSeparador = 18;
+        if (!Number.isFinite(Number(configVisual.espacioSeparador))) configVisual.espacioSeparador = 0;
+        $("cfgFuenteSeparador").value = configVisual.fuenteSeparador;
+        $("valorTamanoSeparador").textContent = `${configVisual.tamanoSeparador} px`;
+        $("valorEspacioSeparador").textContent = `${configVisual.espacioSeparador} px`;
 
         // Aseguramos valores numéricos antes de mostrarlos en configuración.
         if (!Number.isFinite(Number(configVisual.tamanoFolio))) configVisual.tamanoFolio = 28;
@@ -1510,7 +1597,7 @@
           <div class="nombre-row-top">
             <button type="button" class="btn-orden" onclick="moverFila(this, -1)">▲</button>
             <button type="button" class="btn-orden" onclick="moverFila(this, 1)">▼</button>
-            <input type="text" class="inpSeparador" value="${escaparHtml(valor)}">
+            <input type="text" class="inpSeparador" value="${escaparHtml(valor)}" placeholder="Escribe el título del separador">
             <button type="button" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>
           </div>`;
         contNombres.appendChild(row);
@@ -1566,7 +1653,8 @@
         return Array.from(document.querySelectorAll(".nombre-row")).map((row) => {
           if (row.dataset.tipo === "separador") {
             const texto = row.querySelector(".inpSeparador")?.value.trim() || "";
-            return { nombre: texto ? MARCADOR_SEPARADOR + texto : "", nota: "", cargo: "", separador: true };
+            // El estilo se toma siempre desde Ajustes, no desde la fila.
+            return { nombre: texto ? MARCADOR_SEPARADOR + texto : "", nota: "", cargo: "", separador: true, textoSeparador: texto };
           }
           return {
             nombre: row.querySelector(".inpNombreItem")?.value.trim() || "",
@@ -1774,7 +1862,9 @@
         const usuarios = obtenerUsuarios();
         const visibles = usuarios.slice(0, MAX_NOMBRES_VISIBLES);
 
-        previewNombres.innerHTML = visibles.length ? visibles.map((u) => `<div>${escaparHtml(u.separador ? u.nombre.slice(MARCADOR_SEPARADOR.length) : u.nombre)}</div>`).join("") : '<div style="color:#aaa"></div>';
+        previewNombres.innerHTML = visibles.length ? visibles.map((u) => u.separador
+          ? obtenerHtmlSeparador(u.textoSeparador, "normal", configVisual)
+          : `<div>${escaparHtml(u.nombre)}</div>`).join("") : '<div style="color:#aaa"></div>';
         previewNumero.textContent = inpNumero.value || "--";
         previewPeriodo.textContent = inpPeriodo.value || "----";
 
@@ -1876,7 +1966,11 @@
       function obtenerHtmlCaratula(folio) {
         const config = obtenerConfiguracionParaFolio(folio.id);
         const nombres = Array.isArray(folio.nombres) ? folio.nombres.slice(0, 10) : [folio.nombres || ""];
-        const nombresHtml = nombres.map(n => `<div>${escaparHtml(esSeparador(n) ? n.slice(MARCADOR_SEPARADOR.length) : n)}</div>`).join("");
+        const nombresHtml = nombres.map((nombre) => {
+          if (!esSeparador(nombre)) return `<div>${escaparHtml(nombre)}</div>`;
+          const separador = obtenerDatosSeparador(nombre);
+          return obtenerHtmlSeparador(separador.texto, "normal", config);
+        }).join("");
         return `
           <div class="caratula ${config.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba"}" style="--tamano-titulo:${config.tamanoTitulo}px; --espacio-titulo:${config.espacioTitulo}px; --tamano-escudo:${config.tamanoEscudo}px; --espacio-gerencia:${config.espacioGerencia}px; --espacio-curriculum:${config.espacioCurriculum}px; --espacio-nombres:${config.espacioNombres}px; --tamano-folio:${config.tamanoFolio}px; --posicion-folio:${config.posicionFolio}px; --tamano-periodo:${config.tamanoPeriodo}px; --posicion-periodo:${config.posicionPeriodo}px;">
             <div class="titulo">MUNICIPALIDAD DISTRITAL DE CHINCHAO</div>
@@ -2203,7 +2297,10 @@
 
         const notas = folio.notas_pago || [], cargos = folio.cargos || [];
         (folio.nombres || [""]).forEach((n, i) => {
-          if (esSeparador(n)) crearFilaSeparador(n.startsWith(MARCADOR_SEPARADOR) ? n.slice(MARCADOR_SEPARADOR.length) : n.slice(6));
+          if (esSeparador(n)) {
+            const separador = obtenerDatosSeparador(n);
+            crearFilaSeparador(separador.texto);
+          }
           else crearFilaNombre(n, notas[i] || "", cargos[i] || "");
         });
 
@@ -2415,6 +2512,9 @@
         $("valorEspacioCurriculum").textContent = `${configVisual.espacioCurriculum} px`;
         $("valorTamanoEscudo").textContent = `${configVisual.tamanoEscudo} px`;
         $("valorEspacioNombres").textContent = `${configVisual.espacioNombres} px`;
+        $("cfgFuenteSeparador").value = configVisual.fuenteSeparador || "Arial";
+        $("valorTamanoSeparador").textContent = `${configVisual.tamanoSeparador || 18} px`;
+        $("valorEspacioSeparador").textContent = `${configVisual.espacioSeparador || 0} px`;
         $("valorTamanoFolio").textContent = `${configVisual.tamanoFolio} px`;
         $("valorPosicionFolio").textContent = `${configVisual.posicionFolio} px`;
         $("valorTamanoPeriodo").textContent = `${configVisual.tamanoPeriodo} px`;
@@ -2449,6 +2549,24 @@
       $("btnMasEscudo").onclick = () => { if (configVisual.tamanoEscudo < 220) { configVisual.tamanoEscudo += 5; aplicarConfigVisual(); } };
       $("btnMenosEspacioNombres").onclick = () => { if (configVisual.espacioNombres > 0) { configVisual.espacioNombres -= 2; aplicarConfigVisual(); } };
       $("btnMasEspacioNombres").onclick = () => { if (configVisual.espacioNombres < 80) { configVisual.espacioNombres += 2; aplicarConfigVisual(); } };
+
+      // CONFIGURACIÓN GLOBAL DEL SEPARADOR
+      $("cfgFuenteSeparador").onchange = (e) => {
+        configVisual.fuenteSeparador = e.target.value;
+        aplicarConfigVisual();
+      };
+      $("btnMenosSeparador").onclick = () => {
+        if (configVisual.tamanoSeparador > 10) { configVisual.tamanoSeparador--; aplicarConfigVisual(); }
+      };
+      $("btnMasSeparador").onclick = () => {
+        if (configVisual.tamanoSeparador < 60) { configVisual.tamanoSeparador++; aplicarConfigVisual(); }
+      };
+      $("btnMenosEspacioSeparador").onclick = () => {
+        if (configVisual.espacioSeparador > 0) { configVisual.espacioSeparador -= 2; aplicarConfigVisual(); }
+      };
+      $("btnMasEspacioSeparador").onclick = () => {
+        if (configVisual.espacioSeparador < 80) { configVisual.espacioSeparador += 2; aplicarConfigVisual(); }
+      };
 
       $("cfgAlcanceVisual").onchange = (e) => {
         if (e.target.value === "uno") {
