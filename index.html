@@ -107,10 +107,15 @@
   color: #6d28d9;
 }
 .etiqueta-mover-separador .nombre-separador-texto {
+  flex: 1;
   min-width: 0;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: #fff;
   border-radius: 6px;
-  padding: 2px 8px;
+  padding: 4px 10px;
   color: #334155;
   overflow-wrap: anywhere;
 }
@@ -2012,10 +2017,12 @@
   fila.classList.add("seleccionado");
 
   if (fila.dataset.tipo === "separador") {
-    const texto = fila.querySelector(".inpSeparador")?.value || "(sin texto)";
+    const texto = fila.querySelector(".inpSeparador")?.value.trim() || "";
     const span = document.createElement("span");
     span.className = "etiqueta-mover-separador";
-    span.innerHTML = `↕ Mover <span class="nombre-separador-texto">${escaparHtml(texto)}</span>`;
+    span.innerHTML = texto
+      ? `↕ Mover <span class="nombre-separador-texto">${escaparHtml(texto)}</span>`
+      : "↕ Mover";
     fila.querySelector(".nombre-row-top").insertBefore(span, fila.querySelector("button[onclick*='remove']"));
   }
 });
