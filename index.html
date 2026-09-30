@@ -1662,7 +1662,7 @@
           <div class="nombre-row-top">
             <button type="button" class="btn-orden" onclick="moverFila(this, -1)">▲</button>
             <button type="button" class="btn-orden" onclick="moverFila(this, 1)">▼</button>
-            <input type="text" class="inpSeparador" value="${escaparHtml(valor)}" placeholder="Escribe el título del separador">
+            <input type="text" class="inpSeparador" value="${escaparHtml(valor)}" >
             <button type="button" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>
           </div>`;
         contNombres.appendChild(row);
