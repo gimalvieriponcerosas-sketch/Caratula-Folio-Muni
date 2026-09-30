@@ -604,6 +604,16 @@
           <summary class="config-seccion-titulo">Separador</summary>
           <div class="config-cuerpo-seccion">
             <details class="opcion">
+              <summary>Aplicar cambios</summary>
+              <div class="opcion-cuerpo">
+                <select id="cfgAlcanceSeparador">
+                  <option value="uno">Solo este folio</option>
+                  <option value="todos">Todos los folios</option>
+                  <option value="todos-excepto-editados" selected>Todos, excepto folios editados</option>
+                </select>
+              </div>
+            </details>
+            <details class="opcion">
               <summary>Tipo</summary>
               <div class="opcion-cuerpo">
                 <select id="cfgFuenteSeparador">
@@ -1118,13 +1128,37 @@
         if (aplicar) aplicarConfigVisual(false);
       }
 
-      async function guardarConfigVisual() {
-        const alcance = $("cfgAlcanceVisual")?.value || "todos-excepto-editados";
+      function cargarSeparadorSegunAlcance() {
+        const alcance = $("cfgAlcanceSeparador")?.value || "todos-excepto-editados";
+        const configFolio = configuracionesPorFolio[obtenerClaveFolioActual()] || {};
+        ["fuenteSeparador", "tamanoSeparador", "espacioSeparador"].forEach((campo) => {
+          configVisual[campo] = alcance === "uno" && Object.prototype.hasOwnProperty.call(configFolio, campo)
+            ? configFolio[campo]
+            : configuracionGlobal[campo];
+        });
+      }
+
+      async function guardarConfigVisual(grupo = "visual") {
+        const camposSeparador = ["fuenteSeparador", "tamanoSeparador", "espacioSeparador"];
+        const campos = grupo === "separador"
+          ? camposSeparador
+          : Object.keys(configVisual).filter((campo) => !camposSeparador.includes(campo));
+        const alcance = $(grupo === "separador" ? "cfgAlcanceSeparador" : "cfgAlcanceVisual")?.value || "todos-excepto-editados";
+
         if (alcance === "uno") {
-          configuracionesPorFolio[obtenerClaveFolioActual()] = { ...configVisual };
+          const clave = obtenerClaveFolioActual();
+          const configFolio = { ...(configuracionesPorFolio[clave] || {}) };
+          campos.forEach((campo) => { configFolio[campo] = configVisual[campo]; });
+          configuracionesPorFolio[clave] = configFolio;
         } else {
-          configuracionGlobal = { ...configVisual };
-          if (alcance === "todos") configuracionesPorFolio = {};
+          campos.forEach((campo) => { configuracionGlobal[campo] = configVisual[campo]; });
+          if (alcance === "todos") {
+            Object.entries(configuracionesPorFolio).forEach(([clave, configFolio]) => {
+              campos.forEach((campo) => { delete configFolio[campo]; });
+              if (Object.keys(configFolio).length) configuracionesPorFolio[clave] = configFolio;
+              else delete configuracionesPorFolio[clave];
+            });
+          }
         }
 
         // Caché local inmediato (para uso sin conexión).
@@ -1215,7 +1249,7 @@
         cvLabel.style.setProperty("font-size", `${configVisual.tamanoCv}px`, "important");
       }
 
-      function aplicarConfigVisual(guardar = true) {
+      function aplicarConfigVisual(guardar = true, grupo = "visual") {
         const caratula = $("caratula");
 
         caratula.style.setProperty("--tamano-titulo", `${configVisual.tamanoTitulo}px`);
@@ -1264,7 +1298,7 @@
         $("cfgOrdenFolioPeriodo").value = configVisual.ordenFolioPeriodo;
 
         actualizarVistaPreviaConfiguracion();
-        if (guardar) guardarConfigVisual();
+        if (guardar) guardarConfigVisual(grupo);
         actualizarPreview();
       }
 
@@ -1628,7 +1662,7 @@
           <div class="nombre-row-top">
             <button type="button" class="btn-orden" onclick="moverFila(this, -1)">▲</button>
             <button type="button" class="btn-orden" onclick="moverFila(this, 1)">▼</button>
-            <input type="text" class="inpSeparador" value="${escaparHtml(valor)}" >
+            <input type="text" class="inpSeparador" value="${escaparHtml(valor)}" placeholder="Escribe el título del separador">
             <button type="button" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>
           </div>`;
         contNombres.appendChild(row);
@@ -2553,9 +2587,17 @@
           configuracionesPorFolio: { ...configuracionesPorFolio }
         };
         cargarConfiguracionParaFolio(obtenerClaveFolioActual());
-        $("cfgAlcanceVisual").value = configuracionesPorFolio[obtenerClaveFolioActual()]
+        const configSeparadorFolio = configuracionesPorFolio[obtenerClaveFolioActual()] || {};
+        const camposSeparador = ["fuenteSeparador", "tamanoSeparador", "espacioSeparador"];
+        $("cfgAlcanceVisual").value = Object.keys(configSeparadorFolio)
+          .some((campo) => !camposSeparador.includes(campo))
           ? "uno"
           : "todos-excepto-editados";
+        $("cfgAlcanceSeparador").value = ["fuenteSeparador", "tamanoSeparador", "espacioSeparador"]
+          .some((campo) => Object.prototype.hasOwnProperty.call(configSeparadorFolio, campo))
+          ? "uno"
+          : "todos-excepto-editados";
+        cargarSeparadorSegunAlcance();
         const { data } = await clienteDB.from("config_caratula").select("*").eq("id", 1).single();
         if (data) { $("cfgSubgerencia").value = data.texto_subgerencia; $("cfgCvLabel").value = data.texto_cv_label; }
         $("cfgRubroActual").value = cargoActual;
@@ -2610,27 +2652,33 @@
       // CONFIGURACIÓN GLOBAL DEL SEPARADOR
       $("cfgFuenteSeparador").onchange = (e) => {
         configVisual.fuenteSeparador = e.target.value;
-        aplicarConfigVisual();
+        aplicarConfigVisual(true, "separador");
       };
       $("btnMenosSeparador").onclick = () => {
-        if (configVisual.tamanoSeparador > 10) { configVisual.tamanoSeparador--; aplicarConfigVisual(); }
+        if (configVisual.tamanoSeparador > 10) { configVisual.tamanoSeparador--; aplicarConfigVisual(true, "separador"); }
       };
       $("btnMasSeparador").onclick = () => {
-        if (configVisual.tamanoSeparador < 60) { configVisual.tamanoSeparador++; aplicarConfigVisual(); }
+        if (configVisual.tamanoSeparador < 60) { configVisual.tamanoSeparador++; aplicarConfigVisual(true, "separador"); }
       };
       $("btnMenosEspacioSeparador").onclick = () => {
-        if (configVisual.espacioSeparador > 0) { configVisual.espacioSeparador -= 2; aplicarConfigVisual(); }
+        if (configVisual.espacioSeparador > 0) { configVisual.espacioSeparador -= 2; aplicarConfigVisual(true, "separador"); }
       };
       $("btnMasEspacioSeparador").onclick = () => {
-        if (configVisual.espacioSeparador < 80) { configVisual.espacioSeparador += 2; aplicarConfigVisual(); }
+        if (configVisual.espacioSeparador < 80) { configVisual.espacioSeparador += 2; aplicarConfigVisual(true, "separador"); }
+      };
+
+      $("cfgAlcanceSeparador").onchange = () => {
+        cargarSeparadorSegunAlcance();
+        aplicarConfigVisual(false);
       };
 
       $("cfgAlcanceVisual").onchange = (e) => {
         if (e.target.value === "uno") {
           cargarConfiguracionParaFolio(obtenerClaveFolioActual());
-          return;
+        } else {
+          configVisual = { ...configuracionGlobal };
         }
-        configVisual = { ...configuracionGlobal };
+        cargarSeparadorSegunAlcance();
         aplicarConfigVisual(false);
       };
 
