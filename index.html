@@ -76,11 +76,45 @@
       .btn-orden { display: none; }
       .modo-reordenar .nombre-row { cursor: pointer; transition: .2s; background: #bfdbfe; border: 2px solid #3b82f6; }
       .modo-reordenar .nombre-row:hover { background: #93c5fd; border-color: #2563eb; }
-      .modo-reordenar .nombre-row.seleccionado { background: #ede9fe; border: 2px solid #8b5cf6; color: #6d28d9; }
+      .modo-reordenar .nombre-row.seleccionado,
+      .modo-reordenar .nombre-row.seleccionado,
+      .modo-reordenar .nombre-row.seleccionado:hover { background: #bfdbfe; border: 2px solid #3b82f6; }
+      .modo-reordenar .nombre-row.separador-row.seleccionado,
+      .modo-reordenar .nombre-row.separador-row.seleccionado:hover { background: #fef9c3; border-color: #eab308; }
       .modo-reordenar .nombre-row.arrastrando { opacity: .5; }
+      .modo-reordenar .nombre-row-top button[onclick*="remove"] { display: none; }
       .indicador-mover { display: none; float: right; font-weight: bold; color: #7c3aed; }
       .modo-reordenar .nombre-row.seleccionado .indicador-mover { display: inline-block; }
 
+    .modo-reordenar .nombre-row.seleccionado.separador-row .inpSeparador { display: none; }
+.modo-reordenar .seleccionado.separador-row .nombre-row-top {
+  align-items: center;
+  gap: 10px;
+}
+.etiqueta-mover-separador {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  background: #ede9fe;
+  border: 1px solid #8b5cf6;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: bold;
+  font-size: 13px;
+  color: #6d28d9;
+}
+.etiqueta-mover-separador .nombre-separador-texto {
+  min-width: 0;
+  background: #fff;
+  border-radius: 6px;
+  padding: 2px 8px;
+  color: #334155;
+  overflow-wrap: anywhere;
+}
+      
       .btn-group { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
       .btn-group button { flex: 1; min-width: 120px; }
 
@@ -143,7 +177,7 @@
       .tamano-controles span { min-width: 55px; text-align: center; font-weight: bold; font-size: 14px; }
       .config-vista-previa { margin-top: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: #f8fafc; text-align: center; overflow: hidden; }
       .config-vista-previa h4 { margin: 0 0 8px; color: var(--azul); font-size: 14px; }
-      .config-vista-previa .caratula { width: 300px; height: 900px; min-height: 900px; max-height: 900px; margin: 0 auto; zoom: 0.68; }
+      .config-vista-previa .caratula { width: 300px; height: auto; min-height: 900px; max-height: none; margin: 0 auto; zoom: 0.68; }
       #modalConfig .modal-caja { width: 860px; max-width: 95vw; display: grid; grid-template-columns: 390px minmax(300px, 1fr); gap: 16px; align-items: start; }
       #modalConfig .modal-caja > :not(.config-vista-previa) { grid-column: 1; }
       #modalConfig .config-vista-previa { grid-column: 2; grid-row: 1 / span 20; position: sticky; top: 0; width: 100%; margin-top: 0; }
@@ -195,15 +229,15 @@
 
       /* Carátula Componente Base */
       .caratula-wrap { display: flex; flex-direction: column; align-items: center; }
-      .caratula { width: 300px; height: 900px; min-height: 900px; max-height: 900px; border: 5px solid #000; border-radius: 40px; padding: 25px 20px; text-align: center; background: #fff; display: flex; flex-direction: column; box-sizing: border-box; }
+      .caratula { width: 300px; height: auto; min-height: 900px; max-height: none; border: 5px solid #000; border-radius: 40px; padding: 25px 20px; text-align: center; background: #fff; display: flex; flex-direction: column; box-sizing: border-box; }
       .caratula .titulo { font-family: "Monotype Corsiva", cursive; font-size: var(--tamano-titulo, 22px); font-weight: bold; line-height: 1.15; margin-bottom: var(--espacio-titulo, 8px); }
       .caratula img.escudo { width: var(--tamano-escudo, 120px); margin: 6px auto 14px; display: block; }
       .caratula .subgerencia { font-weight: bold; margin-top: var(--espacio-gerencia, 0px); margin-bottom: 12px; line-height: 1.2; font-size: 14px; }
       .caratula .cv-label { font-weight: bold; margin-top: var(--espacio-curriculum, 0px); margin-bottom: 6px; letter-spacing: 1px; text-align: center; font-size: 22px; }
-      .caratula .nombres { font-size: 15px; text-align: left; padding-left: 8px; padding-top: var(--espacio-nombres, 0px); flex-grow: 1; }
+      .caratula .nombres { font-size: 15px; text-align: left; padding-left: 8px; padding-top: var(--espacio-nombres, 0px); flex-grow: 1; width: 100%; min-width: 0; }
       .caratula .nombres div { margin-bottom: 6px; padding-left: 14px; position: relative; }
       .caratula .nombres div:before { content: "➤"; position: absolute; left: -4px; color: var(--sky); font-size: 11px; }
-      .caratula .nombres div.separador { padding-left: 0; margin: 14px 0 8px; text-align: center; font-weight: bold; }
+      .caratula .nombres div.separador { padding-left: 0; margin: 14px 0 8px; text-align: center; font-weight: bold; overflow-wrap: anywhere; word-break: normal; }
       .caratula .nombres div.separador:before { content: none; }
       .caratula .nombres div.separador-cv { letter-spacing: 1px; }
       .caratula .folio-circulo {
@@ -979,10 +1013,7 @@
         foliosMarcadosParaImprimir = foliosMarcadosParaImprimir.filter((id) => !idsNuevos.includes(String(id)));
         guardarFoliosImpresos();
 
-        const foliosDisponibles = [...todosLosFoliosCache];
-        if (!inpId.value && inpNumero.value.trim()) {
-          foliosDisponibles.unshift(obtenerFolioActualFormulario());
-        }
+        const foliosDisponibles = obtenerFoliosParaImpresion();
         renderizarListaFoliosImpresos(foliosDisponibles);
         renderizarListaImpresion(foliosDisponibles);
       }
@@ -1908,20 +1939,52 @@
         document.querySelectorAll(".nombre-row").forEach(f => {
           f.draggable = activo;
           f.classList.remove("seleccionado", "arrastrando");
+          f.querySelector(".etiqueta-mover-separador")?.remove();
+          f.querySelectorAll("input, textarea").forEach(control => {
+            if (activo) {
+              control.dataset.readonlyAntesOrden = String(control.readOnly);
+              control.readOnly = true;
+            } else {
+              control.readOnly = control.dataset.readonlyAntesOrden === "true";
+              delete control.dataset.readonlyAntesOrden;
+            }
+          });
+          f.querySelectorAll("select, button").forEach(control => {
+            if (activo) {
+              control.dataset.disabledAntesOrden = String(control.disabled);
+              control.disabled = true;
+            } else {
+              control.disabled = control.dataset.disabledAntesOrden === "true";
+              delete control.dataset.disabledAntesOrden;
+            }
+          });
         });
         actualizarVisibilidadFilas();
         if (!activo) actualizarPreview();
       });
 
       contNombres.addEventListener("click", (e) => {
-        if (!contNombres.classList.contains("modo-reordenar")) return;
-        const fila = e.target.closest(".nombre-row");
-        if (!fila || ["INPUT", "BUTTON"].includes(e.target.tagName)) return;
-        document.querySelectorAll(".nombre-row").forEach(f => f.classList.remove("seleccionado"));
-        fila.classList.add("seleccionado");
-        filaSeleccionada = fila;
-      });
+  if (!contNombres.classList.contains("modo-reordenar")) return;
+  const fila = e.target.closest(".nombre-row");
+  if (!fila || e.target.closest("button")) return;
 
+  document.querySelectorAll(".nombre-row").forEach(f => {
+    f.classList.remove("seleccionado");
+    const etiqueta = f.querySelector(".etiqueta-mover-separador");
+    if (etiqueta) etiqueta.remove();
+  });
+
+  filaSeleccionada = fila;
+  fila.classList.add("seleccionado");
+
+  if (fila.dataset.tipo === "separador") {
+    const texto = fila.querySelector(".inpSeparador")?.value || "(sin texto)";
+    const span = document.createElement("span");
+    span.className = "etiqueta-mover-separador";
+    span.innerHTML = `↕ Mover <span class="nombre-separador-texto">${escaparHtml(texto)}</span>`;
+    fila.querySelector(".nombre-row-top").insertBefore(span, fila.querySelector("button[onclick*='remove']"));
+  }
+});
       contNombres.addEventListener("dragstart", (e) => {
         const fila = e.target.closest(".nombre-row");
         if (!contNombres.classList.contains("modo-reordenar") || !fila || fila !== filaSeleccionada) { e.preventDefault(); return; }
@@ -2022,10 +2085,7 @@
 
       function desmarcarFolioImpreso(id) {
         const idStr = String(id);
-        const foliosDisponibles = [...todosLosFoliosCache];
-        if (!inpId.value && inpNumero.value.trim()) {
-          foliosDisponibles.unshift(obtenerFolioActualFormulario());
-        }
+        const foliosDisponibles = obtenerFoliosParaImpresion();
         const folio = foliosDisponibles.find((f) => String(f.id) === idStr);
         const etiqueta = folio ? `N° ${folio.numero_folio}${folio.numero_bloque ? ` [Bloque ${folio.numero_bloque}]` : ""} - ${folio.periodo}` : `ID ${idStr}`;
 
@@ -2088,12 +2148,7 @@
       }
 
       function abrirModalImpresion() {
-        const folioActualForm = obtenerFolioActualFormulario();
-
-        let foliosDisponibles = [...todosLosFoliosCache];
-        if (!inpId.value && inpNumero.value.trim()) {
-          foliosDisponibles.unshift(folioActualForm);
-        }
+        const foliosDisponibles = obtenerFoliosParaImpresion();
 
         foliosMarcadosParaImprimir = inpId.value ? [String(inpId.value)] : [];
         if (buscadorImpresion) buscadorImpresion.value = "";
@@ -2109,10 +2164,7 @@
 
       if (buscadorImpresion) {
         buscadorImpresion.addEventListener("input", () => {
-          const foliosDisponibles = [...todosLosFoliosCache];
-          if (!inpId.value && inpNumero.value.trim()) {
-            foliosDisponibles.unshift(obtenerFolioActualFormulario());
-          }
+          const foliosDisponibles = obtenerFoliosParaImpresion();
           renderizarListaFoliosImpresos(foliosDisponibles);
           renderizarListaImpresion(foliosDisponibles);
         });
@@ -2121,10 +2173,7 @@
       const chkMarcarTodosVisibles = $("chkMarcarTodosVisibles");
       if (chkMarcarTodosVisibles) {
         chkMarcarTodosVisibles.addEventListener("change", () => {
-          const foliosDisponibles = [...todosLosFoliosCache];
-          if (!inpId.value && inpNumero.value.trim()) {
-            foliosDisponibles.unshift(obtenerFolioActualFormulario());
-          }
+          const foliosDisponibles = obtenerFoliosParaImpresion();
 
           const textoBusqueda = (buscadorImpresion?.value || "").trim();
           const visibles = obtenerFoliosFiltradosParaImpresion(foliosDisponibles, textoBusqueda);
@@ -2148,10 +2197,7 @@
       if (btnToggleFoliosImpresos) {
         btnToggleFoliosImpresos.addEventListener("click", () => {
           mostrarFoliosImpresos = !mostrarFoliosImpresos;
-          const foliosDisponibles = [...todosLosFoliosCache];
-          if (!inpId.value && inpNumero.value.trim()) {
-            foliosDisponibles.unshift(obtenerFolioActualFormulario());
-          }
+          const foliosDisponibles = obtenerFoliosParaImpresion();
           renderizarListaFoliosImpresos(foliosDisponibles);
           renderizarListaImpresion(foliosDisponibles);
         });
@@ -2159,12 +2205,23 @@
 
       function obtenerFolioActualFormulario() {
         return {
-          id: 'actual_form',
+          id: inpId.value || 'actual_form',
           numero_folio: inpNumero.value.trim() || '--',
           numero_bloque: inpBloque.value.trim(),
           periodo: inpPeriodo.value.trim() || '----',
           nombres: obtenerUsuarios().map(u => u.nombre)
         };
+      }
+
+      function obtenerFoliosParaImpresion() {
+        const folios = [...todosLosFoliosCache];
+        if (!inpId.value && !inpNumero.value.trim()) return folios;
+
+        const folioActual = obtenerFolioActualFormulario();
+        const indiceActual = folios.findIndex((folio) => String(folio.id) === String(folioActual.id));
+        if (indiceActual >= 0) folios[indiceActual] = folioActual;
+        else folios.unshift(folioActual);
+        return folios;
       }
 
       function renderizarVistaPreviaHojaImpresion(foliosDisponibles) {
@@ -2174,7 +2231,7 @@
         const seleccionados = foliosDisponibles.filter(f => foliosMarcadosParaImprimir.includes(String(f.id)));
 
         const foliosParaVista = seleccionados.length ? seleccionados : [
-          foliosDisponibles.find(f => String(f.id) === 'actual_form') || obtenerFolioActualFormulario()
+          foliosDisponibles.find(f => String(f.id) === String(inpId.value || 'actual_form')) || obtenerFolioActualFormulario()
         ];
 
         for (let inicio = 0; inicio < foliosParaVista.length; inicio += 2) {
