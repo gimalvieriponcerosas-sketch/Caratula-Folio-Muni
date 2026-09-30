@@ -205,6 +205,7 @@
       .lista-item.bloque-duplicado:hover { background: #ffe4e6; }
       .marcador-bloque-duplicado { color: #b91c1c; font-size: 11px; font-weight: bold; margin-left: 6px; }
       .lista-item b { color: var(--azul); }
+      .cargo-coincidente { color: #713f12; background: #fde047; border: 1px solid #eab308; border-radius: 4px; padding: 1px 4px; font-weight: bold; }
       .lista-item .acciones { display: flex; gap: 5px; margin-top: 8px; }
       .lista-item .btn-accion { flex: 1; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; color: #fff; }
 
@@ -1539,6 +1540,8 @@
       }
 
       function renderizarLista(folios, duplicados = {}) {
+        const busquedaCargo = normalizarTexto(filtroActivo);
+        const palabrasBusquedaCargo = busquedaCargo.split(" ").filter(Boolean);
         listaFolios.innerHTML = folios.map((f) => {
           const nombres = Array.isArray(f.nombres) ? f.nombres : [];
           const notas = Array.isArray(f.notas_pago) ? f.notas_pago : [];
@@ -1549,6 +1552,8 @@
           const contenido = nombres.length ? nombres.map((nombre, index) => {
             if (esSeparador(nombre)) return "";
             const nota = notas[index] ?? "", cargo = cargos[index] ?? "";
+            const palabrasCargo = normalizarTexto(cargo).split(" ");
+            const cargoCoincide = palabrasBusquedaCargo.length > 0 && palabrasBusquedaCargo.every((palabra) => palabrasCargo.includes(palabra));
             const infoDuplicado = duplicados[normalizarTexto(nombre)];
             const esDuplicado = !!infoDuplicado;
             const posicionesActual = infoDuplicado ? (infoDuplicado.folios.find((folio) => String(folio.id) === String(f.id))?.posiciones || []) : [];
@@ -1559,7 +1564,7 @@
 
             return `<div class="detalle-nombre">
               <div style="${esDuplicado ? 'text-decoration:underline;text-decoration-color:#ef4444;' : ''}">
-                <b>${index + 1}.</b> ${nombreHtml}${badge} ${cargo ? `<span style="color:#0ea5e9;font-weight:bold;">(${escaparHtml(cargo)})</span>` : ''}
+                <b>${index + 1}.</b> ${nombreHtml}${badge} ${cargo ? `<span class="${cargoCoincide ? 'cargo-coincidente' : ''}" style="${cargoCoincide ? '' : 'color:#0ea5e9;font-weight:bold;'}">(${escaparHtml(cargo)})</span>` : ''}
               </div>
               ${nota ? `<div style="font-size:11px;color:#64748b;margin-left:14px;">📄 Nota: ${escaparHtml(nota)}</div>` : ''}
             </div>`;
@@ -2777,6 +2782,9 @@
         } catch (e) {
           console.warn("Sin conexión para la configuración compartida:", e);
         }
+
+        cargoActual = "";
+        $("cfgRubroActual").value = "";
 
         renderizarHistorial();
         const listaImpresosActual = cargarFoliosImpresos();
