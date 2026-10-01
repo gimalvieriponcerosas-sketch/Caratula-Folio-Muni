@@ -1662,6 +1662,7 @@
           </div>`;
         contNombres.appendChild(row);
         actualizarTotalNotaPago(row);
+        configurarFilaModoReordenar(row);
       }
 
       function crearFilaSeparador(valor = "") {
@@ -1676,6 +1677,20 @@
             <button type="button" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>
           </div>`;
         contNombres.appendChild(row);
+        configurarFilaModoReordenar(row);
+      }
+
+      function configurarFilaModoReordenar(fila) {
+        if (!contNombres.classList.contains("modo-reordenar")) return;
+        fila.draggable = true;
+        fila.querySelectorAll("input, textarea").forEach((control) => {
+          control.dataset.readonlyAntesOrden = String(control.readOnly);
+          control.readOnly = true;
+        });
+        fila.querySelectorAll("select, button").forEach((control) => {
+          control.dataset.disabledAntesOrden = String(control.disabled);
+          control.disabled = true;
+        });
       }
 
       function moverFila(btn, dir) {
