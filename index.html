@@ -206,6 +206,10 @@
       .marcador-bloque-duplicado { color: #b91c1c; font-size: 11px; font-weight: bold; margin-left: 6px; }
       .lista-item b { color: var(--azul); }
       .cargo-coincidente { color: #713f12; background: #fde047; border: 1px solid #eab308; border-radius: 4px; padding: 1px 4px; font-weight: bold; }
+      .marcado-busqueda {
+        background: #fef08a; color: #7c2d12; border-radius: 4px; padding: 1px 4px;
+        box-shadow: inset 0 -1px 0 rgba(120, 53, 15, 0.28); font-weight: 700;
+      }
       .lista-item .acciones { display: flex; gap: 5px; margin-top: 8px; }
       .lista-item .btn-accion { flex: 1; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; color: #fff; }
 
@@ -936,6 +940,57 @@
           .trim();
       }
 
+      function resaltarCoincidenciasTexto(texto, consulta) {
+        const valor = String(texto ?? "");
+        const busqueda = String(consulta ?? "").trim();
+        if (!busqueda) return escaparHtml(valor);
+
+        const normalizarSinTildes = (cadena) =>
+          String(cadena ?? "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase();
+
+        const valorNormalizado = normalizarSinTildes(valor);
+        const busquedaNormalizada = normalizarSinTildes(busqueda);
+
+        if (!valorNormalizado || !busquedaNormalizada || !valorNormalizado.includes(busquedaNormalizada)) {
+          return escaparHtml(valor);
+        }
+
+        let inicioNorm = valorNormalizado.indexOf(busquedaNormalizada);
+        let finNorm = inicioNorm + busquedaNormalizada.length;
+        let inicioOriginal = 0;
+        let finOriginal = valor.length;
+
+        let posNormal = 0;
+        let posOriginal = 0;
+        while (posOriginal < valor.length) {
+          const parte = normalizarSinTildes(valor[posOriginal]);
+          if (parte.length > 0) {
+            if (posNormal === inicioNorm) {
+              inicioOriginal = posOriginal;
+            }
+            if (posNormal === finNorm) {
+              finOriginal = posOriginal;
+              break;
+            }
+            posNormal += parte.length;
+          }
+          posOriginal += 1;
+        }
+
+        if (posNormal < finNorm) {
+          finOriginal = valor.length;
+        }
+
+        const antes = valor.slice(0, inicioOriginal);
+        const coincidente = valor.slice(inicioOriginal, finOriginal);
+        const despues = valor.slice(finOriginal);
+
+        return `${escaparHtml(antes)}<mark class="marcado-busqueda">${escaparHtml(coincidente)}</mark>${escaparHtml(despues)}`;
+      }
+
       function escaparHtml(valor = "") {
         return String(valor).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
       }
@@ -1560,7 +1615,9 @@
             const badgeTexto = posicionesActual.length > 1 ? `${posicionesActual.length} veces` : (infoDuplicado ? `${infoDuplicado.cantidadFolios} folios` : "");
 
             const badge = esDuplicado ? `<span class="duplicado-clicable" onclick='event.stopPropagation(); mostrarFoliosDuplicados(${JSON.stringify(nombre)}, "${f.id}")' style="background:#facc15;color:#1e293b;border-radius:12px;padding:0 8px;font-size:10px;font-weight:bold;margin-left:4px;">${badgeTexto}</span>` : "";
-            const nombreHtml = esDuplicado ? `<span class="duplicado-clicable" onclick='event.stopPropagation(); mostrarFoliosDuplicados(${JSON.stringify(nombre)}, "${f.id}")' style="color:#dc2626;font-weight:bold;">${escaparHtml(nombre)}</span>` : escaparHtml(nombre);
+              const nombreHtml = esDuplicado
+              ? `<span class="duplicado-clicable" onclick='event.stopPropagation(); mostrarFoliosDuplicados(${JSON.stringify(nombre)}, "${f.id}")' style="color:#dc2626;font-weight:bold;">${resaltarCoincidenciasTexto(nombre, filtroActivo)}</span>`
+              : resaltarCoincidenciasTexto(nombre, filtroActivo);
 
             return `<div class="detalle-nombre">
               <div style="${esDuplicado ? 'text-decoration:underline;text-decoration-color:#ef4444;' : ''}">
@@ -1951,10 +2008,11 @@
         actualizarMarcadoDuplicadosFormulario();
         const usuarios = obtenerUsuarios();
         const visibles = usuarios.slice(0, MAX_NOMBRES_VISIBLES);
+        const busquedaActual = (buscador?.value || "").trim();
 
         previewNombres.innerHTML = visibles.length ? visibles.map((u) => u.separador
           ? obtenerHtmlSeparador(u.textoSeparador, "normal", configVisual)
-          : `<div>${escaparHtml(u.nombre)}</div>`).join("") : '<div style="color:#aaa"></div>';
+          : `<div>${resaltarCoincidenciasTexto(u.nombre, busquedaActual)}</div>`).join("") : '<div style="color:#aaa"></div>';
         previewNumero.textContent = inpNumero.value || "--";
         previewPeriodo.textContent = inpPeriodo.value || "----";
 
