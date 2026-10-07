@@ -940,66 +940,42 @@
           .trim();
       }
 
+      function escapeRegExp(texto) {
+        return String(texto).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      }
+
+      function coincideTextoExacto(texto, consulta) {
+        const valor = normalizarTexto(texto);
+        const query = normalizarTexto(consulta);
+
+        if (!query) return true;
+
+        const patron = new RegExp(`(^|\\s)${escapeRegExp(query)}(?=\\s|$)`, "i");
+        return patron.test(valor);
+      }
+
       function resaltarCoincidenciasTexto(texto, consulta) {
         const valor = String(texto ?? "");
         const busqueda = String(consulta ?? "").trim();
         if (!busqueda) return escaparHtml(valor);
 
-        const normalizarSinTildes = (cadena) =>
-          String(cadena ?? "")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase();
+        const valorNormalizado = normalizarTexto(valor);
+        const busquedaNormalizada = normalizarTexto(busqueda);
 
-        const valorNormalizado = normalizarSinTildes(valor);
-        const busquedaNormalizada = normalizarSinTildes(busqueda);
-
-        if (!valorNormalizado || !busquedaNormalizada || !valorNormalizado.includes(busquedaNormalizada)) {
+        if (!valorNormalizado || !busquedaNormalizada || !coincideTextoExacto(valor, busqueda)) {
           return escaparHtml(valor);
         }
 
-        function convertirIndiceNormalizadoAOriginal(indiceNormalizado) {
-          let indiceNormal = 0;
-          let indiceOriginal = 0;
+        const posicion = valorNormalizado.search(new RegExp(`(^|\\s)${escapeRegExp(busquedaNormalizada)}(?=\\s|$)`, "i"));
+        if (posicion === -1) return escaparHtml(valor);
 
-          while (indiceOriginal < valor.length) {
-            const charNormalizado = normalizarSinTildes(valor[indiceOriginal]);
-            if (charNormalizado && charNormalizado !== "") {
-              if (indiceNormal === indiceNormalizado) return indiceOriginal;
-              indiceNormal += 1;
-            }
-            indiceOriginal += 1;
-          }
+        const inicio = posicion + (valorNormalizado.slice(posicion).match(/^\s*/)?.[0].length || 0);
+        const fin = inicio + busquedaNormalizada.length;
+        const antes = valor.slice(0, inicio);
+        const coincidente = valor.slice(inicio, fin);
+        const despues = valor.slice(fin);
 
-          return valor.length;
-        }
-
-        const coincidencias = [];
-        let inicioBusqueda = 0;
-
-        while (inicioBusqueda <= valorNormalizado.length) {
-          const indice = valorNormalizado.indexOf(busquedaNormalizada, inicioBusqueda);
-          if (indice === -1) break;
-
-          const inicioOriginal = convertirIndiceNormalizadoAOriginal(indice);
-          const finOriginal = convertirIndiceNormalizadoAOriginal(indice + busquedaNormalizada.length);
-          coincidencias.push([inicioOriginal, finOriginal]);
-          inicioBusqueda = indice + busquedaNormalizada.length;
-        }
-
-        if (!coincidencias.length) return escaparHtml(valor);
-
-        let resultado = "";
-        let ultimoIndice = 0;
-
-        coincidencias.forEach(([inicioOriginal, finOriginal]) => {
-          resultado += escaparHtml(valor.slice(ultimoIndice, inicioOriginal));
-          resultado += `<mark class="marcado-busqueda">${escaparHtml(valor.slice(inicioOriginal, finOriginal))}</mark>`;
-          ultimoIndice = finOriginal;
-        });
-
-        resultado += escaparHtml(valor.slice(ultimoIndice));
-        return resultado;
+        return `${escaparHtml(antes)}<mark class="marcado-busqueda">${escaparHtml(coincidente)}</mark>${escaparHtml(despues)}`;
       }
 
       function escaparHtml(valor = "") {
@@ -1412,12 +1388,12 @@
         const nombres = Array.isArray(f.nombres) ? f.nombres : [f.nombres || ""];
         const cargos = Array.isArray(f.cargos) ? f.cargos : [f.cargos || ""];
 
-        return num.includes(query) || 
-               bloq.includes(query) || 
-               per.includes(query) || 
+        return num === query ||
+               bloq === query ||
+               per === query ||
                obs.includes(query) ||
-               nombres.some(n => normalizarTexto(n).includes(query)) || 
-               cargos.some(c => normalizarTexto(c).includes(query));
+               nombres.some((n) => coincideTextoExacto(n, query)) ||
+               cargos.some((c) => coincideTextoExacto(c, query));
       }
 
       async function obtenerTotalRegistros(filtro = "") {
