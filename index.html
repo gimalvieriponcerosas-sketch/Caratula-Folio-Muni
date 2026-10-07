@@ -958,37 +958,48 @@
           return escaparHtml(valor);
         }
 
-        let inicioNorm = valorNormalizado.indexOf(busquedaNormalizada);
-        let finNorm = inicioNorm + busquedaNormalizada.length;
-        let inicioOriginal = 0;
-        let finOriginal = valor.length;
+        function convertirIndiceNormalizadoAOriginal(indiceNormalizado) {
+          let indiceNormal = 0;
+          let indiceOriginal = 0;
 
-        let posNormal = 0;
-        let posOriginal = 0;
-        while (posOriginal < valor.length) {
-          const parte = normalizarSinTildes(valor[posOriginal]);
-          if (parte.length > 0) {
-            if (posNormal === inicioNorm) {
-              inicioOriginal = posOriginal;
+          while (indiceOriginal < valor.length) {
+            const charNormalizado = normalizarSinTildes(valor[indiceOriginal]);
+            if (charNormalizado && charNormalizado !== "") {
+              if (indiceNormal === indiceNormalizado) return indiceOriginal;
+              indiceNormal += 1;
             }
-            if (posNormal === finNorm) {
-              finOriginal = posOriginal;
-              break;
-            }
-            posNormal += parte.length;
+            indiceOriginal += 1;
           }
-          posOriginal += 1;
+
+          return valor.length;
         }
 
-        if (posNormal < finNorm) {
-          finOriginal = valor.length;
+        const coincidencias = [];
+        let inicioBusqueda = 0;
+
+        while (inicioBusqueda <= valorNormalizado.length) {
+          const indice = valorNormalizado.indexOf(busquedaNormalizada, inicioBusqueda);
+          if (indice === -1) break;
+
+          const inicioOriginal = convertirIndiceNormalizadoAOriginal(indice);
+          const finOriginal = convertirIndiceNormalizadoAOriginal(indice + busquedaNormalizada.length);
+          coincidencias.push([inicioOriginal, finOriginal]);
+          inicioBusqueda = indice + busquedaNormalizada.length;
         }
 
-        const antes = valor.slice(0, inicioOriginal);
-        const coincidente = valor.slice(inicioOriginal, finOriginal);
-        const despues = valor.slice(finOriginal);
+        if (!coincidencias.length) return escaparHtml(valor);
 
-        return `${escaparHtml(antes)}<mark class="marcado-busqueda">${escaparHtml(coincidente)}</mark>${escaparHtml(despues)}`;
+        let resultado = "";
+        let ultimoIndice = 0;
+
+        coincidencias.forEach(([inicioOriginal, finOriginal]) => {
+          resultado += escaparHtml(valor.slice(ultimoIndice, inicioOriginal));
+          resultado += `<mark class="marcado-busqueda">${escaparHtml(valor.slice(inicioOriginal, finOriginal))}</mark>`;
+          ultimoIndice = finOriginal;
+        });
+
+        resultado += escaparHtml(valor.slice(ultimoIndice));
+        return resultado;
       }
 
       function escaparHtml(valor = "") {
@@ -2008,11 +2019,10 @@
         actualizarMarcadoDuplicadosFormulario();
         const usuarios = obtenerUsuarios();
         const visibles = usuarios.slice(0, MAX_NOMBRES_VISIBLES);
-        const busquedaActual = (buscador?.value || "").trim();
 
         previewNombres.innerHTML = visibles.length ? visibles.map((u) => u.separador
           ? obtenerHtmlSeparador(u.textoSeparador, "normal", configVisual)
-          : `<div>${resaltarCoincidenciasTexto(u.nombre, busquedaActual)}</div>`).join("") : '<div style="color:#aaa"></div>';
+          : `<div>${escaparHtml(u.nombre)}</div>`).join("") : '<div style="color:#aaa"></div>';
         previewNumero.textContent = inpNumero.value || "--";
         previewPeriodo.textContent = inpPeriodo.value || "----";
 
@@ -2482,13 +2492,12 @@
 
         modoEdicion.classList.add("mostrar"); 
         notasPagoVisibles = false; 
-        modoMostrarFilas = "ultimos";
-        $("selectMostrarFilas").value = "ultimos";
+        modoMostrarFilas = "primeros";
+        $("selectMostrarFilas").value = "primeros";
         actualizarVisibilidadNotas(); 
         actualizarPreview(); 
         actualizarMarcadoDuplicadosFormulario(); 
         actualizarVisibilidadFilas();
-        mostrarUltimosNombres(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
 
