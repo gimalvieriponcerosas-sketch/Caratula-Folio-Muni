@@ -947,7 +947,7 @@
 
         if (!query) return true;
 
-        const patron = new RegExp(`(^|\\s)${escapeRegExp(query)}(?=\\s|$)`, "i");
+  const patron = new RegExp(`(^|[^a-z0-9])${escapeRegExp(query)}(?=[^a-z0-9]|$)`, "i");
         return patron.test(valor);
       }
 
