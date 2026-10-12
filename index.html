@@ -870,6 +870,7 @@
       const $ = (id) => document.getElementById(id);
       const contNombres = $("contNombres");
       const previewNombres = $("previewNombres");
+      const KEY_FOLIOS_IMPRESOS = "foliosImpresosGuardados";
       let foliosImpresos = [];
       foliosImpresos = cargarFoliosImpresos();
       const previewNumero = $("previewNumero");
@@ -922,11 +923,11 @@
       const foliosAbiertos = new Set();
       let filaSeleccionada = null, filaArrastrada = null;
       let todosLosFoliosCache = [];
+      let foliosCacheCargado = false;
+      let promesaCargaFolios = null;
       let foliosMarcadosParaImprimir = [];
       let mostrarFoliosImpresos = true;
       let idsPendientesDeConfirmarImpresion = [];
-      const KEY_FOLIOS_IMPRESOS = "foliosImpresosGuardados";
-
       /* UTILIDADES GENERALES */
       function normalizarTexto(texto) {
         return String(texto ?? "")
@@ -1467,11 +1468,42 @@
                cargos.some((c) => normalizarTexto(c).includes(query));
       }
 
+      async function cargarFoliosCache() {
+        if (foliosCacheCargado) return { data: todosLosFoliosCache, error: null };
+        if (promesaCargaFolios) return promesaCargaFolios;
+
+        promesaCargaFolios = clienteDB.from("folios_cv").select("*").order("creado_en", { ascending: false })
+          .then((resultado) => {
+            if (!resultado.error) {
+              todosLosFoliosCache = resultado.data || [];
+              foliosCacheCargado = true;
+              duplicadosGlobales = obtenerDuplicadosPorFolio(todosLosFoliosCache);
+            }
+            return resultado;
+          })
+          .finally(() => { promesaCargaFolios = null; });
+
+        return promesaCargaFolios;
+      }
+
+      function actualizarFoliosCache(folio, eliminar = false) {
+        const id = String(folio.id);
+        const indice = todosLosFoliosCache.findIndex((item) => String(item.id) === id);
+        if (eliminar) {
+          if (indice !== -1) todosLosFoliosCache.splice(indice, 1);
+        } else if (indice === -1) {
+          todosLosFoliosCache.unshift(folio);
+        } else {
+          todosLosFoliosCache[indice] = { ...todosLosFoliosCache[indice], ...folio };
+        }
+        duplicadosGlobales = obtenerDuplicadosPorFolio(todosLosFoliosCache);
+      }
+
       async function obtenerTotalRegistros(filtro = "") {
-        const { data, error } = await clienteDB.from("folios_cv").select("numero_folio, numero_bloque, periodo, nombres, cargos, observaciones");
+        const { data, error } = await cargarFoliosCache();
         if (error || !data) return 0;
         if (!filtro.trim()) return data.length;
-        return data.filter(f => cumpleFiltroInteligente(f, filtro)).length;
+        return data.filter((f) => cumpleFiltroInteligente(f, filtro)).length;
       }
 
       function obtenerDuplicadosPorFolio(folios) {
@@ -1523,10 +1555,8 @@
 
       async function cargarPagina(pagina) {
         if (pagina < 0 || (pagina >= totalPaginas && totalPaginas > 0)) return;
-        const { data, error } = await clienteDB.from("folios_cv").select("*").order("creado_en", { ascending: false });
+        const { data, error } = await cargarFoliosCache();
         if (error) { listaFolios.innerHTML = "Error: " + error.message; return; }
-
-        todosLosFoliosCache = data || [];
 
         let foliosFiltrados = data || [];
         if (filtroActivo) {
@@ -1546,7 +1576,6 @@
         if (pagina >= totalPaginas) pagina = 0;
 
         const foliosPagina = foliosFiltrados.slice(pagina * PAGE_SIZE, (pagina + 1) * PAGE_SIZE);
-        duplicadosGlobales = obtenerDuplicadosPorFolio(data || []);
         actualizarMarcadoDuplicadosFormulario();
 
         if (foliosPagina.length === 0) {
@@ -1563,26 +1592,9 @@
         const clave = normalizarTexto(nombre);
         if (!clave) return;
 
-        // Siempre consultamos los folios guardados al abrir el cuadro.
-        // Así no dependemos de una caché que pueda estar desactualizada.
-        let foliosGuardados = Array.isArray(todosLosFoliosCache) ? todosLosFoliosCache : [];
-        try {
-          const { data, error } = await clienteDB
-            .from("folios_cv")
-            .select("id, numero_folio, numero_bloque, periodo, nombres");
-
-          if (!error && Array.isArray(data)) {
-            foliosGuardados = data;
-            todosLosFoliosCache = data;
-            duplicadosGlobales = obtenerDuplicadosPorFolio(data);
-          }
-        } catch (error) {
-          console.warn("No se pudieron consultar las ubicaciones del duplicado:", error);
-        }
-
         // Buscamos TODAS las apariciones del nombre, indicando folio y posición.
         const ubicaciones = [];
-        foliosGuardados.forEach((folio) => {
+        todosLosFoliosCache.forEach((folio) => {
           const nombres = Array.isArray(folio.nombres)
             ? folio.nombres
             : (folio.nombres ? [folio.nombres] : []);
@@ -1669,9 +1681,9 @@
             const posicionesActual = infoDuplicado ? (infoDuplicado.folios.find((folio) => String(folio.id) === String(f.id))?.posiciones || []) : [];
             const badgeTexto = posicionesActual.length > 1 ? `${posicionesActual.length} veces` : (infoDuplicado ? `${infoDuplicado.cantidadFolios} folios` : "");
 
-            const badge = esDuplicado ? `<span class="duplicado-clicable" onclick='event.stopPropagation(); mostrarFoliosDuplicados(${JSON.stringify(nombre)}, "${f.id}")' style="background:#facc15;color:#1e293b;border-radius:12px;padding:0 8px;font-size:10px;font-weight:bold;margin-left:4px;">${badgeTexto}</span>` : "";
+            const badge = esDuplicado ? `<span class="duplicado-clicable" data-action="duplicados" data-folio-id="${escaparHtml(f.id)}" data-nombre="${escaparHtml(nombre)}" style="background:#facc15;color:#1e293b;border-radius:12px;padding:0 8px;font-size:10px;font-weight:bold;margin-left:4px;">${badgeTexto}</span>` : "";
               const nombreHtml = esDuplicado
-              ? `<span class="duplicado-clicable" onclick='event.stopPropagation(); mostrarFoliosDuplicados(${JSON.stringify(nombre)}, "${f.id}")' style="color:#dc2626;font-weight:bold;">${resaltarCoincidenciasTexto(nombre, filtroActivo)}</span>`
+              ? `<span class="duplicado-clicable" data-action="duplicados" data-folio-id="${escaparHtml(f.id)}" data-nombre="${escaparHtml(nombre)}" style="color:#dc2626;font-weight:bold;">${resaltarCoincidenciasTexto(nombre, filtroActivo)}</span>`
               : resaltarCoincidenciasTexto(nombre, filtroActivo);
 
             return `<div class="detalle-nombre">
@@ -1695,13 +1707,31 @@
               <div style="margin-top:6px;">${contenido}${f.observaciones ? `<div style="margin-top:6px;border-top:1px dashed #cbd5e1;padding-top:6px;font-size:12px;color:#475569;">📝 <b>Observaciones:</b> ${escaparHtml(f.observaciones)}</div>` : ''}</div>
             </details>
             <div class="acciones">
-              <button class="btn-accion btn-editar" onclick='editarFolio(${JSON.stringify(f)})'>✏️ Editar</button>
-              <button class="btn-accion btn-duplicar" onclick='duplicarFolio(${JSON.stringify(f)})'>📋 Duplicar</button>
-              <button class="btn-accion btn-eliminar" onclick='eliminarFolio("${f.id}", "${f.numero_folio}", "${f.periodo}")'>🗑️ Eliminar</button>
+              <button class="btn-accion btn-editar" data-action="editar" data-folio-id="${escaparHtml(f.id)}">✏️ Editar</button>
+              <button class="btn-accion btn-duplicar" data-action="duplicar" data-folio-id="${escaparHtml(f.id)}">📋 Duplicar</button>
+              <button class="btn-accion btn-eliminar" data-action="eliminar" data-folio-id="${escaparHtml(f.id)}">🗑️ Eliminar</button>
             </div>
           </div>`;
         }).join("");
       }
+
+      listaFolios.addEventListener("click", (event) => {
+        const accion = event.target.closest("[data-action]");
+        if (!accion || !listaFolios.contains(accion)) return;
+        event.stopPropagation();
+
+        const folioId = accion.dataset.folioId;
+        if (accion.dataset.action === "duplicados") {
+          mostrarFoliosDuplicados(accion.dataset.nombre || "", folioId);
+          return;
+        }
+
+        const folio = todosLosFoliosCache.find((item) => String(item.id) === folioId);
+        if (!folio) return;
+        if (accion.dataset.action === "editar") editarFolio(folio);
+        if (accion.dataset.action === "duplicar") duplicarFolio(folio);
+        if (accion.dataset.action === "eliminar") eliminarFolio(folio.id, folio.numero_folio, folio.periodo);
+      });
 
       async function recargarUltimaPagina() {
         totalRegistros = await obtenerTotalRegistros(filtroActivo);
@@ -1946,31 +1976,8 @@
         });
       }
 
-      let temporizadorDuplicados = null;
       function actualizarDuplicadosEnTiempoReal() {
-        // Primero marcamos de inmediato lo que ya está disponible en memoria.
         actualizarMarcadoDuplicadosFormulario();
-
-        clearTimeout(temporizadorDuplicados);
-        temporizadorDuplicados = setTimeout(async () => {
-          try {
-            const { data, error } = await clienteDB
-              .from("folios_cv")
-              .select("id, numero_folio, numero_bloque, periodo, nombres");
-
-            if (error || !Array.isArray(data)) {
-              console.warn("No se pudieron actualizar los duplicados:", error?.message || "sin datos");
-              return;
-            }
-
-            // Actualizamos también la caché completa.
-            todosLosFoliosCache = data;
-            duplicadosGlobales = obtenerDuplicadosPorFolio(data);
-            actualizarMarcadoDuplicadosFormulario();
-          } catch (error) {
-            console.warn("Error actualizando duplicados:", error);
-          }
-        }, 200);
       }
 
       function showDuplicadosDialog(val) { if (val) mostrarFoliosDuplicados(val, inpId.value || null); }
@@ -1983,20 +1990,7 @@
 
         if (!claves.length) return;
 
-        let foliosGuardados = [];
-        try {
-          const { data, error } = await clienteDB
-            .from("folios_cv")
-            .select("id, numero_folio, numero_bloque, periodo, nombres");
-
-          if (error || !Array.isArray(data)) return;
-          foliosGuardados = data;
-          todosLosFoliosCache = data;
-          duplicadosGlobales = obtenerDuplicadosPorFolio(data);
-        } catch (error) {
-          console.warn("No se pudieron consultar las ubicaciones de los duplicados al guardar:", error);
-          return;
-        }
+        const foliosGuardados = todosLosFoliosCache;
 
         const bloques = [];
 
@@ -2501,6 +2495,7 @@
         if (error) { alert("Error al guardar: " + error.message); return; }
 
         const idGuardado = inpId.value || data?.id || null;
+  if (idGuardado) actualizarFoliosCache({ ...payload, ...(data || {}), id: idGuardado });
 
         // Guardar es normal: NO abrimos ninguna ventana de duplicados aquí.
         // Los nombres duplicados quedan marcados en rojo en "Folios guardados".
@@ -2573,6 +2568,7 @@
         if (!confirm(`¿Eliminar el folio N° ${numero} - ${periodo}?`)) return;
         const { error } = await clienteDB.from("folios_cv").delete().eq("id", id);
         if (error) { alert("Error al eliminar: " + error.message); return; }
+        actualizarFoliosCache({ id }, true);
         agregarHistorial("🗑️ Eliminación", `Folio N° ${numero} - ${periodo}`);
         if (inpId.value === id) limpiarFormulario();
         await recargarUltimaPagina();
@@ -2619,7 +2615,8 @@
 
       /* EXPORTACIÓN A EXCEL */
       $("btnExportarExcel").addEventListener("click", async () => {
-        const { data, error } = await clienteDB.from("folios_cv").select("*").order("creado_en", { ascending: false });
+        const { data: foliosCache, error } = await cargarFoliosCache();
+        const data = foliosCache ? [...foliosCache] : null;
         if (error || !data || !data.length) { alert(error ? error.message : "No hay folios para exportar."); return; }
 
         data.sort((a, b) => {
@@ -2906,9 +2903,6 @@
         } catch (e) {
           console.warn("Sin conexión para la configuración compartida:", e);
         }
-
-        cargoActual = "";
-        $("cfgRubroActual").value = "";
 
         renderizarHistorial();
         const listaImpresosActual = cargarFoliosImpresos();
