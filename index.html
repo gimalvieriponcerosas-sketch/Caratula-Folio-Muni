@@ -221,6 +221,14 @@
       .btn-orden-lista:hover { background: #e2e8f0; }
       .btn-orden-lista.activo { background: #dbeafe; color: #1e3a8a; border-color: #93c5fd; }
 
+      .aviso-config-pendiente {
+        display: flex; width: 100%; margin: 12px 0 0; padding: 10px 12px;
+        border: 1px solid #93c5fd; border-radius: 8px; background: #eff6ff; color: #1e3a8a;
+        align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px;
+      }
+      .aviso-config-pendiente select { flex: 1; min-width: 190px; width: auto; }
+      .aviso-config-pendiente .btn { padding: 8px 12px; }
+
       .btn-editar { background: #3b82f6; }
       .btn-duplicar { background: #8b5cf6; }
       .btn-eliminar { background: #ef4444; }
@@ -614,16 +622,6 @@
           <summary class="config-seccion-titulo">Separador</summary>
           <div class="config-cuerpo-seccion">
             <details class="opcion">
-              <summary>Aplicar cambios</summary>
-              <div class="opcion-cuerpo">
-                <select id="cfgAlcanceSeparador">
-                  <option value="uno">Solo este folio</option>
-                  <option value="todos">Todos los folios</option>
-                  <option value="todos-excepto-editados" selected>Todos, excepto folios editados</option>
-                </select>
-              </div>
-            </details>
-            <details class="opcion">
               <summary>Tipo</summary>
               <div class="opcion-cuerpo">
                 <select id="cfgFuenteSeparador">
@@ -677,19 +675,6 @@
         <details class="config-seccion config-acordeon">
           <summary class="config-seccion-titulo">📌 Folio y año/periodo</summary>
           <div class="config-cuerpo-seccion">
-            <details class="opcion">
-              <summary>Aplicar cambios</summary>
-              <div class="opcion-cuerpo">
-                <select id="cfgAlcanceVisual">
-                  <option value="uno">Solo este folio</option>
-                  <option value="todos">Todos los folios</option>
-                  <option value="todos-excepto-editados" selected>Todos, excepto folios editados</option>
-                </select>
-                <small style="display:block; margin-top:6px; color:#64748b;">
-                  Un folio editado conserva su configuración propia cuando eliges la tercera opción.
-                </small>
-              </div>
-            </details>
             <details class="opcion">
               <summary>Orden</summary>
               <div class="opcion-cuerpo">
@@ -753,6 +738,14 @@
         <div class="btn-group">
           <button id="btnCerrarConfig" class="btn btn-gray" type="button">Cancelar</button>
           <button id="btnGuardarConfig" class="btn btn-primary" type="button">Guardar</button>
+        </div>
+        <div id="avisoConfigPendiente" class="aviso-config-pendiente" role="status">
+          <strong>Aplicar el diseño a:</strong>
+          <select id="alcanceConfigPendiente" aria-label="Dónde aplicar el diseño">
+            <option value="uno">Solo este folio</option>
+            <option value="todos">Todos los folios</option>
+            <option value="todos-excepto-editados" selected>Todos, excepto folios editados</option>
+          </select>
         </div>
       </div>
     </div>
@@ -904,6 +897,7 @@
         tamanoTitulo: 22, espacioTitulo: 8,
         fuenteSubgerencia: "Arial", tamanoSubgerencia: 18, espacioGerencia: 0,
         fuenteCv: "Algerian", tamanoCv: 26, espacioCurriculum: 0,
+        textoCvLabel: "Curriculum vitae",
         tamanoEscudo: 120, espacioNombres: 0,
         // Configuración global de separadores
         fuenteSeparador: "Arial",
@@ -919,6 +913,9 @@
       let configuracionGlobal = { ...configVisual };
       let configuracionesPorFolio = {};
       let estadoConfigAntesModal = null;
+      let configVisualModalInicio = null;
+      let configVisualPendiente = {};
+      let claveFolioConfigPendiente = null;
       let paginaActual = 0, totalPaginas = 1, filtroActivo = "", totalRegistros = 0, cargoActual = "", bloqueActual = "01";
       let notasPagoVisibles = false, modoMostrarFilas = "ultimos", duplicadosGlobales = {};
       let ordenarListaPorBloque = false;
@@ -1212,49 +1209,83 @@
         if (aplicar) aplicarConfigVisual(false);
       }
 
-      function cargarSeparadorSegunAlcance() {
-        const alcance = $("cfgAlcanceSeparador")?.value || "todos-excepto-editados";
-        const configFolio = configuracionesPorFolio[obtenerClaveFolioActual()] || {};
-        ["fuenteSeparador", "tamanoSeparador", "espacioSeparador"].forEach((campo) => {
-          configVisual[campo] = alcance === "uno" && Object.prototype.hasOwnProperty.call(configFolio, campo)
-            ? configFolio[campo]
-            : configuracionGlobal[campo];
+      async function guardarConfigVisual(grupo = "visual") {
+        const campos = Object.keys(configVisual);
+        if (!configVisualModalInicio) return;
+        const claveActual = obtenerClaveFolioActual();
+        const hayCambios = campos.some((campo) =>
+          JSON.stringify(configVisual[campo]) !== JSON.stringify(configVisualModalInicio[campo])
+        );
+        if (hayCambios && claveFolioConfigPendiente && claveFolioConfigPendiente !== claveActual) {
+          alert("Aplica o descarta los cambios pendientes antes de editar otro folio.");
+          return;
+        }
+        campos.forEach((campo) => {
+          if (JSON.stringify(configVisual[campo]) === JSON.stringify(configVisualModalInicio[campo])) {
+            delete configVisualPendiente[campo];
+          } else {
+            configVisualPendiente[campo] = configVisual[campo];
+          }
         });
+        claveFolioConfigPendiente = Object.keys(configVisualPendiente).length ? claveActual : null;
       }
 
-      async function guardarConfigVisual(grupo = "visual") {
-        const camposSeparador = ["fuenteSeparador", "tamanoSeparador", "espacioSeparador"];
-        const campos = grupo === "separador"
-          ? camposSeparador
-          : Object.keys(configVisual).filter((campo) => !camposSeparador.includes(campo));
-        const alcance = $(grupo === "separador" ? "cfgAlcanceSeparador" : "cfgAlcanceVisual")?.value || "todos-excepto-editados";
+      async function aplicarConfiguracionVisualPendiente() {
+        const campos = Object.keys(configVisualPendiente);
+        if (!campos.length) return true;
 
-        if (alcance === "uno") {
-          const clave = obtenerClaveFolioActual();
-          const configFolio = { ...(configuracionesPorFolio[clave] || {}) };
-          campos.forEach((campo) => { configFolio[campo] = configVisual[campo]; });
-          configuracionesPorFolio[clave] = configFolio;
-        } else {
-          campos.forEach((campo) => { configuracionGlobal[campo] = configVisual[campo]; });
-          if (alcance === "todos") {
-            Object.entries(configuracionesPorFolio).forEach(([clave, configFolio]) => {
-              campos.forEach((campo) => { delete configFolio[campo]; });
-              if (Object.keys(configFolio).length) configuracionesPorFolio[clave] = configFolio;
-              else delete configuracionesPorFolio[clave];
-            });
-          }
+        const alcance = $("alcanceConfigPendiente").value;
+        if (campos.includes("textoCvLabel") && alcance !== "uno") {
+          const { error } = await clienteDB.from("config_caratula").update({
+            texto_cv_label: configVisualPendiente.textoCvLabel,
+            actualizado_en: new Date().toISOString()
+          }).eq("id", 1);
+          if (error) { alert("No se pudo guardar el tipo de documento: " + error.message); return false; }
         }
 
-        // Caché local inmediato (para uso sin conexión).
+        let idsDestino = [];
+        if (alcance === "uno") {
+          idsDestino = [claveFolioConfigPendiente];
+        }
+
+        if (alcance === "todos") {
+          campos.forEach((campo) => { configuracionGlobal[campo] = configVisualPendiente[campo]; });
+          Object.entries(configuracionesPorFolio).forEach(([clave, configFolio]) => {
+            campos.forEach((campo) => { delete configFolio[campo]; });
+            if (Object.keys(configFolio).length) configuracionesPorFolio[clave] = configFolio;
+            else delete configuracionesPorFolio[clave];
+          });
+        } else if (alcance === "uno") {
+          idsDestino.forEach((id) => {
+            const configFolio = { ...(configuracionesPorFolio[id] || {}) };
+            campos.forEach((campo) => { configFolio[campo] = configVisualPendiente[campo]; });
+            configuracionesPorFolio[id] = configFolio;
+          });
+        } else {
+          campos.forEach((campo) => { configuracionGlobal[campo] = configVisualPendiente[campo]; });
+        }
+
         localStorage.setItem("configVisualCaratula", JSON.stringify(configuracionGlobal));
         if (Object.keys(configuracionesPorFolio).length) {
           localStorage.setItem("configuracionesPorFolioCaratula", JSON.stringify(configuracionesPorFolio));
         } else {
           localStorage.removeItem("configuracionesPorFolioCaratula");
         }
-
-        // Persistencia real y compartida (con retardo para no saturar la red).
         sincronizarConfigVisualConDB();
+
+        const cantidad = alcance === "todos" ? "todos los folios" : alcance === "todos-excepto-editados" ? "todos los folios, excepto los editados" : "este folio";
+        configVisualPendiente = {};
+        claveFolioConfigPendiente = null;
+        cargarConfiguracionParaFolio(obtenerClaveFolioActual());
+        configVisualModalInicio = { ...configVisual };
+        estadoConfigAntesModal = {
+          configVisual: { ...configVisual },
+          configuracionGlobal: { ...configuracionGlobal },
+          configuracionesPorFolio: { ...configuracionesPorFolio },
+          configVisualPendiente: {},
+          claveFolioConfigPendiente: null
+        };
+        return true;
       }
 
       let temporizadorSincronizarConfig = null;
@@ -1277,6 +1308,9 @@
         configVisual = { ...estadoConfigAntesModal.configVisual };
         configuracionGlobal = { ...estadoConfigAntesModal.configuracionGlobal };
         configuracionesPorFolio = { ...estadoConfigAntesModal.configuracionesPorFolio };
+        configVisualPendiente = { ...estadoConfigAntesModal.configVisualPendiente };
+        claveFolioConfigPendiente = estadoConfigAntesModal.claveFolioConfigPendiente;
+        configVisualModalInicio = null;
         localStorage.setItem("configVisualCaratula", JSON.stringify(configuracionGlobal));
         if (Object.keys(configuracionesPorFolio).length) {
           localStorage.setItem("configuracionesPorFolioCaratula", JSON.stringify(configuracionesPorFolio));
@@ -1353,6 +1387,7 @@
         txtCvLabel.style.fontFamily = `"${configVisual.fuenteCv}", Algerian, "Bookman Old Style", serif`;
         txtCvLabel.style.fontSize = `${configVisual.tamanoCv}px`;
         txtCvLabel.style.marginTop = `${configVisual.espacioCurriculum}px`;
+        txtCvLabel.textContent = configVisual.textoCvLabel || "Curriculum vitae";
         previewNombres.style.paddingTop = `${configVisual.espacioNombres}px`;
 
         $("valorTamanoSubgerencia").textContent = `${configVisual.tamanoSubgerencia} px`;
@@ -1628,7 +1663,7 @@
           const contenido = nombres.length ? nombres.map((nombre, index) => {
             if (esSeparador(nombre)) return "";
             const nota = notas[index] ?? "", cargo = cargos[index] ?? "";
-            const cargoCoincide = coincideTextoExacto(cargo, filtroActivo);
+            const cargoCoincide = !!filtroActivo.trim() && coincideTextoExacto(cargo, filtroActivo);
             const infoDuplicado = duplicados[normalizarTexto(nombre)];
             const esDuplicado = !!infoDuplicado;
             const posicionesActual = infoDuplicado ? (infoDuplicado.folios.find((folio) => String(folio.id) === String(f.id))?.posiciones || []) : [];
@@ -2177,7 +2212,7 @@
             <div class="titulo">MUNICIPALIDAD DISTRITAL DE CHINCHAO</div>
             <img class="escudo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiij9VKAtMBiHfcGy8Q-NeekFK54ihGvJrZXLHmxDx9CH1jUUrDz5Gfvc&s=10" alt="Escudo">
                         <div class="subgerencia" style="font-family:'${config.fuenteSubgerencia}', Arial, sans-serif; font-size:${config.tamanoSubgerencia}px;">${txtSubgerencia.innerHTML}</div>
-            <div class="cv-label" style="font-family:'${config.fuenteCv}', Algerian, 'Bookman Old Style', serif; font-size:${config.tamanoCv}px;">${txtCvLabel.textContent}</div>
+            <div class="cv-label" style="font-family:'${config.fuenteCv}', Algerian, 'Bookman Old Style', serif; font-size:${config.tamanoCv}px;">${escaparHtml(config.textoCvLabel || txtCvLabel.textContent)}</div>
             <div class="nombres">${nombresHtml}</div>
             <div class="folio-circulo">${escaparHtml(folio.numero_folio || '--')}</div>
             <div class="periodo">${escaparHtml(folio.periodo || '----')}</div>
@@ -2660,7 +2695,8 @@
               const row = hoja.getRow(filaExcel++);
               const nota = (f.notas_pago || [])[idx] ?? "", cargoItem = (f.cargos || [])[idx] ?? "";
               const resNota = validarRangoNotaPago(nota);
-              const valores = [f.numero_bloque || "", f.numero_folio, f.periodo, cargoSubgerencia, tipoDocumento, limpiarNombreParaExportar(nombre), cargoItem, nota, resNota.total || ""];
+              const tipoDocumentoFolio = obtenerConfiguracionParaFolio(f.id).textoCvLabel || tipoDocumento;
+              const valores = [f.numero_bloque || "", f.numero_folio, f.periodo, cargoSubgerencia, tipoDocumentoFolio, limpiarNombreParaExportar(nombre), cargoItem, nota, resNota.total || ""];
 
               valores.forEach((v, i) => {
                 const cel = row.getCell(i + 1); cel.value = v;
@@ -2684,25 +2720,28 @@
 
       /* CONFIGURACIÓN Y MODAL DE PLANTILLA */
       $("btnConfig").onclick = async () => {
+        if (claveFolioConfigPendiente && claveFolioConfigPendiente !== obtenerClaveFolioActual()) {
+          alert("Aplica o descarta los cambios pendientes antes de editar otro folio.");
+          return;
+        }
         estadoConfigAntesModal = {
           configVisual: { ...configVisual },
           configuracionGlobal: { ...configuracionGlobal },
-          configuracionesPorFolio: { ...configuracionesPorFolio }
+          configuracionesPorFolio: { ...configuracionesPorFolio },
+          configVisualPendiente: { ...configVisualPendiente },
+          claveFolioConfigPendiente
         };
         cargarConfiguracionParaFolio(obtenerClaveFolioActual());
-        const configSeparadorFolio = configuracionesPorFolio[obtenerClaveFolioActual()] || {};
-        const camposSeparador = ["fuenteSeparador", "tamanoSeparador", "espacioSeparador"];
-        $("cfgAlcanceVisual").value = Object.keys(configSeparadorFolio)
-          .some((campo) => !camposSeparador.includes(campo))
-          ? "uno"
-          : "todos-excepto-editados";
-        $("cfgAlcanceSeparador").value = ["fuenteSeparador", "tamanoSeparador", "espacioSeparador"]
-          .some((campo) => Object.prototype.hasOwnProperty.call(configSeparadorFolio, campo))
-          ? "uno"
-          : "todos-excepto-editados";
-        cargarSeparadorSegunAlcance();
+        configVisualModalInicio = { ...configVisual };
+        if (claveFolioConfigPendiente === obtenerClaveFolioActual()) {
+          configVisual = { ...configVisual, ...configVisualPendiente };
+          aplicarConfigVisual(false);
+        }
         const { data } = await clienteDB.from("config_caratula").select("*").eq("id", 1).single();
-        if (data) { $("cfgSubgerencia").value = data.texto_subgerencia; $("cfgCvLabel").value = data.texto_cv_label; }
+        if (data) {
+          $("cfgSubgerencia").value = data.texto_subgerencia;
+          $("cfgCvLabel").value = configVisual.textoCvLabel || data.texto_cv_label;
+        }
         $("cfgRubroActual").value = cargoActual;
         $("cfgFuenteSubgerencia").value = configVisual.fuenteSubgerencia;
         $("cfgFuenteCv").value = configVisual.fuenteCv;
@@ -2770,21 +2809,6 @@
         if (configVisual.espacioSeparador < 80) { configVisual.espacioSeparador += 2; aplicarConfigVisual(true, "separador"); }
       };
 
-      $("cfgAlcanceSeparador").onchange = () => {
-        cargarSeparadorSegunAlcance();
-        aplicarConfigVisual(false);
-      };
-
-      $("cfgAlcanceVisual").onchange = (e) => {
-        if (e.target.value === "uno") {
-          cargarConfiguracionParaFolio(obtenerClaveFolioActual());
-        } else {
-          configVisual = { ...configuracionGlobal };
-        }
-        cargarSeparadorSegunAlcance();
-        aplicarConfigVisual(false);
-      };
-
       // Controles independientes del folio y del año/periodo.
       $("btnDefectoFolioPeriodo").onclick = () => {
         configVisual.ordenFolioPeriodo = "folio-arriba";
@@ -2819,6 +2843,7 @@
       $("btnGuardarConfig").onclick = async () => {
         const sub = $("cfgSubgerencia").value.trim(), cv = $("cfgCvLabel").value.trim();
         if (!sub || !cv) { alert("Completa ambos textos."); return; }
+        configVisual.textoCvLabel = cv;
         
         cargoActual = $("cfgRubroActual").value.trim();
         // El cargo se guarda junto al resto de la configuración visual (en Supabase).
@@ -2827,15 +2852,18 @@
 
         const { error } = await clienteDB.from("config_caratula").update({ 
           texto_subgerencia: sub, 
-          texto_cv_label: cv, 
           actualizado_en: new Date().toISOString() 
         }).eq("id", 1);
         
         if (error) { alert("Error al guardar: " + error.message); return; }
 
-        guardarConfigVisual();
+        await guardarConfigVisual();
         txtSubgerencia.innerHTML = sub.replace(/\n/g, "<br>");
-        txtCvLabel.textContent = cv;
+        if (Object.keys(configVisualPendiente).length) {
+          const aplicado = await aplicarConfiguracionVisualPendiente();
+          if (!aplicado) return;
+        }
+        configVisualModalInicio = null;
         estadoConfigAntesModal = null;
         cerrarModal("modalConfig");
       };
@@ -2854,7 +2882,12 @@
         actualizarPreview();
 
         const { data } = await clienteDB.from("config_caratula").select("*").eq("id", 1).single();
-        if (data) { txtSubgerencia.innerHTML = data.texto_subgerencia.replace(/\n/g, "<br>"); txtCvLabel.textContent = data.texto_cv_label; }
+        if (data) {
+          txtSubgerencia.innerHTML = data.texto_subgerencia.replace(/\n/g, "<br>");
+          configuracionGlobal.textoCvLabel = data.texto_cv_label || "Curriculum vitae";
+          configVisual = obtenerConfiguracionParaFolio(obtenerClaveFolioActual());
+          txtCvLabel.textContent = configVisual.textoCvLabel || configuracionGlobal.textoCvLabel;
+        }
 
         // Configuración compartida: cargo, folios impresos e historial.
         try {
