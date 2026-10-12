@@ -959,23 +959,59 @@
         const busqueda = String(consulta ?? "").trim();
         if (!busqueda) return escaparHtml(valor);
 
-        const valorNormalizado = normalizarTexto(valor);
         const busquedaNormalizada = normalizarTexto(busqueda);
+        if (!busquedaNormalizada) return escaparHtml(valor);
 
-        if (!valorNormalizado || !busquedaNormalizada || !coincideTextoExacto(valor, busqueda)) {
-          return escaparHtml(valor);
+        let valorNormalizado = "";
+        const posicionesOriginales = [];
+        let posicionOriginal = 0;
+        for (const caracter of valor) {
+          const inicio = posicionOriginal;
+          posicionOriginal += caracter.length;
+          const fragmento = caracter.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+          if (/\s/.test(fragmento)) {
+            if (valorNormalizado.endsWith(" ")) {
+              posicionesOriginales[posicionesOriginales.length - 1].fin = posicionOriginal;
+            } else {
+              valorNormalizado += " ";
+              posicionesOriginales.push({ inicio, fin: posicionOriginal });
+            }
+            continue;
+          }
+
+          for (let i = 0; i < fragmento.length; i++) {
+            valorNormalizado += fragmento[i];
+            posicionesOriginales.push({ inicio, fin: posicionOriginal });
+          }
         }
 
-        const posicion = valorNormalizado.search(new RegExp(`(^|\\s)${escapeRegExp(busquedaNormalizada)}(?=\\s|$)`, "i"));
-        if (posicion === -1) return escaparHtml(valor);
+        const valorNormalizadoCompleto = valorNormalizado.trim();
+        const coincideNombreCompleto = valorNormalizadoCompleto === busquedaNormalizada;
+        const coincidePalabraCompleta = new RegExp(`(^|\\s)${escapeRegExp(busquedaNormalizada)}(?=\\s|$)`).test(valorNormalizadoCompleto);
+        if (coincideNombreCompleto || coincidePalabraCompleta) {
+          return `<mark class="marcado-busqueda">${escaparHtml(valor)}</mark>`;
+        }
 
-        const inicio = posicion + (valorNormalizado.slice(posicion).match(/^\s*/)?.[0].length || 0);
-        const fin = inicio + busquedaNormalizada.length;
-        const antes = valor.slice(0, inicio);
-        const coincidente = valor.slice(inicio, fin);
-        const despues = valor.slice(fin);
+        let html = "";
+        let posicionOriginalMarcada = 0;
+        let buscarDesde = 0;
+        let posicion = valorNormalizado.indexOf(busquedaNormalizada, buscarDesde);
 
-        return `${escaparHtml(antes)}<mark class="marcado-busqueda">${escaparHtml(coincidente)}</mark>${escaparHtml(despues)}`;
+        while (posicion !== -1) {
+          const inicio = posicionesOriginales[posicion].inicio;
+          const fin = posicionesOriginales[posicion + busquedaNormalizada.length - 1].fin;
+          if (inicio >= posicionOriginalMarcada) {
+            html += escaparHtml(valor.slice(posicionOriginalMarcada, inicio));
+            html += `<mark class="marcado-busqueda">${escaparHtml(valor.slice(inicio, fin))}</mark>`;
+            posicionOriginalMarcada = fin;
+          }
+          buscarDesde = posicion + busquedaNormalizada.length;
+          posicion = valorNormalizado.indexOf(busquedaNormalizada, buscarDesde);
+        }
+
+        if (posicionOriginalMarcada === 0) return escaparHtml(valor);
+        return html + escaparHtml(valor.slice(posicionOriginalMarcada));
       }
 
       function escaparHtml(valor = "") {
@@ -1392,8 +1428,8 @@
                bloq === query ||
                per === query ||
                obs.includes(query) ||
-               nombres.some((n) => coincideTextoExacto(n, query)) ||
-               cargos.some((c) => coincideTextoExacto(c, query));
+               nombres.some((n) => normalizarTexto(n).includes(query)) ||
+               cargos.some((c) => normalizarTexto(c).includes(query));
       }
 
       async function obtenerTotalRegistros(filtro = "") {
@@ -1582,8 +1618,6 @@
       }
 
       function renderizarLista(folios, duplicados = {}) {
-        const busquedaCargo = normalizarTexto(filtroActivo);
-        const palabrasBusquedaCargo = busquedaCargo.split(" ").filter(Boolean);
         listaFolios.innerHTML = folios.map((f) => {
           const nombres = Array.isArray(f.nombres) ? f.nombres : [];
           const notas = Array.isArray(f.notas_pago) ? f.notas_pago : [];
@@ -1594,8 +1628,7 @@
           const contenido = nombres.length ? nombres.map((nombre, index) => {
             if (esSeparador(nombre)) return "";
             const nota = notas[index] ?? "", cargo = cargos[index] ?? "";
-            const palabrasCargo = normalizarTexto(cargo).split(" ");
-            const cargoCoincide = palabrasBusquedaCargo.length > 0 && palabrasBusquedaCargo.every((palabra) => palabrasCargo.includes(palabra));
+            const cargoCoincide = coincideTextoExacto(cargo, filtroActivo);
             const infoDuplicado = duplicados[normalizarTexto(nombre)];
             const esDuplicado = !!infoDuplicado;
             const posicionesActual = infoDuplicado ? (infoDuplicado.folios.find((folio) => String(folio.id) === String(f.id))?.posiciones || []) : [];
@@ -1608,7 +1641,7 @@
 
             return `<div class="detalle-nombre">
               <div style="${esDuplicado ? 'text-decoration:underline;text-decoration-color:#ef4444;' : ''}">
-                <b>${index + 1}.</b> ${nombreHtml}${badge} ${cargo ? `<span class="${cargoCoincide ? 'cargo-coincidente' : ''}" style="${cargoCoincide ? '' : 'color:#0ea5e9;font-weight:bold;'}">(${escaparHtml(cargo)})</span>` : ''}
+                <b>${index + 1}.</b> ${nombreHtml}${badge} ${cargo ? `<span class="${cargoCoincide ? 'cargo-coincidente' : ''}" style="${cargoCoincide ? '' : 'color:#0ea5e9;font-weight:bold;'}">(${cargoCoincide ? escaparHtml(cargo) : resaltarCoincidenciasTexto(cargo, filtroActivo)})</span>` : ''}
               </div>
               ${nota ? `<div style="font-size:11px;color:#64748b;margin-left:14px;">📄 Nota: ${escaparHtml(nota)}</div>` : ''}
             </div>`;
