@@ -62,6 +62,15 @@
         border: 1px solid #dbe3ee; background: #f8fafc; border-radius: 8px;
         padding: 10px; margin-bottom: 6px; font-size: 13px;
       }
+      .ubicacion-duplicado[data-folio-id] { cursor: pointer; transition: background .15s, border-color .15s; }
+      .ubicacion-duplicado[data-folio-id]:hover,
+      .ubicacion-duplicado[data-folio-id]:focus-visible { border-color: #38bdf8; background: #f0f9ff; outline: none; }
+      .lista-item.ubicacion-enfocada { animation: resaltar-ubicacion 1.6s ease-out; }
+        .detalle-nombre.nombre-ubicacion-enfocada { animation: resaltar-ubicacion 1.6s ease-out; border-radius: 4px; }
+      @keyframes resaltar-ubicacion {
+        0%, 45% { outline: 3px solid #38bdf8; background: #e0f2fe; }
+        100% { outline: 3px solid transparent; }
+      }
       .ubicacion-duplicado.ubicacion-actual { border-color: #fca5a5; background: #fef2f2; }
       .ubicacion-duplicado b { color: #334155; }
       .posicion-duplicado { margin-top: 5px; color: #dc2626; font-weight: 700; }
@@ -1636,7 +1645,7 @@
             : "";
 
           return `
-            <li class="ubicacion-duplicado ${esActual ? "ubicacion-actual" : ""}">
+            <li class="ubicacion-duplicado ${esActual ? "ubicacion-actual" : ""}" data-folio-id="${escaparHtml(folio.id)}" data-nombre="${escaparHtml(nombre)}" tabindex="0" role="button" aria-label="Ir al folio número ${escaparHtml(folio.numero_folio)}">
               <div>📁 <b>Folio N° ${escaparHtml(folio.numero_folio)}</b>${bloqTexto} - ${escaparHtml(folio.periodo || "----")}</div>
               <div class="posicion-duplicado">📍 Posición: ${folio.posiciones.join(", ")}</div>
             </li>`;
@@ -1664,6 +1673,64 @@
         $("modalDuplicados").classList.add("mostrar");
       }
 
+      async function navegarAUbicacionFolio(id, nombre) {
+        const { data, error } = await cargarFoliosCache();
+        if (error || !data) {
+          alert("No se pudo abrir el folio seleccionado.");
+          return;
+        }
+
+        const foliosOrdenados = [...data];
+        if (ordenarListaPorBloque) {
+          foliosOrdenados.sort((a, b) => {
+            const porBloque = compararNumericoNatural(a.numero_bloque, b.numero_bloque);
+            return porBloque || compararNumericoNatural(a.numero_folio, b.numero_folio);
+          });
+        }
+        const indice = foliosOrdenados.findIndex((folio) => String(folio.id) === String(id));
+        if (indice === -1) {
+          alert("El folio ya no está disponible en la lista.");
+          return;
+        }
+
+        buscador.value = "";
+        filtroActivo = "";
+        totalRegistros = foliosOrdenados.length;
+        totalPaginas = Math.ceil(totalRegistros / PAGE_SIZE) || 1;
+        foliosAbiertos.add(String(id));
+        cerrarModal("modalDuplicados");
+        await cargarPagina(Math.floor(indice / PAGE_SIZE));
+
+        const detalles = Array.from(listaFolios.querySelectorAll("details[data-folio-id]"))
+          .find((elemento) => String(elemento.dataset.folioId) === String(id));
+        if (!detalles) return;
+        detalles.open = true;
+        const tarjeta = detalles.closest(".lista-item");
+        tarjeta?.classList.remove("ubicacion-enfocada");
+        const nombresCoincidentes = Array.from(detalles.querySelectorAll(".detalle-nombre"))
+          .filter((elemento) => normalizarTexto(elemento.dataset.nombre) === normalizarTexto(nombre));
+        nombresCoincidentes.forEach((elemento) => {
+          elemento.classList.remove("nombre-ubicacion-enfocada");
+          requestAnimationFrame(() => elemento.classList.add("nombre-ubicacion-enfocada"));
+        });
+        const destino = nombresCoincidentes[0] || tarjeta;
+        destino?.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (!nombresCoincidentes.length) requestAnimationFrame(() => tarjeta?.classList.add("ubicacion-enfocada"));
+      }
+
+      $("contenidoModalDuplicados").addEventListener("click", (event) => {
+        const ubicacion = event.target.closest(".ubicacion-duplicado[data-folio-id]");
+        if (ubicacion) navegarAUbicacionFolio(ubicacion.dataset.folioId, ubicacion.dataset.nombre || "");
+      });
+
+      $("contenidoModalDuplicados").addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const ubicacion = event.target.closest(".ubicacion-duplicado[data-folio-id]");
+        if (!ubicacion) return;
+        event.preventDefault();
+        navegarAUbicacionFolio(ubicacion.dataset.folioId, ubicacion.dataset.nombre || "");
+      });
+
       function renderizarLista(folios, duplicados = {}) {
         listaFolios.innerHTML = folios.map((f) => {
           const nombres = Array.isArray(f.nombres) ? f.nombres : [];
@@ -1686,7 +1753,7 @@
               ? `<span class="duplicado-clicable" data-action="duplicados" data-folio-id="${escaparHtml(f.id)}" data-nombre="${escaparHtml(nombre)}" style="color:#dc2626;font-weight:bold;">${resaltarCoincidenciasTexto(nombre, filtroActivo)}</span>`
               : resaltarCoincidenciasTexto(nombre, filtroActivo);
 
-            return `<div class="detalle-nombre">
+            return `<div class="detalle-nombre" data-nombre="${escaparHtml(nombre)}">
               <div style="${esDuplicado ? 'text-decoration:underline;text-decoration-color:#ef4444;' : ''}">
                 <b>${index + 1}.</b> ${nombreHtml}${badge} ${cargo ? `<span class="${cargoCoincide ? 'cargo-coincidente' : ''}" style="${cargoCoincide ? '' : 'color:#0ea5e9;font-weight:bold;'}">(${cargoCoincide ? escaparHtml(cargo) : resaltarCoincidenciasTexto(cargo, filtroActivo)})</span>` : ''}
               </div>
@@ -2030,7 +2097,7 @@
               : "";
 
             return `
-              <li class="ubicacion-duplicado ${esActual ? "ubicacion-actual" : ""}">
+              <li class="ubicacion-duplicado ${esActual ? "ubicacion-actual" : ""}" data-folio-id="${escaparHtml(folio.id)}" data-nombre="${escaparHtml(nombreOriginal)}" tabindex="0" role="button" aria-label="Ir al folio número ${escaparHtml(folio.numero_folio)}">
                 <div>📁 <b>Folio N° ${escaparHtml(folio.numero_folio)}</b>${bloque} - ${escaparHtml(folio.periodo || "----")}</div>
                 <div class="posicion-duplicado">📍 Posición: ${folio.posiciones.join(", ")}</div>
               </li>`;
