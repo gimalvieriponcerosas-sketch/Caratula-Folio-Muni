@@ -1567,7 +1567,7 @@
         const { data, error } = await cargarFoliosCache();
         if (error) { listaFolios.innerHTML = "Error: " + error.message; return; }
 
-        let foliosFiltrados = data || [];
+        let foliosFiltrados = [...(data || [])];
         if (filtroActivo) {
           foliosFiltrados = foliosFiltrados.filter(f => cumpleFiltroInteligente(f, filtroActivo));
         }
