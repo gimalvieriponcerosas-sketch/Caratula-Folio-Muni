@@ -877,6 +877,168 @@
 
       /* ELEMENTOS DOM RECURRENTES */
       const $ = (id) => document.getElementById(id);
+      let usuarioAutenticado = null;
+      let procesandoAuth = false;
+
+      const estiloLogin = document.createElement("style");
+      estiloLogin.textContent = `
+        #pantallaLogin { position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(241,245,249,.97); }
+        #pantallaLogin.mostrar { display:flex; }
+        .login-caja { width:100%; max-width:410px; padding:24px; background:#fff; border:1px solid #dbe3ee; border-radius:10px; box-shadow:0 12px 36px rgba(15,23,42,.14); }
+        .login-caja h1 { margin:0; color:#1e3a8a; font-size:22px; text-align:center; }
+        .login-subtitulo { margin:6px 0 20px; color:#64748b; font-size:13px; text-align:center; }
+        .login-vistas { display:flex; gap:6px; margin-bottom:16px; }
+        .login-vistas button { flex:1; padding:8px 4px; border:0; border-bottom:2px solid #cbd5e1; background:transparent; color:#64748b; cursor:pointer; font-size:12px; font-weight:700; }
+        .login-vistas button.activo { border-bottom-color:#1e3a8a; color:#1e3a8a; }
+        .login-vista { display:none; }
+        .login-vista.activa { display:block; }
+        .login-campo { margin-bottom:12px; }
+        .login-campo label { margin:0 0 5px; }
+        .login-campo input { width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font:inherit; }
+        .login-submit { width:100%; min-height:40px; border:0; border-radius:6px; background:#1e3a8a; color:#fff; cursor:pointer; font-weight:700; }
+        .login-submit:disabled { opacity:.65; cursor:wait; }
+        #mensajeLogin { display:none; margin-top:12px; padding:9px 10px; border-radius:6px; font-size:13px; }
+        #mensajeLogin.mostrar { display:block; }
+        #mensajeLogin.error { border:1px solid #fecaca; background:#fef2f2; color:#991b1b; }
+        #mensajeLogin.info { border:1px solid #bfdbfe; background:#eff6ff; color:#1e40af; }
+        .sesion-barra { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:10px; }
+        #usuarioSesion { max-width:260px; overflow:hidden; color:#334155; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+        #btnCerrarSesion { border:0; border-radius:6px; padding:6px 10px; background:#ef4444; color:#fff; cursor:pointer; font-size:12px; font-weight:700; }
+        @media(max-width:600px) { #usuarioSesion { max-width:45vw; } }
+      `;
+      document.head.appendChild(estiloLogin);
+      document.body.insertAdjacentHTML("afterbegin", `
+        <div id="pantallaLogin" role="dialog" aria-modal="true" aria-labelledby="tituloLogin">
+          <div class="login-caja">
+            <h1 id="tituloLogin">Carátulas de Folio</h1>
+            <div class="login-subtitulo">Municipalidad Distrital de Chinchao</div>
+            <div class="login-vistas" role="tablist">
+              <button type="button" class="activo" data-login-vista="ingresar">Ingresar</button>
+              <button type="button" data-login-vista="crear">Crear cuenta</button>
+              <button type="button" data-login-vista="recuperar">Recuperar</button>
+            </div>
+            <form id="formLogin" class="login-vista activa">
+              <div class="login-campo"><label for="loginEmail">Correo electrónico</label><input id="loginEmail" type="email" autocomplete="username" required></div>
+              <div class="login-campo"><label for="loginPassword">Contraseña</label><input id="loginPassword" type="password" autocomplete="current-password" required></div>
+              <button class="login-submit" id="btnLogin" type="submit">Ingresar</button>
+            </form>
+            <form id="formRegistro" class="login-vista">
+              <div class="login-campo"><label for="registroEmail">Correo electrónico</label><input id="registroEmail" type="email" autocomplete="email" required></div>
+              <div class="login-campo"><label for="registroPassword">Contraseña</label><input id="registroPassword" type="password" autocomplete="new-password" minlength="6" required></div>
+              <div class="login-campo"><label for="registroPasswordConfirmacion">Repetir contraseña</label><input id="registroPasswordConfirmacion" type="password" autocomplete="new-password" minlength="6" required></div>
+              <button class="login-submit" id="btnRegistro" type="submit">Crear cuenta</button>
+            </form>
+            <form id="formRecuperar" class="login-vista">
+              <div class="login-campo"><label for="recuperarEmail">Correo electrónico</label><input id="recuperarEmail" type="email" autocomplete="email" required></div>
+              <button class="login-submit" id="btnRecuperar" type="submit">Enviar enlace</button>
+            </form>
+            <div id="mensajeLogin" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+        <div class="sesion-barra" style="display:none"><span id="usuarioSesion"></span><button id="btnCerrarSesion" type="button">Cerrar sesión</button></div>
+      `);
+
+      function mostrarMensajeLogin(mensaje, tipo = "error") {
+        const caja = $("mensajeLogin");
+        caja.textContent = mensaje || "";
+        caja.className = mensaje ? `mostrar ${tipo}` : "";
+      }
+
+      function mostrarPantallaLogin(mostrar) {
+        $("pantallaLogin").classList.toggle("mostrar", mostrar);
+        $("btnCerrarSesion").parentElement.style.display = mostrar ? "none" : "flex";
+        document.body.style.overflow = mostrar ? "hidden" : "";
+      }
+
+      function cambiarVistaLogin(vista) {
+        document.querySelectorAll("[data-login-vista]").forEach((boton) => {
+          boton.classList.toggle("activo", boton.dataset.loginVista === vista);
+        });
+        const formularioActivo = vista === "ingresar" ? "formLogin" : vista === "crear" ? "formRegistro" : "formRecuperar";
+        document.querySelectorAll(".login-vista").forEach((formulario) => {
+          formulario.classList.toggle("activa", formulario.id === formularioActivo);
+        });
+        mostrarMensajeLogin("");
+      }
+
+      async function iniciarSesion(evento) {
+        evento.preventDefault();
+        if (procesandoAuth) return;
+        procesandoAuth = true;
+        const boton = $("btnLogin");
+        boton.disabled = true;
+        boton.textContent = "Ingresando...";
+        try {
+          const { data, error } = await clienteDB.auth.signInWithPassword({
+            email: $("loginEmail").value.trim().toLowerCase(),
+            password: $("loginPassword").value
+          });
+          if (error) return mostrarMensajeLogin("No se pudo iniciar sesión: " + error.message);
+          $("usuarioSesion").textContent = data.user.email || "Sesión iniciada";
+          location.reload();
+        } catch (error) {
+          mostrarMensajeLogin("No se pudo conectar para iniciar sesión.");
+        } finally {
+          procesandoAuth = false;
+          boton.disabled = false;
+          boton.textContent = "Ingresar";
+        }
+      }
+
+      async function registrarCuenta(evento) {
+        evento.preventDefault();
+        if (procesandoAuth) return;
+        const email = $("registroEmail").value.trim().toLowerCase();
+        const password = $("registroPassword").value;
+        if (password.length < 6) return mostrarMensajeLogin("La contraseña debe tener al menos 6 caracteres.");
+        if (password !== $("registroPasswordConfirmacion").value) return mostrarMensajeLogin("Las contraseñas no coinciden.");
+        procesandoAuth = true;
+        const boton = $("btnRegistro");
+        boton.disabled = true;
+        boton.textContent = "Creando cuenta...";
+        try {
+          const { data, error } = await clienteDB.auth.signUp({
+            email, password, options: { emailRedirectTo: location.origin + location.pathname }
+          });
+          if (error) return mostrarMensajeLogin("No se pudo crear la cuenta: " + error.message);
+          if (data.session) return location.reload();
+          cambiarVistaLogin("ingresar");
+          $("loginEmail").value = email;
+          mostrarMensajeLogin("Cuenta creada. Espera la aprobación del administrador para iniciar sesión.", "info");
+        } catch (error) {
+          mostrarMensajeLogin("No se pudo conectar para crear la cuenta.");
+        } finally {
+          procesandoAuth = false;
+          boton.disabled = false;
+          boton.textContent = "Crear cuenta";
+        }
+      }
+
+      async function recuperarCuenta(evento) {
+        evento.preventDefault();
+        const email = $("recuperarEmail").value.trim().toLowerCase();
+        try {
+          const { error } = await clienteDB.auth.resetPasswordForEmail(email, {
+            redirectTo: location.origin + location.pathname
+          });
+          mostrarMensajeLogin(error ? "No se pudo enviar el enlace: " + error.message : "Revisa tu correo para restablecer la contraseña.", error ? "error" : "info");
+        } catch (error) {
+          mostrarMensajeLogin("No se pudo conectar para enviar el enlace.");
+        }
+      }
+
+      document.querySelectorAll("[data-login-vista]").forEach((boton) => {
+        boton.addEventListener("click", () => cambiarVistaLogin(boton.dataset.loginVista));
+      });
+      $("formLogin").addEventListener("submit", iniciarSesion);
+      $("formRegistro").addEventListener("submit", registrarCuenta);
+      $("formRecuperar").addEventListener("submit", recuperarCuenta);
+      $("btnCerrarSesion").addEventListener("click", async () => {
+        const { error } = await clienteDB.auth.signOut();
+        if (error) return alert("No se pudo cerrar sesión: " + error.message);
+        location.reload();
+      });
+
       const contNombres = $("contNombres");
       const previewNombres = $("previewNombres");
       const KEY_FOLIOS_IMPRESOS = "foliosImpresosGuardados";
@@ -1481,7 +1643,9 @@
         if (foliosCacheCargado) return { data: todosLosFoliosCache, error: null };
         if (promesaCargaFolios) return promesaCargaFolios;
 
-        promesaCargaFolios = clienteDB.from("folios_cv").select("*").order("creado_en", { ascending: false })
+        promesaCargaFolios = clienteDB.from("folios_cv").select("*")
+          .eq("owner_id", usuarioAutenticado.id)
+          .order("creado_en", { ascending: false })
           .then((resultado) => {
             if (!resultado.error) {
               todosLosFoliosCache = resultado.data || [];
@@ -2530,6 +2694,7 @@
       $("btnGuardar").onclick = async () => {
         const usuarios = obtenerUsuarios();
         const payload = {
+          owner_id: usuarioAutenticado.id,
           numero_folio: inpNumero.value.trim(),
           numero_bloque: inpBloque.value.trim() || null,
           periodo: inpPeriodo.value.trim(),
@@ -2554,7 +2719,8 @@
         const detalle = `Folio N° ${payload.numero_folio}${bloqueDetalle} - ${payload.periodo}`;
 
         if (inpId.value) {
-          ({ error } = await clienteDB.from("folios_cv").update(payload).eq("id", inpId.value));
+          ({ error } = await clienteDB.from("folios_cv").update(payload)
+            .eq("id", inpId.value).eq("owner_id", usuarioAutenticado.id));
         } else {
           ({ data, error } = await clienteDB.from("folios_cv").insert(payload).select().single());
         }
@@ -2633,7 +2799,8 @@
 
       async function eliminarFolio(id, numero, periodo) {
         if (!confirm(`¿Eliminar el folio N° ${numero} - ${periodo}?`)) return;
-        const { error } = await clienteDB.from("folios_cv").delete().eq("id", id);
+        const { error } = await clienteDB.from("folios_cv").delete()
+          .eq("id", id).eq("owner_id", usuarioAutenticado.id);
         if (error) { alert("Error al eliminar: " + error.message); return; }
         actualizarFoliosCache({ id }, true);
         agregarHistorial("🗑️ Eliminación", `Folio N° ${numero} - ${periodo}`);
@@ -2939,6 +3106,30 @@
 
       /* INICIALIZACIÓN GLOBAL */
       (async function init() {
+        try {
+          const { data: { session }, error } = await clienteDB.auth.getSession();
+          if (error) throw error;
+          if (!session) {
+            mostrarPantallaLogin(true);
+            return;
+          }
+          usuarioAutenticado = session.user;
+          const { error: errorPropietario } = await clienteDB.from("folios_cv").select("owner_id").limit(1);
+          if (errorPropietario) {
+            mostrarPantallaLogin(true);
+            mostrarMensajeLogin(errorPropietario.code === "42703"
+              ? "Falta ejecutar la migración de Supabase para separar los folios por cuenta."
+              : "No se pudo verificar el acceso a los folios. Revisa la configuración de Supabase.");
+            return;
+          }
+          $("usuarioSesion").textContent = session.user.email || "Sesión iniciada";
+          mostrarPantallaLogin(false);
+        } catch (error) {
+          mostrarPantallaLogin(true);
+          mostrarMensajeLogin("No se pudo verificar la sesión. Revisa tu conexión y recarga.");
+          return;
+        }
+
         inpBloque.value = bloqueActual;
         crearFilaNombre();
         await cargarConfigVisual();
