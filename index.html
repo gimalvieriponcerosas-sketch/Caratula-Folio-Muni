@@ -2,6 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Carátulas de Folio - Municipalidad de Chinchao</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -20,7 +21,7 @@
       * { box-sizing: border-box; }
       body { font-family: Arial, sans-serif; background: var(--bg-gray); margin: 0; padding: 20px; }
 
-      .layout { display: flex; gap: 30px; flex-wrap: wrap; align-items: flex-start; justify-content: center; }
+      .layout { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; justify-content: center; }
       .panel { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 400px; }
 
       h2 { margin-top: 0; font-size: 18px; color: var(--azul); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
@@ -145,11 +146,11 @@
       #btnConfig:hover { background: #334155; }
 
       .modal-overlay {
-        display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.48);
-        z-index: 5000; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(2px);
+        display: none; position: fixed; inset: 0; overflow-y: auto; background: rgba(15, 23, 42, 0.48);
+        z-index: 5000; align-items: flex-start; justify-content: center; padding: 16px; backdrop-filter: blur(2px);
       }
       .modal-overlay.mostrar { display: flex; }
-      .modal-caja { background: #fff; border-radius: 10px; padding: 20px; width: 420px; max-width: 90vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+      .modal-caja { background: #fff; border-radius: 10px; padding: 20px; width: 420px; max-width: 90vw; max-height: 90vh; overflow-y: auto; margin: auto; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
       #modalDuplicados .modal-caja { width: min(620px, 94vw); padding: 28px; border-radius: 14px; }
       #modalDuplicados .modal-duplicados-titulo { font-size: 21px; }
       #modalDuplicados #contenidoModalDuplicados { font-size: 17px !important; line-height: 1.5; }
@@ -226,7 +227,7 @@
       .config-vista-previa h4 { margin: 0 0 10px; color: var(--azul); font-size: 16px; }
       .config-vista-previa .caratula { width: 300px; height: auto; min-height: 900px; max-height: none; margin: 0 auto; zoom: 0.74; }
       #modalConfig .modal-caja { width: min(1120px, 96vw); max-width: 96vw; max-height: 94vh; padding: 26px; display: grid; grid-template-columns: minmax(440px, 1.05fr) minmax(360px, 0.95fr); gap: 22px; align-items: start; font-size: 16px; }
-      #modalConfig .modal-caja > h3 { margin-top: 0; font-size: 24px; }
+      #modalConfig .modal-caja > h3 { position: sticky; top: -26px; z-index: 2; margin: -26px 0 0; padding: 26px 0 12px; background: #fff; font-size: 24px; }
       #modalConfig .modal-caja > :not(.config-vista-previa) { grid-column: 1; }
       #modalConfig .config-vista-previa { grid-column: 2; grid-row: 1 / span 20; position: sticky; top: 0; width: 100%; margin-top: 0; }
       #modalConfig .config-cuerpo-seccion label { font-size: 16px; }
@@ -791,7 +792,7 @@
           <select id="alcanceConfigPendiente" aria-label="Dónde aplicar el diseño">
             <option value="uno">Solo este folio</option>
             <option value="todos">Todos los folios</option>
-            <option value="todos-excepto-editados" selected>Todos, excepto folios editados</option>
+            <option value="todos-excepto-editados" selected>Solo para folios nuevos (conservar los existentes)</option>
           </select>
         </div>
       </div>
@@ -920,29 +921,46 @@
 
       const estiloLogin = document.createElement("style");
       estiloLogin.textContent = `
-        #pantallaLogin { position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(241,245,249,.97); }
+        #pantallaLogin { position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; padding:4vw; background:rgba(241,245,249,.99); -webkit-text-size-adjust:100%; zoom:1 !important; transform:none !important; }
         #pantallaLogin.mostrar { display:flex; }
-        .login-caja { width:100%; max-width:560px; max-height:calc(100vh - 32px); overflow-y:auto; padding:32px; background:#fff; border:1px solid #dbe3ee; border-radius:12px; box-shadow:0 12px 36px rgba(15,23,42,.14); font-size:16px; }
-        .login-caja h1 { margin:0; color:#1e3a8a; font-size:28px; text-align:center; }
-        .login-subtitulo { margin:8px 0 24px; color:#64748b; font-size:16px; text-align:center; }
-        .login-vistas { display:flex; gap:8px; margin-bottom:20px; }
-        .login-vistas button { flex:1; padding:12px 6px; border:0; border-bottom:2px solid #cbd5e1; background:transparent; color:#64748b; cursor:pointer; font-size:15px; font-weight:700; }
+        .login-caja { width:min(640px, 90vw) !important; max-width:none !important; max-height:calc(100vh - 8vw); overflow-y:auto; margin:auto; padding:38px; background:#fff; border:1px solid #dbe3ee; border-radius:14px; box-shadow:0 12px 36px rgba(15,23,42,.14); font-size:20px; zoom:1 !important; transform:none !important; }
+        .login-caja h1 { margin:0; color:#1e3a8a; font-size:36px; text-align:center; }
+        .login-subtitulo { margin:12px 0 26px; color:#64748b; font-size:18px; text-align:center; }
+        .login-vistas { display:flex; gap:10px; margin-bottom:24px; }
+        .login-vistas button { flex:1; padding:16px 8px; border:0; border-bottom:2px solid #cbd5e1; background:transparent; color:#64748b; cursor:pointer; font-size:17px; font-weight:700; }
         .login-vistas button.activo { border-bottom-color:#1e3a8a; color:#1e3a8a; }
         .login-vista { display:none; }
         .login-vista.activa { display:block; }
-        .login-campo { margin-bottom:16px; }
-        .login-campo label { margin:0 0 6px; font-size:15px; }
-        .login-campo input { width:100%; padding:13px; border:1px solid #cbd5e1; border-radius:6px; font:inherit; }
-        .login-submit { width:100%; min-height:50px; border:0; border-radius:6px; background:#1e3a8a; color:#fff; cursor:pointer; font:inherit; font-weight:700; }
+        .login-campo { margin-bottom:20px; }
+        .login-campo label { margin:0 0 9px; font-size:17px; }
+        .login-campo input { width:100%; min-height:56px; padding:14px; border:1px solid #cbd5e1; border-radius:6px; font-size:inherit; }
+        .login-campo input:-webkit-autofill,
+        .login-campo input:-webkit-autofill:hover,
+        .login-campo input:-webkit-autofill:focus {
+          font-size:inherit !important;
+          -webkit-text-fill-color:#0f172a;
+          -webkit-box-shadow:0 0 0 1000px #fff inset;
+          transition:background-color 9999s ease-out 0s;
+        }
+        .login-submit { width:100%; min-height:60px; border:0; border-radius:6px; background:#1e3a8a; color:#fff; cursor:pointer; font-size:inherit; font-weight:700; }
         .login-submit:disabled { opacity:.65; cursor:wait; }
-        #mensajeLogin { display:none; margin-top:14px; padding:12px; border-radius:6px; font-size:15px; }
+        #mensajeLogin { display:none; margin-top:18px; padding:16px; border-radius:6px; font-size:18px; }
         #mensajeLogin.mostrar { display:block; }
         #mensajeLogin.error { border:1px solid #fecaca; background:#fef2f2; color:#991b1b; }
         #mensajeLogin.info { border:1px solid #bfdbfe; background:#eff6ff; color:#1e40af; }
-        .sesion-barra { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:10px; }
-        #usuarioSesion { max-width:260px; overflow:hidden; color:#334155; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
-        #btnCerrarSesion { border:0; border-radius:6px; padding:6px 10px; background:#ef4444; color:#fff; cursor:pointer; font-size:12px; font-weight:700; }
-        @media(max-width:600px) { #usuarioSesion { max-width:45vw; } }
+        .sesion-barra { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:10px; margin-bottom:10px; }
+        #usuarioSesion { min-width:0; max-width:100%; overflow-wrap:anywhere; color:#334155; font-size:30px; }
+        #btnCerrarSesion { border:0; border-radius:6px; padding:9px 14px; background:#ef4444; color:#fff; cursor:pointer; font-size:20px; font-weight:700; }
+        @media(max-width:600px) {
+          .login-caja { width:92vw; padding:28px; }
+          .login-caja h1 { font-size:30px; }
+          .login-subtitulo { font-size:16px; margin-bottom:22px; }
+          .login-vistas { gap:4px; }
+          .login-vistas button { padding:13px 4px; font-size:15px; }
+          .login-campo label { font-size:15px; }
+          .login-campo input { min-height:52px; }
+          .login-submit { min-height:56px; }
+        }
       `;
       document.head.appendChild(estiloLogin);
       document.body.insertAdjacentHTML("afterbegin", `
@@ -1081,7 +1099,6 @@
       const previewNombres = $("previewNombres");
       const KEY_FOLIOS_IMPRESOS = "foliosImpresosGuardados";
       let foliosImpresos = [];
-      foliosImpresos = cargarFoliosImpresos();
       const previewNumero = $("previewNumero");
       const previewPeriodo = $("previewPeriodo");
       const inpNumero = $("inpNumero");
@@ -1102,11 +1119,15 @@
       const MARCADOR_SEPARADOR_CV = "§SEP_CV§";
       const PAGE_SIZE = 5;
       const MAX_NOMBRES_VISIBLES = 10;
+      function claveLocalPorUsuario(clave) {
+        return `${clave}:${usuarioAutenticado?.id || "sin-sesion"}`;
+      }
 
       let configVisual = {
         tamanoTitulo: 22, espacioTitulo: 8,
         fuenteSubgerencia: "Arial", tamanoSubgerencia: 18, espacioGerencia: 0,
         fuenteCv: "Algerian", tamanoCv: 28, espacioCurriculum: 0,
+        textoSubgerencia: "",
         textoCvLabel: "Curriculum vitae",
         tamanoEscudo: 130, espacioNombres: 0,
         // Configuración global de separadores
@@ -1302,7 +1323,7 @@
 
       function cargarFoliosImpresos() {
         try {
-          const guardado = localStorage.getItem(KEY_FOLIOS_IMPRESOS);
+          const guardado = localStorage.getItem(claveLocalPorUsuario(KEY_FOLIOS_IMPRESOS));
           const datos = guardado ? JSON.parse(guardado) : [];
           return Array.isArray(datos) ? datos.map(String) : [];
         } catch (e) {
@@ -1313,9 +1334,12 @@
 
       function guardarFoliosImpresos() {
         const lista = [...new Set(foliosImpresos.map(String))];
-        localStorage.setItem(KEY_FOLIOS_IMPRESOS, JSON.stringify(lista));
+        localStorage.setItem(claveLocalPorUsuario(KEY_FOLIOS_IMPRESOS), JSON.stringify(lista));
         // Sincroniza la lista en Supabase para que "Impresos" sea igual en cualquier navegador.
-        clienteDB.from("config_visual").upsert({ id: 1, impresos: lista })
+        clienteDB.from("config_visual_por_usuario").upsert({
+          owner_id: usuarioAutenticado.id,
+          impresos: lista
+        })
           .then(({ error }) => { if (error) console.warn("No se pudo sincronizar los impresos:", error.message); });
       }
 
@@ -1368,10 +1392,11 @@
       async function cargarConfigVisual() {
         // 1) Carga instantánea desde el caché del navegador (evita parpadeos).
         try {
-          const guardado = localStorage.getItem("configVisualCaratula");
+          const guardado = localStorage.getItem(claveLocalPorUsuario("configVisualCaratula"));
           if (guardado) configVisual = { ...configVisual, ...JSON.parse(guardado) };
-          const configuracionesGuardadas = localStorage.getItem("configuracionesPorFolioCaratula");
+          const configuracionesGuardadas = localStorage.getItem(claveLocalPorUsuario("configuracionesPorFolioCaratula"));
           if (configuracionesGuardadas) configuracionesPorFolio = JSON.parse(configuracionesGuardadas) || {};
+          foliosImpresos = cargarFoliosImpresos();
         } catch (e) {
           console.warn("Error al leer el caché local:", e);
         }
@@ -1379,22 +1404,24 @@
         // 2) Fuente de verdad: Supabase. Así el diseño es el mismo en cualquier equipo o navegador.
         try {
           const { data, error } = await clienteDB
-            .from("config_visual")
+            .from("config_visual_por_usuario")
             .select("config_global, config_por_folio, cargo, impresos, historial")
-            .eq("id", 1)
-            .single();
+            .eq("owner_id", usuarioAutenticado.id)
+            .maybeSingle();
 
-          if (!error && data) {
+          if (error) {
+            console.warn("No se pudo cargar la configuración de esta cuenta:", error.message);
+          } else if (data) {
             configVisual = { ...configVisual, ...(data.config_global || {}) };
             configuracionesPorFolio = data.config_por_folio || {};
             if (data.cargo) cargoActual = data.cargo;
             if (Array.isArray(data.impresos)) foliosImpresos = data.impresos.map(String);
             if (Array.isArray(data.historial) && data.historial.length) {
-              localStorage.setItem("historialFolios", JSON.stringify(data.historial));
+              localStorage.setItem(claveLocalPorUsuario("historialFolios"), JSON.stringify(data.historial));
             }
-            localStorage.setItem("configVisualCaratula", JSON.stringify(configVisual));
-            localStorage.setItem("configuracionesPorFolioCaratula", JSON.stringify(configuracionesPorFolio));
-            localStorage.setItem(KEY_FOLIOS_IMPRESOS, JSON.stringify(foliosImpresos));
+            localStorage.setItem(claveLocalPorUsuario("configVisualCaratula"), JSON.stringify(configVisual));
+            localStorage.setItem(claveLocalPorUsuario("configuracionesPorFolioCaratula"), JSON.stringify(configuracionesPorFolio));
+            localStorage.setItem(claveLocalPorUsuario(KEY_FOLIOS_IMPRESOS), JSON.stringify(foliosImpresos));
           }
         } catch (e) {
           console.warn("Sin conexión a Supabase: se usa el caché local.", e);
@@ -1433,7 +1460,10 @@
 
       function cargarConfiguracionParaFolio(id, aplicar = true) {
         configVisual = obtenerConfiguracionParaFolio(id);
-        if (aplicar) aplicarConfigVisual(false);
+        if (aplicar) {
+          txtSubgerencia.innerHTML = escaparHtml(configVisual.textoSubgerencia || "").replace(/\n/g, "<br>");
+          aplicarConfigVisual(false);
+        }
       }
 
       async function guardarConfigVisual(grupo = "visual") {
@@ -1462,12 +1492,41 @@
         if (!campos.length) return true;
 
         const alcance = $("alcanceConfigPendiente").value;
-        if (campos.includes("textoCvLabel") && alcance !== "uno") {
-          const { error } = await clienteDB.from("config_caratula").update({
-            texto_cv_label: configVisualPendiente.textoCvLabel,
+        let configuracionesExistentesConservadas = null;
+        if (alcance === "todos-excepto-editados") {
+          const { data, error } = await cargarFoliosCache();
+          if (error || !data) {
+            alert(error
+              ? "No se pudieron cargar los folios existentes: " + error.message
+              : "No se pudieron cargar los folios existentes para conservar su configuración.");
+            return false;
+          }
+
+          configuracionesExistentesConservadas = { ...configuracionesPorFolio };
+          data.forEach((folio) => {
+            const idFolio = String(folio.id);
+            const configuracionFolio = { ...(configuracionesExistentesConservadas[idFolio] || {}) };
+            campos.forEach((campo) => {
+              if (!Object.prototype.hasOwnProperty.call(configuracionFolio, campo)) {
+                configuracionFolio[campo] = configuracionGlobal[campo];
+              }
+            });
+            configuracionesExistentesConservadas[idFolio] = configuracionFolio;
+          });
+        }
+
+        const cambiosCaratula = {};
+        if (alcance !== "uno") {
+          if (campos.includes("textoCvLabel")) cambiosCaratula.texto_cv_label = configVisualPendiente.textoCvLabel;
+          if (campos.includes("textoSubgerencia")) cambiosCaratula.texto_subgerencia = configVisualPendiente.textoSubgerencia;
+        }
+        if (Object.keys(cambiosCaratula).length) {
+          const { error } = await clienteDB.from("config_caratula_por_usuario").upsert({
+            owner_id: usuarioAutenticado.id,
+            ...cambiosCaratula,
             actualizado_en: new Date().toISOString()
-          }).eq("id", 1);
-          if (error) { alert("No se pudo guardar el tipo de documento: " + error.message); return false; }
+          });
+          if (error) { alert("No se pudo guardar la configuración de la carátula: " + error.message); return false; }
         }
 
         let idsDestino = [];
@@ -1489,14 +1548,15 @@
             configuracionesPorFolio[id] = configFolio;
           });
         } else {
+          configuracionesPorFolio = configuracionesExistentesConservadas;
           campos.forEach((campo) => { configuracionGlobal[campo] = configVisualPendiente[campo]; });
         }
 
-        localStorage.setItem("configVisualCaratula", JSON.stringify(configuracionGlobal));
+        localStorage.setItem(claveLocalPorUsuario("configVisualCaratula"), JSON.stringify(configuracionGlobal));
         if (Object.keys(configuracionesPorFolio).length) {
-          localStorage.setItem("configuracionesPorFolioCaratula", JSON.stringify(configuracionesPorFolio));
+          localStorage.setItem(claveLocalPorUsuario("configuracionesPorFolioCaratula"), JSON.stringify(configuracionesPorFolio));
         } else {
-          localStorage.removeItem("configuracionesPorFolioCaratula");
+          localStorage.removeItem(claveLocalPorUsuario("configuracionesPorFolioCaratula"));
         }
         sincronizarConfigVisualConDB();
 
@@ -1519,8 +1579,8 @@
       function sincronizarConfigVisualConDB(retraso = 700) {
         clearTimeout(temporizadorSincronizarConfig);
         temporizadorSincronizarConfig = setTimeout(async () => {
-          const { error } = await clienteDB.from("config_visual").upsert({
-            id: 1,
+          const { error } = await clienteDB.from("config_visual_por_usuario").upsert({
+            owner_id: usuarioAutenticado.id,
             config_global: configuracionGlobal,
             config_por_folio: configuracionesPorFolio,
             cargo: cargoActual || null,
@@ -1538,15 +1598,15 @@
         configVisualPendiente = { ...estadoConfigAntesModal.configVisualPendiente };
         claveFolioConfigPendiente = estadoConfigAntesModal.claveFolioConfigPendiente;
         configVisualModalInicio = null;
-        localStorage.setItem("configVisualCaratula", JSON.stringify(configuracionGlobal));
+        localStorage.setItem(claveLocalPorUsuario("configVisualCaratula"), JSON.stringify(configuracionGlobal));
         if (Object.keys(configuracionesPorFolio).length) {
-          localStorage.setItem("configuracionesPorFolioCaratula", JSON.stringify(configuracionesPorFolio));
+          localStorage.setItem(claveLocalPorUsuario("configuracionesPorFolioCaratula"), JSON.stringify(configuracionesPorFolio));
         } else {
-          localStorage.removeItem("configuracionesPorFolioCaratula");
+          localStorage.removeItem(claveLocalPorUsuario("configuracionesPorFolioCaratula"));
         }
         // Mantiene Supabase alineado con la configuración restaurada.
-        clienteDB.from("config_visual").upsert({
-          id: 1,
+        clienteDB.from("config_visual_por_usuario").upsert({
+          owner_id: usuarioAutenticado.id,
           config_global: configuracionGlobal,
           config_por_folio: configuracionesPorFolio,
           cargo: cargoActual || null,
@@ -2032,12 +2092,15 @@
 
       /* HISTORIAL */
       function obtenerHistorial() {
-        try { return JSON.parse(localStorage.getItem("historialFolios")) || []; } catch { return []; }
+        try { return JSON.parse(localStorage.getItem(claveLocalPorUsuario("historialFolios"))) || []; } catch { return []; }
       }
       function guardarHistorial(h) {
-        localStorage.setItem("historialFolios", JSON.stringify(h));
+        localStorage.setItem(claveLocalPorUsuario("historialFolios"), JSON.stringify(h));
         // El historial también viaja: misma lista en cualquier navegador.
-        clienteDB.from("config_visual").upsert({ id: 1, historial: h })
+        clienteDB.from("config_visual_por_usuario").upsert({
+          owner_id: usuarioAutenticado.id,
+          historial: h
+        })
           .then(({ error }) => { if (error) console.warn("No se pudo sincronizar el historial:", error.message); });
       }
       function agregarHistorial(accion, detalle) {
@@ -2495,7 +2558,7 @@
           <div class="caratula ${config.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba"}" style="--tamano-titulo:${config.tamanoTitulo}px; --espacio-titulo:${config.espacioTitulo}px; --tamano-escudo:${config.tamanoEscudo}px; --espacio-gerencia:${config.espacioGerencia}px; --espacio-curriculum:${config.espacioCurriculum}px; --espacio-nombres:${config.espacioNombres}px; --tamano-folio:${config.tamanoFolio}px; --posicion-folio:${config.posicionFolio}px; --tamano-periodo:${config.tamanoPeriodo}px; --posicion-periodo:${config.posicionPeriodo}px;">
             <div class="titulo">MUNICIPALIDAD DISTRITAL DE CHINCHAO</div>
             <img class="escudo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiij9VKAtMBiHfcGy8Q-NeekFK54ihGvJrZXLHmxDx9CH1jUUrDz5Gfvc&s=10" alt="Escudo">
-                        <div class="subgerencia" style="font-family:'${config.fuenteSubgerencia}', Arial, sans-serif; font-size:${config.tamanoSubgerencia}px;">${txtSubgerencia.innerHTML}</div>
+                        <div class="subgerencia" style="font-family:'${config.fuenteSubgerencia}', Arial, sans-serif; font-size:${config.tamanoSubgerencia}px;">${escaparHtml(config.textoSubgerencia || txtSubgerencia.innerText).replace(/\n/g, "<br>")}</div>
             <div class="cv-label" style="font-family:'${config.fuenteCv}', Algerian, 'Bookman Old Style', serif; font-size:${config.tamanoCv}px;">${escaparHtml(config.textoCvLabel || txtCvLabel.textContent)}</div>
             <div class="nombres">${nombresHtml}</div>
             <div class="folio-circulo">${escaparHtml(folio.numero_folio || '--')}</div>
@@ -2945,8 +3008,11 @@
 
       async function exportarFoliosAExcel(data, exportarTodos) {
         try {
-          const { data: config } = await clienteDB.from("config_caratula").select("*").eq("id", 1).single();
-          const cargoSubgerencia = config ? config.texto_subgerencia.replace(/\n/g, " ") : "";
+          const { data: config } = await clienteDB.from("config_caratula_por_usuario")
+            .select("texto_subgerencia, texto_cv_label")
+            .eq("owner_id", usuarioAutenticado.id)
+            .maybeSingle();
+          const cargoSubgerencia = config ? (config.texto_subgerencia || "").replace(/\n/g, " ") : "";
           const tipoDocumento = config ? config.texto_cv_label : "";
 
           const workbook = new ExcelJS.Workbook();
@@ -3042,10 +3108,16 @@
           configVisual = { ...configVisual, ...configVisualPendiente };
           aplicarConfigVisual(false);
         }
-        const { data } = await clienteDB.from("config_caratula").select("*").eq("id", 1).single();
+        const { data } = await clienteDB.from("config_caratula_por_usuario")
+          .select("texto_subgerencia, texto_cv_label")
+          .eq("owner_id", usuarioAutenticado.id)
+          .maybeSingle();
         if (data) {
-          $("cfgSubgerencia").value = data.texto_subgerencia;
-          $("cfgCvLabel").value = configVisual.textoCvLabel || data.texto_cv_label;
+          $("cfgSubgerencia").value = configVisual.textoSubgerencia || data.texto_subgerencia || "";
+          $("cfgCvLabel").value = configVisual.textoCvLabel || data.texto_cv_label || "Curriculum vitae";
+        } else {
+          $("cfgSubgerencia").value = configVisual.textoSubgerencia || "";
+          $("cfgCvLabel").value = configVisual.textoCvLabel || "Curriculum vitae";
         }
         $("cfgRubroActual").value = cargoActual;
         $("cfgFuenteSubgerencia").value = configVisual.fuenteSubgerencia;
@@ -3068,6 +3140,7 @@
         $("cfgOrdenFolioPeriodo").value = configVisual.ordenFolioPeriodo;
         actualizarVistaPreviaConfiguracion();
         $("modalConfig").classList.add("mostrar");
+        ajustarEscalaInterfaz();
       };
 
       $("btnCerrarConfig").onclick = () => cerrarModal("modalConfig");
@@ -3148,22 +3221,18 @@
       $("btnGuardarConfig").onclick = async () => {
         const sub = $("cfgSubgerencia").value.trim(), cv = $("cfgCvLabel").value.trim();
         if (!sub || !cv) { alert("Completa ambos textos."); return; }
+        configVisual.textoSubgerencia = sub;
         configVisual.textoCvLabel = cv;
         
         cargoActual = $("cfgRubroActual").value.trim();
         // El cargo se guarda junto al resto de la configuración visual (en Supabase).
-        clienteDB.from("config_visual").upsert({ id: 1, cargo: cargoActual })
+        clienteDB.from("config_visual_por_usuario").upsert({
+          owner_id: usuarioAutenticado.id,
+          cargo: cargoActual
+        })
           .then(({ error }) => { if (error) console.warn("No se pudo guardar el cargo:", error.message); });
 
-        const { error } = await clienteDB.from("config_caratula").update({ 
-          texto_subgerencia: sub, 
-          actualizado_en: new Date().toISOString() 
-        }).eq("id", 1);
-        
-        if (error) { alert("Error al guardar: " + error.message); return; }
-
         await guardarConfigVisual();
-        txtSubgerencia.innerHTML = sub.replace(/\n/g, "<br>");
         if (Object.keys(configVisualPendiente).length) {
           const aplicado = await aplicarConfiguracionVisualPendiente();
           if (!aplicado) return;
@@ -3196,6 +3265,18 @@
               : "No se pudo verificar el acceso a los folios. Revisa la configuración de Supabase.");
             return;
           }
+          const [errorConfigVisual, errorConfigCaratula] = await Promise.all([
+            clienteDB.from("config_visual_por_usuario").select("owner_id")
+              .eq("owner_id", session.user.id).maybeSingle(),
+            clienteDB.from("config_caratula_por_usuario").select("owner_id")
+              .eq("owner_id", session.user.id).maybeSingle()
+          ]);
+          if (errorConfigVisual.error || errorConfigCaratula.error) {
+            const errorConfig = errorConfigVisual.error || errorConfigCaratula.error;
+            mostrarPantallaLogin(true);
+            mostrarMensajeLogin(`Falta preparar la configuración privada por cuenta en Supabase. Ejecuta la migración supabase_configuracion_por_usuario.sql. Detalle: ${errorConfig.message}`);
+            return;
+          }
           $("usuarioSesion").textContent = session.user.email || "Sesión iniciada";
           mostrarPantallaLogin(false);
         } catch (error) {
@@ -3210,26 +3291,30 @@
         aplicarConfigVisual(false);
         actualizarPreview();
 
-        const { data } = await clienteDB.from("config_caratula").select("*").eq("id", 1).single();
+        const { data } = await clienteDB.from("config_caratula_por_usuario")
+          .select("texto_subgerencia, texto_cv_label")
+          .eq("owner_id", usuarioAutenticado.id)
+          .maybeSingle();
         if (data) {
-          txtSubgerencia.innerHTML = data.texto_subgerencia.replace(/\n/g, "<br>");
+          configuracionGlobal.textoSubgerencia = data.texto_subgerencia || "";
           configuracionGlobal.textoCvLabel = data.texto_cv_label || "Curriculum vitae";
           configVisual = obtenerConfiguracionParaFolio(obtenerClaveFolioActual());
+          txtSubgerencia.innerHTML = escaparHtml(configVisual.textoSubgerencia || data.texto_subgerencia || "").replace(/\n/g, "<br>");
           txtCvLabel.textContent = configVisual.textoCvLabel || configuracionGlobal.textoCvLabel;
         }
 
-        // Configuración compartida: cargo, folios impresos e historial.
+        // Configuración privada de esta cuenta: cargo, folios impresos e historial.
         try {
-          const { data: cfg } = await clienteDB.from("config_visual")
-            .select("cargo, impresos, historial").eq("id", 1).single();
+          const { data: cfg } = await clienteDB.from("config_visual_por_usuario")
+            .select("cargo, impresos, historial").eq("owner_id", usuarioAutenticado.id).maybeSingle();
           if (cfg) {
             if (cfg.cargo) { cargoActual = cfg.cargo; $("cfgRubroActual").value = cfg.cargo; }
             if (Array.isArray(cfg.impresos)) {
               foliosImpresos = cfg.impresos.map(String);
-              localStorage.setItem(KEY_FOLIOS_IMPRESOS, JSON.stringify(foliosImpresos));
+              localStorage.setItem(claveLocalPorUsuario(KEY_FOLIOS_IMPRESOS), JSON.stringify(foliosImpresos));
             }
             if (Array.isArray(cfg.historial) && cfg.historial.length) {
-              localStorage.setItem("historialFolios", JSON.stringify(cfg.historial));
+              localStorage.setItem(claveLocalPorUsuario("historialFolios"), JSON.stringify(cfg.historial));
             }
           }
         } catch (e) {
@@ -3249,14 +3334,27 @@
     <script>
         function ajustarEscalaInterfaz() {
           const ANCHO_BASE = 1250;
-          const ESCALA_MAX = 1.5;
-          const escala = Math.min(Math.max(window.innerWidth / ANCHO_BASE, 1), ESCALA_MAX);
+          const ESCALA_MAX = 2;
+          const loginVisible = document.getElementById("pantallaLogin")?.classList.contains("mostrar");
+          const escala = loginVisible ? 1 : Math.min(Math.max(window.innerWidth / ANCHO_BASE, 1), ESCALA_MAX);
+          const modalConfig = document.querySelector("#modalConfig .modal-caja");
           document.querySelectorAll(".encabezado, .layout").forEach((el) => {
             el.style.zoom = escala;
           });
+          if (modalConfig && document.getElementById("modalConfig").classList.contains("mostrar")) {
+            modalConfig.style.zoom = 1;
+            if (modalConfig.offsetWidth && modalConfig.offsetHeight) {
+              const escalaPorAncho = (window.innerWidth - 32) / modalConfig.offsetWidth;
+              const escalaPorAlto = (window.innerHeight - 32) / modalConfig.offsetHeight;
+              modalConfig.style.zoom = Math.min(escala * 1.05, escalaPorAncho, escalaPorAlto);
+            }
+          } else if (modalConfig) {
+            modalConfig.style.zoom = "";
+          }
         }
 
         window.addEventListener("resize", ajustarEscalaInterfaz);
+        window.addEventListener("orientationchange", ajustarEscalaInterfaz);
         ajustarEscalaInterfaz();
     </script>
   <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
