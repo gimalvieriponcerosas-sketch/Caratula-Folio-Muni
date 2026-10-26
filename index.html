@@ -1200,24 +1200,41 @@
           return `<mark class="marcado-busqueda">${escaparHtml(valor)}</mark>`;
         }
 
-        let html = "";
-        let posicionOriginalMarcada = 0;
-        let buscarDesde = 0;
-        let posicion = valorNormalizado.indexOf(busquedaNormalizada, buscarDesde);
-
-        while (posicion !== -1) {
-          const inicio = posicionesOriginales[posicion].inicio;
-          const fin = posicionesOriginales[posicion + busquedaNormalizada.length - 1].fin;
-          if (inicio >= posicionOriginalMarcada) {
-            html += escaparHtml(valor.slice(posicionOriginalMarcada, inicio));
-            html += `<mark class="marcado-busqueda">${escaparHtml(valor.slice(inicio, fin))}</mark>`;
-            posicionOriginalMarcada = fin;
+        const terminos = [...new Set(busquedaNormalizada.split(" "))];
+        const rangos = [];
+        for (const termino of terminos) {
+          let buscarDesde = 0;
+          let posicion = valorNormalizado.indexOf(termino, buscarDesde);
+          while (posicion !== -1) {
+            rangos.push({
+              inicio: posicionesOriginales[posicion].inicio,
+              fin: posicionesOriginales[posicion + termino.length - 1].fin
+            });
+            buscarDesde = posicion + termino.length;
+            posicion = valorNormalizado.indexOf(termino, buscarDesde);
           }
-          buscarDesde = posicion + busquedaNormalizada.length;
-          posicion = valorNormalizado.indexOf(busquedaNormalizada, buscarDesde);
         }
 
-        if (posicionOriginalMarcada === 0) return escaparHtml(valor);
+        if (!rangos.length) return escaparHtml(valor);
+        rangos.sort((a, b) => a.inicio - b.inicio || a.fin - b.fin);
+
+        const rangosUnidos = rangos.reduce((unidos, rango) => {
+          const ultimo = unidos[unidos.length - 1];
+          if (ultimo && rango.inicio <= ultimo.fin) {
+            ultimo.fin = Math.max(ultimo.fin, rango.fin);
+          } else {
+            unidos.push({ ...rango });
+          }
+          return unidos;
+        }, []);
+
+        let html = "";
+        let posicionOriginalMarcada = 0;
+        for (const rango of rangosUnidos) {
+          html += escaparHtml(valor.slice(posicionOriginalMarcada, rango.inicio));
+          html += `<mark class="marcado-busqueda">${escaparHtml(valor.slice(rango.inicio, rango.fin))}</mark>`;
+          posicionOriginalMarcada = rango.fin;
+        }
         return html + escaparHtml(valor.slice(posicionOriginalMarcada));
       }
 
@@ -1666,6 +1683,7 @@
         const bloq = normalizarTexto(f.numero_bloque);
         const per = normalizarTexto(f.periodo);
         const obs = normalizarTexto(f.observaciones);
+        const terminos = query.split(" ");
         const nombres = Array.isArray(f.nombres) ? f.nombres : [f.nombres || ""];
         const cargos = Array.isArray(f.cargos) ? f.cargos : [f.cargos || ""];
 
@@ -1673,7 +1691,10 @@
                bloq === query ||
                per === query ||
                obs.includes(query) ||
-               nombres.some((n) => normalizarTexto(n).includes(query)) ||
+               nombres.some((n) => {
+                 const nombre = normalizarTexto(n);
+                 return nombre.includes(query) || terminos.every((termino) => nombre.includes(termino));
+               }) ||
                cargos.some((c) => normalizarTexto(c).includes(query));
       }
 
