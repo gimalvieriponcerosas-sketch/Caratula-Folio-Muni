@@ -224,8 +224,8 @@
         tamanoEscudo: 130, fuenteNombres: "Arial", tamanoNombres: 15, espacioNombres: 0,
         alineacionNombres: "izquierda",
         grosorBordePrincipal: 5, colorBordePrincipal: "#000000", lineasContorno: 0,
-        grosorLineaContorno1: 2, colorLineaContorno1: "#dc2626",
-        grosorLineaContorno2: 2, colorLineaContorno2: "#2563eb",
+        grosorLineaContorno1: 5, colorLineaContorno1: "#dc2626",
+        grosorLineaContorno2: 5, colorLineaContorno2: "#2563eb",
         // Configuración global de separadores
         fuenteSeparador: "Arial",
         tamanoSeparador: 18,
@@ -525,12 +525,20 @@
         }
 
         // 2) Fuente de verdad: Supabase. Así el diseño es el mismo en cualquier equipo o navegador.
+        let timeoutConfigVisual;
         try {
-          const { data, error } = await clienteDB
+          const consultaConfigVisual = clienteDB
             .from("config_visual_por_usuario")
             .select("config_global, config_por_folio, cargo, impresos, historial")
             .eq("owner_id", usuarioAutenticado.id)
             .maybeSingle();
+          const { data, error } = await Promise.race([
+            consultaConfigVisual,
+            new Promise((_, reject) => {
+              timeoutConfigVisual = setTimeout(() => reject(new Error("Tiempo de espera agotado al cargar la configuración visual.")), 1200);
+            })
+          ]);
+          clearTimeout(timeoutConfigVisual);
 
           if (error) {
             console.warn("No se pudo cargar la configuración de esta cuenta:", error.message);
@@ -547,6 +555,7 @@
             localStorage.setItem(claveLocalPorUsuario(KEY_FOLIOS_IMPRESOS), JSON.stringify(foliosImpresos));
           }
         } catch (e) {
+          clearTimeout(timeoutConfigVisual);
           console.warn("Sin conexión a Supabase: se usa el caché local.", e);
         }
 
@@ -599,8 +608,8 @@
           lineas: Math.min(2, Math.max(0, Number.parseInt(config.lineasContorno, 10) || 0)),
           grosorPrincipal: obtenerGrosor(config.grosorBordePrincipal, 5, 15),
           colorPrincipal: /^#[\da-f]{6}$/i.test(config.colorBordePrincipal) ? config.colorBordePrincipal : CONFIG_VISUAL_PREDETERMINADA.colorBordePrincipal,
-          grosor1: obtenerGrosor(config.grosorLineaContorno1, 2, 10),
-          grosor2: obtenerGrosor(config.grosorLineaContorno2, 2, 10),
+          grosor1: obtenerGrosor(config.grosorLineaContorno1, 5, 10),
+          grosor2: obtenerGrosor(config.grosorLineaContorno2, 5, 10),
           color1: /^#[\da-f]{6}$/i.test(config.colorLineaContorno1) ? config.colorLineaContorno1 : CONFIG_VISUAL_PREDETERMINADA.colorLineaContorno1,
           color2: /^#[\da-f]{6}$/i.test(config.colorLineaContorno2) ? config.colorLineaContorno2 : CONFIG_VISUAL_PREDETERMINADA.colorLineaContorno2
         };
@@ -2682,6 +2691,7 @@
         await cargarConfigVisual();
         aplicarConfigVisual(false);
         actualizarPreview();
+        $("caratula").classList.add("configuracion-lista");
 
         const { data } = await clienteDB.from("config_caratula_por_usuario")
           .select("texto_subgerencia, texto_cv_label")

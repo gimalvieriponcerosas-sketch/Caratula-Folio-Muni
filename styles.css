@@ -208,6 +208,9 @@
       .opcion-cuerpo input[type="text"], .opcion-cuerpo select { width: 100%; }
       .config-fila { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
       .config-fila label { margin: 0; min-width: 90px; }
+      .config-borde-principal { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:12px; align-items:end; }
+      .config-borde-principal > div > label { margin:0 0 4px; }
+      .config-borde-principal .config-color-linea { margin:0; }
 
       .tamano-controles { display: flex; align-items: center; gap: 6px; }
       .tamano-controles button { display: none; }
@@ -230,6 +233,9 @@
         #modalConfig .modal-caja { display: block; width: min(620px, 96vw); padding: 20px; }
         #modalConfig .config-vista-previa { position: static; width: 100%; margin-top: 12px; }
         .config-vista-previa .caratula { zoom: 0.62; }
+      }
+      @media (max-width: 520px) {
+        .config-borde-principal { grid-template-columns: 1fr; }
       }
 
       /* Paginación Mejorada */
@@ -287,6 +293,7 @@
 
       /* Carátula Componente Base */
       .caratula-wrap { display: flex; flex-direction: column; align-items: center; }
+      #caratula:not(.configuracion-lista) { visibility: hidden; }
       .caratula { position: relative; width: 300px; height: auto; min-height: 900px; max-height: none; border: var(--grosor-borde-principal, 5px) solid var(--color-borde-principal, #000); border-radius: 40px; padding: 25px 20px; text-align: center; background: #fff; display: flex; flex-direction: column; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .caratula > * { position: relative; z-index: 1; }
       .caratula.contorno-linea-1::before,
