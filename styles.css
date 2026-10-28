@@ -219,6 +219,9 @@
       #modalConfig .modal-caja > h3 { position: sticky; top: -26px; z-index: 2; margin: -26px 0 0; padding: 26px 0 12px; background: #fff; font-size: 24px; }
       #modalConfig .modal-caja > :not(.config-vista-previa) { grid-column: 1; }
       #modalConfig .config-vista-previa { grid-column: 2; grid-row: 1 / span 20; position: sticky; top: 0; width: 100%; margin-top: 0; }
+      #modalConfig .historial-config { display: flex; gap: 8px; margin: 0 0 4px; }
+      #modalConfig .historial-config .btn { flex: 1; min-height: 40px; padding: 8px 6px; }
+      #modalConfig .historial-config .btn:disabled { opacity: .45; cursor: default; }
       #modalConfig .config-cuerpo-seccion label { font-size: 16px; }
       #modalConfig .config-cuerpo-seccion small { font-size: 14px; }
       #modalConfig .aviso-config-pendiente { font-size: 15px; padding: 12px; }
@@ -287,8 +290,9 @@
       .caratula .titulo { font-family: "Monotype Corsiva", cursive; font-size: var(--tamano-titulo, 22px); font-weight: bold; line-height: 1.15; margin-bottom: var(--espacio-titulo, 8px); }
       .caratula img.escudo { width: var(--tamano-escudo, 120px); margin: 6px auto 14px; display: block; }
       .caratula .subgerencia { font-weight: bold; margin-top: var(--espacio-gerencia, 0px); margin-bottom: 12px; line-height: 1.2; font-size: 14px; }
+      .caratula .subgerencia[hidden] { display: none !important; }
       .caratula .cv-label { font-weight: bold; margin-top: var(--espacio-curriculum, 0px); margin-bottom: 6px; letter-spacing: 1px; text-align: center; font-size: 28px; }
-      .caratula .nombres { font-size: 15px; text-align: left; padding-left: 8px; padding-top: var(--espacio-nombres, 0px); flex-grow: 1; width: 100%; min-width: 0; }
+      .caratula .nombres { font-family: var(--fuente-nombres, Arial), Arial, sans-serif; font-size: var(--tamano-nombres, 15px); text-align: left; padding-left: 8px; padding-top: var(--espacio-nombres, 0px); flex-grow: 1; width: 100%; min-width: 0; }
       .caratula .nombres div { margin-bottom: 6px; padding-left: 14px; position: relative; }
       .caratula .nombres div:before { content: "➤"; position: absolute; left: -4px; color: var(--sky); font-size: 11px; }
       .caratula .nombres div.separador { padding-left: 0; margin: 14px 0 8px; text-align: center; font-weight: bold; overflow-wrap: anywhere; word-break: normal; }
