@@ -210,8 +210,9 @@
       .config-fila label { margin: 0; min-width: 90px; }
 
       .tamano-controles { display: flex; align-items: center; gap: 6px; }
-      .tamano-controles button { width: 42px; height: 40px; border: none; border-radius: 6px; background: var(--azul); color: white; font-size: 21px; font-weight: bold; cursor: pointer; }
-      .tamano-controles span { min-width: 65px; text-align: center; font-weight: bold; font-size: 16px; }
+      .tamano-controles button { display: none; }
+      .tamano-controles span { min-width: 0; text-align: center; font-weight: bold; font-size: 16px; }
+      .tamano-controles .valor-numerico-config { width: 76px; min-width: 0; padding: 7px 4px; text-align: center; }
       .config-vista-previa { margin-top: 14px; padding: 14px; border: 1px solid var(--border-color); border-radius: 8px; background: #f8fafc; text-align: center; overflow: hidden; }
       .config-vista-previa h4 { margin: 0 0 10px; color: var(--azul); font-size: 16px; }
       .config-vista-previa .caratula { width: 300px; height: auto; min-height: 900px; max-height: none; margin: 0 auto; zoom: 0.74; }
@@ -286,15 +287,26 @@
 
       /* Carátula Componente Base */
       .caratula-wrap { display: flex; flex-direction: column; align-items: center; }
-      .caratula { width: 300px; height: auto; min-height: 900px; max-height: none; border: 5px solid #000; border-radius: 40px; padding: 25px 20px; text-align: center; background: #fff; display: flex; flex-direction: column; box-sizing: border-box; }
-      .caratula .titulo { font-family: "Monotype Corsiva", cursive; font-size: var(--tamano-titulo, 22px); font-weight: bold; line-height: 1.15; margin-bottom: var(--espacio-titulo, 8px); }
-      .caratula img.escudo { width: var(--tamano-escudo, 120px); margin: 6px auto 14px; display: block; }
-      .caratula .subgerencia { font-weight: bold; margin-top: var(--espacio-gerencia, 0px); margin-bottom: 12px; line-height: 1.2; font-size: 14px; }
+      .caratula { position: relative; width: 300px; height: auto; min-height: 900px; max-height: none; border: var(--grosor-borde-principal, 5px) solid var(--color-borde-principal, #000); border-radius: 40px; padding: 25px 20px; text-align: center; background: #fff; display: flex; flex-direction: column; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .caratula > * { position: relative; z-index: 1; }
+      .caratula.contorno-linea-1::before,
+      .caratula.contorno-linea-2::after { content: ""; position: absolute; z-index: 0; pointer-events: none; border: 2px solid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .caratula.contorno-linea-1::before { inset: calc(var(--grosor-borde-principal, 5px) + 1px); border-width: var(--grosor-linea-contorno-1, 2px); border-color: var(--color-linea-contorno-1, #dc2626); border-radius: 31px; }
+      .caratula.contorno-linea-2::after { inset: calc(var(--grosor-borde-principal, 5px) + var(--grosor-linea-contorno-1, 2px) + 2px); border-width: var(--grosor-linea-contorno-2, 2px); border-color: var(--color-linea-contorno-2, #2563eb); border-radius: 24px; }
+      .caratula .titulo { order: 1; font-family: "Monotype Corsiva", cursive; font-size: var(--tamano-titulo, 22px); font-weight: bold; line-height: 1.15; margin-bottom: var(--espacio-titulo, 8px); }
+      .caratula img.escudo { order: 2; width: var(--tamano-escudo, 120px); margin: 6px auto 14px; display: block; }
+      .caratula .subgerencia { order: 3; font-weight: bold; margin-top: var(--espacio-gerencia, 0px); margin-bottom: 12px; line-height: 1.2; font-size: 14px; }
+      .caratula.area-sobre-escudo .subgerencia { order: 2; }
+      .caratula.area-sobre-escudo img.escudo { order: 3; }
       .caratula .subgerencia[hidden] { display: none !important; }
-      .caratula .cv-label { font-weight: bold; margin-top: var(--espacio-curriculum, 0px); margin-bottom: 6px; letter-spacing: 1px; text-align: center; font-size: 28px; }
-      .caratula .nombres { font-family: var(--fuente-nombres, Arial), Arial, sans-serif; font-size: var(--tamano-nombres, 15px); text-align: left; padding-left: 8px; padding-top: var(--espacio-nombres, 0px); flex-grow: 1; width: 100%; min-width: 0; }
+      .caratula .cv-label { order: 4; font-weight: bold; margin-top: var(--espacio-curriculum, 0px); margin-bottom: 6px; letter-spacing: 1px; text-align: center; font-size: 28px; }
+      .caratula .nombres { order: 5; font-family: var(--fuente-nombres, Arial), Arial, sans-serif; font-size: var(--tamano-nombres, 15px); text-align: left; padding-left: 8px; padding-top: var(--espacio-nombres, 0px); flex-grow: 1; width: 100%; min-width: 0; }
       .caratula .nombres div { margin-bottom: 6px; padding-left: 14px; position: relative; }
       .caratula .nombres div:before { content: "➤"; position: absolute; left: -4px; color: var(--sky); font-size: 11px; }
+      .caratula.nombres-centrados .nombres { text-align: center; padding-left: 0; }
+      .caratula.nombres-centrados .nombres div:not(.separador) { padding-left: 0; text-align: center; }
+      .caratula.nombres-centrados .nombres div:not(.separador):before { content: none; }
+      .caratula .nombres div.sin-nombres:before { content: none; }
       .caratula .nombres div.separador { padding-left: 0; margin: 14px 0 8px; text-align: center; font-weight: bold; overflow-wrap: anywhere; word-break: normal; }
       .caratula .nombres div.separador:before { content: none; }
       .caratula .nombres div.separador-cv { letter-spacing: 1px; }
@@ -305,16 +317,22 @@
         width: clamp(70px, calc(var(--tamano-folio, 28px) * 2.5), 180px);
         height: clamp(70px, calc(var(--tamano-folio, 28px) * 2.5), 180px);
         border: 4px solid #000; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        margin: 14px auto; transform: translateY(var(--posicion-folio, 0px)); flex-shrink: 0;
+        align-self: center; text-align: center; margin: 14px auto; transform: translateY(var(--posicion-folio, 0px)); flex-shrink: 0;
       }
       .caratula .periodo {
-        font-size: var(--tamano-periodo, 15px); font-weight: bold; margin-top: 6px;
+        align-self: center; text-align: center; font-size: var(--tamano-periodo, 15px); font-weight: bold; margin-top: 6px;
         transform: translateY(var(--posicion-periodo, 0px)); flex-shrink: 0;
       }
-      .caratula.orden-periodo-arriba .folio-circulo { order: 6; }
-      .caratula.orden-periodo-arriba .periodo { order: 5; }
-      .caratula.orden-folio-arriba .periodo { order: 6; }
-      .caratula.orden-folio-arriba .folio-circulo { order: 5; }
+      .caratula.orden-periodo-arriba .folio-circulo { order: 7; }
+      .caratula.orden-periodo-arriba .periodo { order: 6; }
+      .caratula.orden-folio-arriba .periodo { order: 7; }
+      .caratula.orden-folio-arriba .folio-circulo { order: 6; }
+      .config-color-linea { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .config-color-linea[hidden] { display: none; }
+      #modalConfig details.opcion[hidden] { display: none; }
+      .control-grosor-contorno { display: inline-flex; align-items: center; gap: 6px; }
+      .control-grosor-contorno input[type="number"] { width: 72px; padding: 6px; }
+      .config-color-linea input[type="color"] { width: 48px; height: 34px; padding: 2px; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; }
 
       #modoEdicion { display: none; background: #fef3c7; color: #92400e; padding: 8px; border-radius: 6px; margin-bottom: 10px; font-size: 13px; text-align: center; border: 1px solid #f59e0b; }
       #modoEdicion.mostrar { display: block; }

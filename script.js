@@ -217,10 +217,15 @@
       const CONFIG_VISUAL_PREDETERMINADA = {
         tamanoTitulo: 22, espacioTitulo: 8,
         fuenteSubgerencia: "Arial", tamanoSubgerencia: 18, espacioGerencia: 0,
+        posicionSubgerencia: "debajo-escudo",
         fuenteCv: "Algerian", tamanoCv: 28, espacioCurriculum: 0,
         textoSubgerencia: "",
         textoCvLabel: "Curriculum vitae",
         tamanoEscudo: 130, fuenteNombres: "Arial", tamanoNombres: 15, espacioNombres: 0,
+        alineacionNombres: "izquierda",
+        grosorBordePrincipal: 5, colorBordePrincipal: "#000000", lineasContorno: 0,
+        grosorLineaContorno1: 2, colorLineaContorno1: "#dc2626",
+        grosorLineaContorno2: 2, colorLineaContorno2: "#2563eb",
         // Configuración global de separadores
         fuenteSeparador: "Arial",
         tamanoSeparador: 18,
@@ -549,6 +554,10 @@
 
           // Compatibilidad con configuraciones antiguas que no tenían estos campos.
           configVisual.ordenFolioPeriodo = configVisual.ordenFolioPeriodo === "periodo-arriba" ? "periodo-arriba" : "folio-arriba";
+          configVisual.posicionSubgerencia = configVisual.posicionSubgerencia === "encima-escudo" ? "encima-escudo" : "debajo-escudo";
+          configVisual.lineasContorno = Math.min(2, Math.max(0, Number.parseInt(configVisual.lineasContorno, 10) || 0));
+          configVisual.colorLineaContorno1 = /^#[\da-f]{6}$/i.test(configVisual.colorLineaContorno1) ? configVisual.colorLineaContorno1 : CONFIG_VISUAL_PREDETERMINADA.colorLineaContorno1;
+          configVisual.colorLineaContorno2 = /^#[\da-f]{6}$/i.test(configVisual.colorLineaContorno2) ? configVisual.colorLineaContorno2 : CONFIG_VISUAL_PREDETERMINADA.colorLineaContorno2;
           configVisual.tamanoFolio = Number.isFinite(Number(configVisual.tamanoFolio)) ? Number(configVisual.tamanoFolio) : 28;
           configVisual.posicionFolio = Number.isFinite(Number(configVisual.posicionFolio)) ? Number(configVisual.posicionFolio) : 0;
           configVisual.tamanoPeriodo = Number.isFinite(Number(configVisual.tamanoPeriodo)) ? Number(configVisual.tamanoPeriodo) : 15;
@@ -579,6 +588,36 @@
       function actualizarBotonesHistorialConfig() {
         $("btnDeshacerConfig").disabled = historialConfigDeshacer.length === 0;
         $("btnRehacerConfig").disabled = historialConfigRehacer.length === 0;
+      }
+
+      function obtenerConfiguracionContorno(config) {
+        const obtenerGrosor = (valor, predeterminado, maximo) => {
+          const grosor = Number.parseInt(valor, 10);
+          return Number.isFinite(grosor) ? Math.min(maximo, Math.max(1, grosor)) : predeterminado;
+        };
+        return {
+          lineas: Math.min(2, Math.max(0, Number.parseInt(config.lineasContorno, 10) || 0)),
+          grosorPrincipal: obtenerGrosor(config.grosorBordePrincipal, 5, 15),
+          colorPrincipal: /^#[\da-f]{6}$/i.test(config.colorBordePrincipal) ? config.colorBordePrincipal : CONFIG_VISUAL_PREDETERMINADA.colorBordePrincipal,
+          grosor1: obtenerGrosor(config.grosorLineaContorno1, 2, 10),
+          grosor2: obtenerGrosor(config.grosorLineaContorno2, 2, 10),
+          color1: /^#[\da-f]{6}$/i.test(config.colorLineaContorno1) ? config.colorLineaContorno1 : CONFIG_VISUAL_PREDETERMINADA.colorLineaContorno1,
+          color2: /^#[\da-f]{6}$/i.test(config.colorLineaContorno2) ? config.colorLineaContorno2 : CONFIG_VISUAL_PREDETERMINADA.colorLineaContorno2
+        };
+      }
+
+      function aplicarContorno(caratula, config) {
+        const contorno = obtenerConfiguracionContorno(config);
+        caratula.classList.toggle("contorno-linea-1", contorno.lineas >= 1);
+        caratula.classList.toggle("contorno-linea-2", contorno.lineas >= 2);
+        caratula.style.setProperty("--grosor-borde-principal", `${contorno.grosorPrincipal}px`);
+        caratula.style.setProperty("--color-borde-principal", contorno.colorPrincipal);
+        caratula.style.setProperty("--grosor-linea-contorno-1", `${contorno.grosor1}px`);
+        caratula.style.setProperty("--grosor-linea-contorno-2", `${contorno.grosor2}px`);
+        caratula.style.setProperty("--color-linea-contorno-1", contorno.color1);
+        caratula.style.setProperty("--color-linea-contorno-2", contorno.color2);
+        caratula.style.borderColor = contorno.colorPrincipal;
+        caratula.style.borderWidth = `${contorno.grosorPrincipal}px`;
       }
 
       function capturarEstadoHistorialConfig() {
@@ -828,10 +867,12 @@
         const periodo = $("configVistaPeriodo");
 
         const textoSubgerencia = $("cfgSubgerencia")?.value || "";
+        configVisual.alineacionNombres = configVisual.alineacionNombres === "centrado" ? "centrado" : "izquierda";
         subgerencia.innerHTML = escaparHtml(textoSubgerencia).replace(/\n/g, "<br>");
         subgerencia.hidden = !textoSubgerencia.trim();
-        cvLabel.textContent = $("cfgCvLabel")?.value || txtCvLabel.textContent;
-        nombres.innerHTML = previewNombres.innerHTML || '<div style="color:#94a3b8;">Agrega nombres para verlos aquí</div>';
+        cvLabel.textContent = $("cfgCvLabel")?.value ?? txtCvLabel.textContent;
+        cvLabel.hidden = !cvLabel.textContent.trim();
+        nombres.innerHTML = previewNombres.innerHTML || '<div class="sin-nombres" style="color:#94a3b8;">Agrega nombres para verlos aquí</div>';
 
         // En la vista de configuración usamos siempre los valores actuales del formulario.
         numero.textContent = inpNumero.value.trim() || "--";
@@ -839,6 +880,9 @@
 
         vista.classList.remove("orden-periodo-arriba", "orden-folio-arriba");
         vista.classList.add(configVisual.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba");
+        vista.classList.toggle("area-sobre-escudo", configVisual.posicionSubgerencia === "encima-escudo");
+        vista.classList.toggle("nombres-centrados", configVisual.alineacionNombres === "centrado");
+        aplicarContorno(vista, configVisual);
 
         vista.style.setProperty("--tamano-titulo", `${configVisual.tamanoTitulo}px`);
         vista.style.setProperty("--espacio-titulo", `${configVisual.espacioTitulo}px`);
@@ -876,6 +920,10 @@
 
         caratula.classList.remove("orden-periodo-arriba", "orden-folio-arriba");
         caratula.classList.add(configVisual.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba");
+        caratula.classList.toggle("area-sobre-escudo", configVisual.posicionSubgerencia === "encima-escudo");
+        configVisual.alineacionNombres = configVisual.alineacionNombres === "centrado" ? "centrado" : "izquierda";
+        caratula.classList.toggle("nombres-centrados", configVisual.alineacionNombres === "centrado");
+        aplicarContorno(caratula, configVisual);
 
         txtSubgerencia.style.fontFamily = `"${configVisual.fuenteSubgerencia}", Arial, sans-serif`;
         txtSubgerencia.style.fontSize = `${configVisual.tamanoSubgerencia}px`;
@@ -883,7 +931,8 @@
         txtCvLabel.style.fontFamily = `"${configVisual.fuenteCv}", Algerian, "Bookman Old Style", serif`;
         txtCvLabel.style.fontSize = `${configVisual.tamanoCv}px`;
         txtCvLabel.style.marginTop = `${configVisual.espacioCurriculum}px`;
-        txtCvLabel.textContent = configVisual.textoCvLabel || "Curriculum vitae";
+        txtCvLabel.textContent = configVisual.textoCvLabel ?? "Curriculum vitae";
+        txtCvLabel.hidden = !txtCvLabel.textContent.trim();
         previewNombres.style.setProperty("font-family", `"${configVisual.fuenteNombres}", Arial, sans-serif`, "important");
         previewNombres.style.setProperty("font-size", `${configVisual.tamanoNombres}px`, "important");
         previewNombres.style.paddingTop = `${configVisual.espacioNombres}px`;
@@ -891,32 +940,51 @@
         nombresVistaConfig.style.setProperty("font-family", `"${configVisual.fuenteNombres}", Arial, sans-serif`, "important");
         nombresVistaConfig.style.setProperty("font-size", `${configVisual.tamanoNombres}px`, "important");
 
-        $("valorTamanoSubgerencia").textContent = `${configVisual.tamanoSubgerencia} px`;
-        $("valorTamanoCv").textContent = `${configVisual.tamanoCv} px`;
-        $("valorTamanoTitulo").textContent = `${configVisual.tamanoTitulo} px`;
-        $("valorEspacioTitulo").textContent = `${configVisual.espacioTitulo} px`;
-        $("valorEspacioGerencia").textContent = `${configVisual.espacioGerencia} px`;
-        $("valorEspacioCurriculum").textContent = `${configVisual.espacioCurriculum} px`;
-        $("valorTamanoEscudo").textContent = `${configVisual.tamanoEscudo} px`;
+        $("valorTamanoSubgerencia").value = configVisual.tamanoSubgerencia;
+        $("valorTamanoCv").value = configVisual.tamanoCv;
+        $("valorTamanoTitulo").value = configVisual.tamanoTitulo;
+        $("valorEspacioTitulo").value = configVisual.espacioTitulo;
+        $("valorEspacioGerencia").value = configVisual.espacioGerencia;
+        $("cfgPosicionSubgerencia").value = configVisual.posicionSubgerencia;
+        $("valorEspacioCurriculum").value = configVisual.espacioCurriculum;
+        $("valorTamanoEscudo").value = configVisual.tamanoEscudo;
+        const contorno = obtenerConfiguracionContorno(configVisual);
+        configVisual.grosorBordePrincipal = contorno.grosorPrincipal;
+        configVisual.colorBordePrincipal = contorno.colorPrincipal;
+        configVisual.grosorLineaContorno1 = contorno.grosor1;
+        configVisual.grosorLineaContorno2 = contorno.grosor2;
+        configVisual.lineasContorno = contorno.lineas;
+        configVisual.colorLineaContorno1 = contorno.color1;
+        configVisual.colorLineaContorno2 = contorno.color2;
+        $("cfgGrosorBordePrincipal").value = String(contorno.grosorPrincipal);
+        $("cfgColorBordePrincipal").value = contorno.colorPrincipal;
+        $("cfgGrosorLineaContorno1").value = String(contorno.grosor1);
+        $("cfgGrosorLineaContorno2").value = String(contorno.grosor2);
+        $("wrapLineaContorno1").hidden = contorno.lineas < 1;
+        $("wrapLineaContorno2").hidden = contorno.lineas < 2;
+        $("cfgLineasContorno").value = String(contorno.lineas);
+        $("cfgColorLineaContorno1").value = contorno.color1;
+        $("cfgColorLineaContorno2").value = contorno.color2;
         $("cfgFuenteNombres").value = configVisual.fuenteNombres;
-        $("valorTamanoNombres").textContent = `${configVisual.tamanoNombres} px`;
-        $("valorEspacioNombres").textContent = `${configVisual.espacioNombres} px`;
+        $("cfgAlineacionNombres").value = configVisual.alineacionNombres;
+        $("valorTamanoNombres").value = configVisual.tamanoNombres;
+        $("valorEspacioNombres").value = configVisual.espacioNombres;
         configVisual.fuenteSeparador = configVisual.fuenteSeparador || "Arial";
         if (!Number.isFinite(Number(configVisual.tamanoSeparador))) configVisual.tamanoSeparador = 18;
         if (!Number.isFinite(Number(configVisual.espacioSeparador))) configVisual.espacioSeparador = 0;
         $("cfgFuenteSeparador").value = configVisual.fuenteSeparador;
-        $("valorTamanoSeparador").textContent = `${configVisual.tamanoSeparador} px`;
-        $("valorEspacioSeparador").textContent = `${configVisual.espacioSeparador} px`;
+        $("valorTamanoSeparador").value = configVisual.tamanoSeparador;
+        $("valorEspacioSeparador").value = configVisual.espacioSeparador;
 
         // Aseguramos valores numéricos antes de mostrarlos en configuración.
         if (!Number.isFinite(Number(configVisual.tamanoFolio))) configVisual.tamanoFolio = 28;
         if (!Number.isFinite(Number(configVisual.posicionFolio))) configVisual.posicionFolio = 0;
         if (!Number.isFinite(Number(configVisual.tamanoPeriodo))) configVisual.tamanoPeriodo = 15;
         if (!Number.isFinite(Number(configVisual.posicionPeriodo))) configVisual.posicionPeriodo = 0;
-        $("valorTamanoFolio").textContent = `${configVisual.tamanoFolio} px`;
-        $("valorPosicionFolio").textContent = `${configVisual.posicionFolio} px`;
-        $("valorTamanoPeriodo").textContent = `${configVisual.tamanoPeriodo} px`;
-        $("valorPosicionPeriodo").textContent = `${configVisual.posicionPeriodo} px`;
+        $("valorTamanoFolio").value = configVisual.tamanoFolio;
+        $("valorPosicionFolio").value = configVisual.posicionFolio;
+        $("valorTamanoPeriodo").value = configVisual.tamanoPeriodo;
+        $("valorPosicionPeriodo").value = configVisual.posicionPeriodo;
         $("cfgOrdenFolioPeriodo").value = configVisual.ordenFolioPeriodo;
 
         actualizarVistaPreviaConfiguracion();
@@ -1629,7 +1697,7 @@
 
         previewNombres.innerHTML = visibles.length ? visibles.map((u) => u.separador
           ? obtenerHtmlSeparador(u.textoSeparador, "normal", configVisual)
-          : `<div>${escaparHtml(u.nombre)}</div>`).join("") : '<div style="color:#aaa"></div>';
+          : `<div>${escaparHtml(u.nombre)}</div>`).join("") : '<div class="sin-nombres"></div>';
         previewNumero.textContent = inpNumero.value || "--";
         previewPeriodo.textContent = inpPeriodo.value || "----";
 
@@ -1764,6 +1832,7 @@
 
       function obtenerHtmlCaratula(folio) {
         const config = obtenerConfiguracionParaFolio(folio.id);
+        const contorno = obtenerConfiguracionContorno(config);
         const nombres = Array.isArray(folio.nombres) ? folio.nombres.slice(0, 10) : [folio.nombres || ""];
         const nombresHtml = nombres.map((nombre) => {
           if (!esSeparador(nombre)) return `<div>${escaparHtml(nombre)}</div>`;
@@ -1771,11 +1840,11 @@
           return obtenerHtmlSeparador(separador.texto, "normal", config);
         }).join("");
         return `
-          <div class="caratula ${config.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba"}" style="--tamano-titulo:${config.tamanoTitulo}px; --espacio-titulo:${config.espacioTitulo}px; --tamano-escudo:${config.tamanoEscudo}px; --fuente-nombres:'${escaparHtml(config.fuenteNombres || "Arial")}'; --tamano-nombres:${Number(config.tamanoNombres) || 15}px; --espacio-gerencia:${config.espacioGerencia}px; --espacio-curriculum:${config.espacioCurriculum}px; --espacio-nombres:${config.espacioNombres}px; --tamano-folio:${config.tamanoFolio}px; --posicion-folio:${config.posicionFolio}px; --tamano-periodo:${config.tamanoPeriodo}px; --posicion-periodo:${config.posicionPeriodo}px;">
+          <div class="caratula ${config.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba"} ${config.posicionSubgerencia === "encima-escudo" ? "area-sobre-escudo" : ""} ${config.alineacionNombres === "centrado" ? "nombres-centrados" : ""} ${contorno.lineas >= 1 ? "contorno-linea-1" : ""} ${contorno.lineas >= 2 ? "contorno-linea-2" : ""}" style="border-color:${contorno.colorPrincipal}; border-width:${contorno.grosorPrincipal}px; --grosor-borde-principal:${contorno.grosorPrincipal}px; --color-borde-principal:${contorno.colorPrincipal}; --grosor-linea-contorno-1:${contorno.grosor1}px; --grosor-linea-contorno-2:${contorno.grosor2}px; --color-linea-contorno-1:${contorno.color1}; --color-linea-contorno-2:${contorno.color2}; --tamano-titulo:${config.tamanoTitulo}px; --espacio-titulo:${config.espacioTitulo}px; --tamano-escudo:${config.tamanoEscudo}px; --fuente-nombres:'${escaparHtml(config.fuenteNombres || "Arial")}'; --tamano-nombres:${Number(config.tamanoNombres) || 15}px; --espacio-gerencia:${config.espacioGerencia}px; --espacio-curriculum:${config.espacioCurriculum}px; --espacio-nombres:${config.espacioNombres}px; --tamano-folio:${config.tamanoFolio}px; --posicion-folio:${config.posicionFolio}px; --tamano-periodo:${config.tamanoPeriodo}px; --posicion-periodo:${config.posicionPeriodo}px;">
             <div class="titulo">MUNICIPALIDAD DISTRITAL DE CHINCHAO</div>
             <img class="escudo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiij9VKAtMBiHfcGy8Q-NeekFK54ihGvJrZXLHmxDx9CH1jUUrDz5Gfvc&s=10" alt="Escudo">
             ${config.textoSubgerencia?.trim() ? `<div class="subgerencia" style="font-family:'${config.fuenteSubgerencia}', Arial, sans-serif; font-size:${config.tamanoSubgerencia}px;">${escaparHtml(config.textoSubgerencia).replace(/\n/g, "<br>")}</div>` : ""}
-            <div class="cv-label" style="font-family:'${config.fuenteCv}', Algerian, 'Bookman Old Style', serif; font-size:${config.tamanoCv}px;">${escaparHtml(config.textoCvLabel || txtCvLabel.textContent)}</div>
+            ${config.textoCvLabel?.trim() ? `<div class="cv-label" style="font-family:'${config.fuenteCv}', Algerian, 'Bookman Old Style', serif; font-size:${config.tamanoCv}px;">${escaparHtml(config.textoCvLabel)}</div>` : ""}
             <div class="nombres">${nombresHtml}</div>
             <div class="folio-circulo">${escaparHtml(folio.numero_folio || '--')}</div>
             <div class="periodo">${escaparHtml(folio.periodo || '----')}</div>
@@ -2289,7 +2358,7 @@
               const row = hoja.getRow(filaExcel++);
               const nota = (f.notas_pago || [])[idx] ?? "", cargoItem = (f.cargos || [])[idx] ?? "";
               const resNota = validarRangoNotaPago(nota);
-              const tipoDocumentoFolio = obtenerConfiguracionParaFolio(f.id).textoCvLabel || tipoDocumento;
+              const tipoDocumentoFolio = obtenerConfiguracionParaFolio(f.id).textoCvLabel ?? tipoDocumento;
               const valores = [numeroCorrelativo++, f.numero_bloque || "", f.numero_folio, f.periodo, cargoSubgerencia, tipoDocumentoFolio, limpiarNombreParaExportar(nombre), cargoItem, nota, resNota.total || ""];
 
               valores.forEach((v, i) => {
@@ -2356,23 +2425,24 @@
         $("cfgRubroActual").value = cargoActual;
         $("cfgFuenteSubgerencia").value = configVisual.fuenteSubgerencia;
         $("cfgFuenteCv").value = configVisual.fuenteCv;
-        $("valorTamanoTitulo").textContent = `${configVisual.tamanoTitulo} px`;
-        $("valorEspacioTitulo").textContent = `${configVisual.espacioTitulo} px`;
-        $("valorTamanoSubgerencia").textContent = `${configVisual.tamanoSubgerencia} px`;
-        $("valorTamanoCv").textContent = `${configVisual.tamanoCv} px`;
-        $("valorEspacioGerencia").textContent = `${configVisual.espacioGerencia} px`;
-        $("valorEspacioCurriculum").textContent = `${configVisual.espacioCurriculum} px`;
-        $("valorTamanoEscudo").textContent = `${configVisual.tamanoEscudo} px`;
+        $("valorTamanoTitulo").value = configVisual.tamanoTitulo;
+        $("valorEspacioTitulo").value = configVisual.espacioTitulo;
+        $("valorTamanoSubgerencia").value = configVisual.tamanoSubgerencia;
+        $("valorTamanoCv").value = configVisual.tamanoCv;
+        $("valorEspacioGerencia").value = configVisual.espacioGerencia;
+        $("cfgPosicionSubgerencia").value = configVisual.posicionSubgerencia || "debajo-escudo";
+        $("valorEspacioCurriculum").value = configVisual.espacioCurriculum;
+        $("valorTamanoEscudo").value = configVisual.tamanoEscudo;
         $("cfgFuenteNombres").value = configVisual.fuenteNombres || "Arial";
-        $("valorTamanoNombres").textContent = `${Number(configVisual.tamanoNombres) || 15} px`;
-        $("valorEspacioNombres").textContent = `${configVisual.espacioNombres} px`;
+        $("valorTamanoNombres").value = Number(configVisual.tamanoNombres) || 15;
+        $("valorEspacioNombres").value = configVisual.espacioNombres;
         $("cfgFuenteSeparador").value = configVisual.fuenteSeparador || "Arial";
-        $("valorTamanoSeparador").textContent = `${configVisual.tamanoSeparador || 18} px`;
-        $("valorEspacioSeparador").textContent = `${configVisual.espacioSeparador || 0} px`;
-        $("valorTamanoFolio").textContent = `${configVisual.tamanoFolio} px`;
-        $("valorPosicionFolio").textContent = `${configVisual.posicionFolio} px`;
-        $("valorTamanoPeriodo").textContent = `${configVisual.tamanoPeriodo} px`;
-        $("valorPosicionPeriodo").textContent = `${configVisual.posicionPeriodo} px`;
+        $("valorTamanoSeparador").value = configVisual.tamanoSeparador || 18;
+        $("valorEspacioSeparador").value = configVisual.espacioSeparador || 0;
+        $("valorTamanoFolio").value = configVisual.tamanoFolio;
+        $("valorPosicionFolio").value = configVisual.posicionFolio;
+        $("valorTamanoPeriodo").value = configVisual.tamanoPeriodo;
+        $("valorPosicionPeriodo").value = configVisual.posicionPeriodo;
         $("cfgOrdenFolioPeriodo").value = configVisual.ordenFolioPeriodo;
         iniciarHistorialConfig();
         actualizarVistaPreviaConfiguracion();
@@ -2410,6 +2480,38 @@
         secciones.forEach((s) => { s.open = abrirTodas; });
         document.querySelectorAll("#modalConfig details.opcion").forEach((o) => { o.open = false; });
       };
+      const camposNumericosConfig = {
+        valorTamanoTitulo: { campo: "tamanoTitulo", min: 12, max: 40 },
+        valorEspacioTitulo: { campo: "espacioTitulo", min: 0, max: 60 },
+        valorTamanoSubgerencia: { campo: "tamanoSubgerencia", min: 10, max: 50 },
+        valorEspacioGerencia: { campo: "espacioGerencia", min: 0, max: 80 },
+        valorTamanoCv: { campo: "tamanoCv", min: 10, max: 60 },
+        valorEspacioCurriculum: { campo: "espacioCurriculum", min: 0, max: 80 },
+        valorTamanoEscudo: { campo: "tamanoEscudo", min: 60, max: 220 },
+        valorTamanoSeparador: { campo: "tamanoSeparador", min: 10, max: 60, grupo: "separador" },
+        valorEspacioSeparador: { campo: "espacioSeparador", min: 0, max: 80, grupo: "separador" },
+        valorTamanoNombres: { campo: "tamanoNombres", min: 8, max: 40 },
+        valorEspacioNombres: { campo: "espacioNombres", min: 0, max: 80 },
+        valorTamanoFolio: { campo: "tamanoFolio", min: 14, max: 70 },
+        valorPosicionFolio: { campo: "posicionFolio", min: -80, max: 80 },
+        valorTamanoPeriodo: { campo: "tamanoPeriodo", min: 8, max: 50 },
+        valorPosicionPeriodo: { campo: "posicionPeriodo", min: -80, max: 80 }
+      };
+      Object.entries(camposNumericosConfig).forEach(([id, definicion]) => {
+        $(id).addEventListener("change", (evento) => {
+          if (!evento.target.value.trim()) {
+            evento.target.value = configVisual[definicion.campo];
+            return;
+          }
+          const valor = Number(evento.target.value);
+          if (!Number.isFinite(valor)) {
+            evento.target.value = configVisual[definicion.campo];
+            return;
+          }
+          configVisual[definicion.campo] = Math.min(definicion.max, Math.max(definicion.min, Math.round(valor)));
+          aplicarConfigVisual(true, definicion.grupo || "visual");
+        });
+      });
       $("btnMenosTitulo").onclick = () => { if (configVisual.tamanoTitulo > 12) { configVisual.tamanoTitulo--; aplicarConfigVisual(); } };
       $("btnMasTitulo").onclick = () => { if (configVisual.tamanoTitulo < 40) { configVisual.tamanoTitulo++; aplicarConfigVisual(); } };
       $("btnMenosEspacioTitulo").onclick = () => { if (configVisual.espacioTitulo > 0) { configVisual.espacioTitulo -= 2; aplicarConfigVisual(); } };
@@ -2420,6 +2522,41 @@
       $("btnMasCv").onclick = () => { if (configVisual.tamanoCv < 60) { configVisual.tamanoCv++; aplicarConfigVisual(); } };
       $("btnMenosEspacioGerencia").onclick = () => { if (configVisual.espacioGerencia > 0) { configVisual.espacioGerencia -= 2; aplicarConfigVisual(); } };
       $("btnMasEspacioGerencia").onclick = () => { if (configVisual.espacioGerencia < 80) { configVisual.espacioGerencia += 2; aplicarConfigVisual(); } };
+      $("cfgPosicionSubgerencia").onchange = (e) => {
+        configVisual.posicionSubgerencia = e.target.value === "encima-escudo" ? "encima-escudo" : "debajo-escudo";
+        aplicarConfigVisual();
+      };
+      $("cfgLineasContorno").onchange = (e) => {
+        configVisual.lineasContorno = Math.min(2, Math.max(0, Number.parseInt(e.target.value, 10) || 0));
+        aplicarConfigVisual();
+      };
+      $("cfgGrosorBordePrincipal").onchange = (e) => {
+        configVisual.grosorBordePrincipal = Number.parseInt(e.target.value, 10);
+        aplicarConfigVisual();
+      };
+      $("cfgColorBordePrincipal").oninput = (e) => {
+        configVisual.colorBordePrincipal = e.target.value;
+        aplicarConfigVisual(false);
+      };
+      $("cfgColorBordePrincipal").onchange = () => aplicarConfigVisual();
+      $("cfgGrosorLineaContorno1").onchange = (e) => {
+        configVisual.grosorLineaContorno1 = Number.parseInt(e.target.value, 10);
+        aplicarConfigVisual();
+      };
+      $("cfgGrosorLineaContorno2").onchange = (e) => {
+        configVisual.grosorLineaContorno2 = Number.parseInt(e.target.value, 10);
+        aplicarConfigVisual();
+      };
+      $("cfgColorLineaContorno1").oninput = (e) => {
+        configVisual.colorLineaContorno1 = e.target.value;
+        aplicarConfigVisual(false);
+      };
+      $("cfgColorLineaContorno1").onchange = () => aplicarConfigVisual();
+      $("cfgColorLineaContorno2").oninput = (e) => {
+        configVisual.colorLineaContorno2 = e.target.value;
+        aplicarConfigVisual(false);
+      };
+      $("cfgColorLineaContorno2").onchange = () => aplicarConfigVisual();
       $("btnMenosEspacioCurriculum").onclick = () => { if (configVisual.espacioCurriculum > 0) { configVisual.espacioCurriculum -= 2; aplicarConfigVisual(); } };
       $("btnMasEspacioCurriculum").onclick = () => { if (configVisual.espacioCurriculum < 80) { configVisual.espacioCurriculum += 2; aplicarConfigVisual(); } };
       $("btnMenosEscudo").onclick = () => { if (configVisual.tamanoEscudo > 60) { configVisual.tamanoEscudo -= 5; aplicarConfigVisual(); } };
@@ -2465,13 +2602,16 @@
 
       $("cfgFuenteSubgerencia").onchange = (e) => { configVisual.fuenteSubgerencia = e.target.value; aplicarConfigVisual(); };
       $("cfgFuenteNombres").onchange = (e) => { configVisual.fuenteNombres = e.target.value; aplicarConfigVisual(); };
+      $("cfgAlineacionNombres").onchange = (e) => {
+        configVisual.alineacionNombres = e.target.value === "centrado" ? "centrado" : "izquierda";
+        aplicarConfigVisual();
+      };
       $("cfgFuenteCv").onchange = (e) => { configVisual.fuenteCv = e.target.value; aplicarConfigVisual(); };
       $("cfgSubgerencia").oninput = actualizarVistaPreviaConfiguracion;
       $("cfgCvLabel").oninput = actualizarVistaPreviaConfiguracion;
 
       $("btnGuardarConfig").onclick = async () => {
         const sub = $("cfgSubgerencia").value.trim(), cv = $("cfgCvLabel").value.trim();
-        if (!cv) { alert("Completa el tipo de documento."); return; }
         configVisual.textoSubgerencia = sub;
         configVisual.textoCvLabel = cv;
         
@@ -2553,7 +2693,8 @@
           const textoSubgerencia = configVisual.textoSubgerencia || "";
           txtSubgerencia.innerHTML = escaparHtml(textoSubgerencia).replace(/\n/g, "<br>");
           txtSubgerencia.hidden = !textoSubgerencia.trim();
-          txtCvLabel.textContent = configVisual.textoCvLabel || configuracionGlobal.textoCvLabel;
+          txtCvLabel.textContent = configVisual.textoCvLabel ?? configuracionGlobal.textoCvLabel;
+          txtCvLabel.hidden = !txtCvLabel.textContent.trim();
         }
 
         // Configuración privada de esta cuenta: cargo, folios impresos e historial.
