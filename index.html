@@ -32,7 +32,7 @@
       <div class="modal-impresion-caja">
         <div class="panel-seleccion-impresion">
           <h3>🖨️ Selección para Impresión</h3>
-          <input type="search" id="buscadorImpresion" placeholder="🔍 Buscar" style="width:100%; margin-bottom:8px;" />
+          <input type="search" id="buscadorImpresion" placeholder="🔍 Buscar folio, bloque o período" style="width:100%; margin-bottom:8px;" />
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px;">
             <label style="display:flex; align-items:center; gap:6px; margin:0; font-size:12px; color:#334155; font-weight:600;">
               <input type="checkbox" id="chkMarcarTodosVisibles" style="width:auto;" />
@@ -50,9 +50,9 @@
           </div>
 
           <div id="seccionFoliosImpresos" class="seccion-folios-impresos" style="margin-top:12px; border-top:1px solid #e2e8f0; padding-top:10px;">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
-              <span style="font-size:12px; color:#334155; font-weight:600;">📌 Impresos</span>
-              <button type="button" id="btnToggleFoliosImpresos" class="btn btn-gray" style="padding:6px 10px; font-size:11px; min-width:140px;">Ocultar impresos</button>
+            <div class="folios-impresos-resumen">
+              <span class="folios-impresos-titulo">📌 Impresos</span>
+              <button type="button" id="btnToggleFoliosImpresos" class="folios-impresos-toggle" aria-expanded="true" aria-controls="listaFoliosImpresos">Ocultar impresos</button>
             </div>
             <div id="listaFoliosImpresos" style="max-height:120px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; padding:8px; background:#f8fafc; display:block;">
               <!-- Impresos -->

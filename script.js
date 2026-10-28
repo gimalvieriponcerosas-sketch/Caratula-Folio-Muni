@@ -1865,25 +1865,31 @@
 
         const impresos = foliosDisponibles.filter((f) => esFolioImpreso(String(f.id)));
         boton.textContent = mostrarFoliosImpresos ? "Ocultar impresos" : "Ver todos los impresos";
+        boton.setAttribute("aria-expanded", String(mostrarFoliosImpresos));
         contenedor.style.display = mostrarFoliosImpresos ? "block" : "none";
 
-        if (!impresos.length) {
-          contenedor.innerHTML = '<div style="color:#64748b;font-size:12px;">No hay folios impresos.</div>';
+        const query = normalizarTexto(buscadorImpresion?.value || "");
+        const impresosFiltrados = query
+          ? impresos.filter((f) => normalizarTexto([
+              f.numero_folio,
+              f.numero_bloque ? `bloque ${f.numero_bloque}` : "",
+              f.periodo
+            ].join(" ")).includes(query))
+          : impresos;
+
+        if (!impresosFiltrados.length) {
+          contenedor.innerHTML = `<div style="color:#64748b;font-size:12px;">${impresos.length ? "No hay impresos que coincidan con la búsqueda." : "No hay folios impresos."}</div>`;
           return;
         }
 
-        if (!mostrarFoliosImpresos) {
-          contenedor.innerHTML = "";
-          return;
-        }
-
-        contenedor.innerHTML = impresos.map((f) => `
-          <div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #e2e8f0;">
-            <span style="font-size:12px; font-weight:bold;">N° ${escaparHtml(f.numero_folio)}</span>
-            ${f.numero_bloque ? `<span style="font-size:11px; color:#334155; background:#e2e8f0; padding:2px 6px; border-radius:4px;">Bloque ${escaparHtml(f.numero_bloque)}</span>` : ""}
-            <span style="font-size:11px; color:#64748b;">Periodo: ${escaparHtml(f.periodo)}</span>
-            <span style="font-size:10px; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:999px; font-weight:700;">Impreso</span>
-            <button type="button" onclick="desmarcarFolioImpreso('${f.id}')" title="Quitar de impresos (por error o impresión fallida)" style="margin-left:auto; border:1px solid #dc2626; background:#fff; color:#dc2626; border-radius:6px; padding:3px 8px; font-size:11px; font-weight:600; cursor:pointer;">↩️ Deshacer</button>
+        contenedor.innerHTML = impresosFiltrados.map((f) => `
+          <div class="folio-impreso-item">
+            <div class="folio-impreso-datos">
+              <span class="folio-impreso-numero">N° ${escaparHtml(f.numero_folio)}</span>
+              ${f.numero_bloque ? `<span class="folio-impreso-bloque">Bloque ${escaparHtml(f.numero_bloque)}</span>` : ""}
+              <span class="folio-impreso-periodo">Período: ${escaparHtml(f.periodo)}</span>
+            </div>
+            <button type="button" onclick="desmarcarFolioImpreso('${f.id}')" title="Quitar de impresos" class="btn-deshacer-impreso">Deshacer</button>
           </div>
         `).join("");
       }
@@ -1921,7 +1927,6 @@
         foliosPagina.forEach((f) => {
           const idStr = String(f.id);
           const checked = foliosMarcadosParaImprimir.includes(idStr) ? "checked" : "";
-          const yaImpreso = esFolioImpreso(idStr);
           const item = document.createElement("label");
           item.style.cssText = "display:flex; align-items:center; gap:8px; padding:6px; border-bottom:1px solid #e2e8f0; cursor:pointer;";
           item.innerHTML = `
@@ -1929,7 +1934,6 @@
             <span style="font-size:13px; font-weight:bold;">N° ${escaparHtml(f.numero_folio)}</span>
             ${f.numero_bloque ? `<span style="font-size:11px; color:#334155; background:#e2e8f0; padding:2px 6px; border-radius:4px;">Bloque ${escaparHtml(f.numero_bloque)}</span>` : ""}
             <span style="font-size:11px; color:#64748b;">Periodo: ${escaparHtml(f.periodo)}</span>
-            ${yaImpreso ? '<span style="font-size:10px; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:999px; font-weight:700;">Impreso</span>' : ''}
           `;
           contenedorLista.appendChild(item);
         });
@@ -1960,8 +1964,6 @@
         if (buscadorImpresion) buscadorImpresion.value = "";
 
         if ($("chkMarcarTodosVisibles")) $("chkMarcarTodosVisibles").checked = false;
-        const btnToggle = $("btnToggleFoliosImpresos");
-        if (btnToggle) btnToggle.textContent = mostrarFoliosImpresos ? "Ocultar impresos" : "Ver todos los impresos";
         renderizarListaFoliosImpresos(foliosDisponibles);
         renderizarListaImpresion(foliosDisponibles);
         renderizarVistaPreviaHojaImpresion(foliosDisponibles);
@@ -1974,6 +1976,15 @@
           const foliosDisponibles = obtenerFoliosParaImpresion();
           renderizarListaFoliosImpresos(foliosDisponibles);
           renderizarListaImpresion(foliosDisponibles);
+        });
+      }
+
+      const seccionFoliosImpresos = $("seccionFoliosImpresos");
+      const btnToggleFoliosImpresos = $("btnToggleFoliosImpresos");
+      if (seccionFoliosImpresos && btnToggleFoliosImpresos) {
+        btnToggleFoliosImpresos.addEventListener("click", () => {
+          mostrarFoliosImpresos = !mostrarFoliosImpresos;
+          renderizarListaFoliosImpresos(obtenerFoliosParaImpresion());
         });
       }
 
@@ -2013,16 +2024,6 @@
           renderizarListaFoliosImpresos(foliosDisponibles);
           renderizarListaImpresion(foliosDisponibles);
           renderizarVistaPreviaHojaImpresion(foliosDisponibles);
-        });
-      }
-
-      const btnToggleFoliosImpresos = $("btnToggleFoliosImpresos");
-      if (btnToggleFoliosImpresos) {
-        btnToggleFoliosImpresos.addEventListener("click", () => {
-          mostrarFoliosImpresos = !mostrarFoliosImpresos;
-          const foliosDisponibles = obtenerFoliosParaImpresion();
-          renderizarListaFoliosImpresos(foliosDisponibles);
-          renderizarListaImpresion(foliosDisponibles);
         });
       }
 

@@ -365,8 +365,18 @@
       .paginacion-impresion { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 10px 0 2px; color: #334155; font-size: 14px; font-weight: 700; }
       .paginacion-impresion button { min-width: 38px; min-height: 34px; border: 0; border-radius: 6px; background: var(--azul); color: #fff; cursor: pointer; font-size: 15px; }
       .paginacion-impresion button:disabled { opacity: .35; cursor: default; }
-      .seccion-folios-impresos { flex: 0 1 auto; min-height: 0; max-height: 150px; overflow: hidden; }
-      .seccion-folios-impresos #listaFoliosImpresos { max-height: 90px !important; overflow-y: auto; }
+      .seccion-folios-impresos { flex: 0 1 auto; min-height: 0; max-height: 205px; overflow: hidden; }
+      .folios-impresos-resumen { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; color:#1e3a8a; font-size:12px; font-weight:600; }
+      .folios-impresos-titulo { white-space:nowrap; }
+      .folios-impresos-toggle { display:inline-flex; align-items:center; justify-content:center; min-width:134px; padding:6px 10px; border:0; border-radius:6px; background:#94a3b8; color:#fff; cursor:pointer; font-family:inherit; font-size:11px; font-weight:700; text-align:center; white-space:nowrap; }
+      .folios-impresos-toggle:hover { background:#64748b; }
+      .seccion-folios-impresos #listaFoliosImpresos { max-height:min(24vh, 150px) !important; overflow-y:auto; margin-top:7px; }
+      .folio-impreso-item { display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:6px 8px; padding:7px 2px; border-bottom:1px solid #e2e8f0; }
+      .folio-impreso-datos { display:flex; align-items:center; flex-wrap:wrap; gap:5px 6px; min-width:0; color:#0f172a; }
+      .folio-impreso-numero { flex:0 0 auto; font-size:12px; font-weight:700; white-space:nowrap; }
+      .folio-impreso-bloque { flex:0 0 auto; padding:2px 6px; border-radius:4px; background:#e2e8f0; color:#334155; font-size:11px; white-space:nowrap; }
+      .folio-impreso-periodo { min-width:0; color:#64748b; font-size:11px; overflow-wrap:anywhere; }
+      .btn-deshacer-impreso { flex:0 0 auto; padding:5px 8px; border:1px solid #dc2626; border-radius:6px; background:#fff; color:#dc2626; cursor:pointer; font-size:11px; font-weight:600; white-space:nowrap; }
       .acciones-modal-impresion { flex: 0 0 auto; position: sticky; bottom: 0; margin-top: auto !important; padding-top: 10px; background: #fff; border-top: 1px solid #e2e8f0; }
       .acciones-modal-impresion .btn { min-height: 44px; font-size: 15px; }
       .panel-vista-impresion {
