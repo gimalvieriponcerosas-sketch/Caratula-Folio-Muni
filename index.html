@@ -277,21 +277,21 @@
           <summary class="config-seccion-titulo">Contorno</summary>
           <div class="config-cuerpo-seccion">
             <details class="opcion">
-              <summary>Grosor del borde principal</summary>
+              <summary>Borde principal</summary>
               <div class="opcion-cuerpo">
-                <div class="control-grosor-contorno">
-                  <input type="number" id="cfgGrosorBordePrincipal" min="1" max="15" step="1" />
-                  <span>px</span>
+                <div class="config-borde-principal">
+                  <div>
+                    <label for="cfgGrosorBordePrincipal">Grosor</label>
+                    <div class="control-grosor-contorno">
+                      <input type="number" id="cfgGrosorBordePrincipal" min="1" max="15" step="1" />
+                      <span>px</span>
+                    </div>
+                  </div>
+                  <label class="config-color-linea" for="cfgColorBordePrincipal">
+                    Color
+                    <input type="color" id="cfgColorBordePrincipal" value="#000000" />
+                  </label>
                 </div>
-              </div>
-            </details>
-            <details class="opcion">
-              <summary>Color del borde principal</summary>
-              <div class="opcion-cuerpo">
-                <label class="config-color-linea" for="cfgColorBordePrincipal">
-                  Elegir color
-                  <input type="color" id="cfgColorBordePrincipal" value="#000000" />
-                </label>
               </div>
             </details>
             <details class="opcion">
@@ -307,29 +307,37 @@
             <details class="opcion" id="wrapLineaContorno1" hidden>
               <summary>Línea adicional 1</summary>
               <div class="opcion-cuerpo">
-                <label for="cfgGrosorLineaContorno1">Grosor</label>
-                <div class="control-grosor-contorno">
-                  <input type="number" id="cfgGrosorLineaContorno1" min="1" max="10" step="1" />
-                  <span>px</span>
+                <div class="config-borde-principal">
+                  <div>
+                    <label for="cfgGrosorLineaContorno1">Grosor</label>
+                    <div class="control-grosor-contorno">
+                      <input type="number" id="cfgGrosorLineaContorno1" min="1" max="10" step="1" />
+                      <span>px</span>
+                    </div>
+                  </div>
+                  <label class="config-color-linea" for="cfgColorLineaContorno1">
+                    Color
+                    <input type="color" id="cfgColorLineaContorno1" value="#dc2626" />
+                  </label>
                 </div>
-                <label class="config-color-linea" for="cfgColorLineaContorno1">
-                  Color
-                  <input type="color" id="cfgColorLineaContorno1" value="#dc2626" />
-                </label>
               </div>
             </details>
             <details class="opcion" id="wrapLineaContorno2" hidden>
               <summary>Línea adicional 2</summary>
               <div class="opcion-cuerpo">
-                <label for="cfgGrosorLineaContorno2">Grosor</label>
-                <div class="control-grosor-contorno">
-                  <input type="number" id="cfgGrosorLineaContorno2" min="1" max="10" step="1" />
-                  <span>px</span>
+                <div class="config-borde-principal">
+                  <div>
+                    <label for="cfgGrosorLineaContorno2">Grosor</label>
+                    <div class="control-grosor-contorno">
+                      <input type="number" id="cfgGrosorLineaContorno2" min="1" max="10" step="1" />
+                      <span>px</span>
+                    </div>
+                  </div>
+                  <label class="config-color-linea" for="cfgColorLineaContorno2">
+                    Color
+                    <input type="color" id="cfgColorLineaContorno2" value="#2563eb" />
+                  </label>
                 </div>
-                <label class="config-color-linea" for="cfgColorLineaContorno2">
-                  Color
-                  <input type="color" id="cfgColorLineaContorno2" value="#2563eb" />
-                </label>
               </div>
             </details>
           </div>
@@ -493,6 +501,7 @@
             <option value="uno">Solo este folio</option>
             <option value="todos">Todos los folios</option>
             <option value="todos-excepto-editados" selected>Solo para folios nuevos</option>
+            <option value="este-y-nuevos">Solo este folio y los folios nuevos</option>
           </select>
         </div>
       </div>
@@ -516,7 +525,7 @@
           </div>
           <div style="width:110px;">
             <label>N° de bloque</label>
-            <input type="text" id="inpBloque" placeholder="01" />
+            <input type="text" id="inpBloque" />
           </div>
         </div>
 

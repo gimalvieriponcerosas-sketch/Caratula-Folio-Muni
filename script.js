@@ -733,7 +733,7 @@
 
         const alcance = $("alcanceConfigPendiente").value;
         let configuracionesExistentesConservadas = null;
-        if (alcance === "todos-excepto-editados") {
+        if (alcance === "todos-excepto-editados" || alcance === "este-y-nuevos") {
           configuracionesExistentesConservadas = { ...configuracionesPorFolio };
           const tamanoPagina = 1000;
           let desde = 0;
@@ -799,6 +799,20 @@
           });
         } else {
           configuracionesPorFolio = configuracionesExistentesConservadas;
+          if (alcance === "este-y-nuevos" && claveFolioConfigPendiente && claveFolioConfigPendiente !== "actual_form") {
+            const configFolioActual = { ...(configuracionesPorFolio[claveFolioConfigPendiente] || {}) };
+            campos.forEach((campo) => { configFolioActual[campo] = configVisualPendiente[campo]; });
+            configuracionesPorFolio[claveFolioConfigPendiente] = configFolioActual;
+          }
+          // El formulario vacío no es un folio existente. Quita sus valores antiguos
+          // para que los folios nuevos hereden los valores globales recién guardados.
+          const configuracionFormularioNuevo = { ...(configuracionesPorFolio.actual_form || {}) };
+          campos.forEach((campo) => { delete configuracionFormularioNuevo[campo]; });
+          if (Object.keys(configuracionFormularioNuevo).length) {
+            configuracionesPorFolio.actual_form = configuracionFormularioNuevo;
+          } else {
+            delete configuracionesPorFolio.actual_form;
+          }
           campos.forEach((campo) => { configuracionGlobal[campo] = configVisualPendiente[campo]; });
         }
 
@@ -824,7 +838,7 @@
           return false;
         }
 
-        const cantidad = alcance === "todos" ? "todos los folios" : alcance === "todos-excepto-editados" ? "todos los folios, excepto los editados" : "este folio";
+        const cantidad = alcance === "todos" ? "todos los folios" : alcance === "todos-excepto-editados" ? "todos los folios, excepto los editados" : alcance === "este-y-nuevos" ? "este folio y los folios nuevos" : "este folio";
         configVisualPendiente = {};
         claveFolioConfigPendiente = null;
         cargarConfiguracionParaFolio(obtenerClaveFolioActual());
@@ -1061,6 +1075,7 @@
           .then((resultado) => {
             if (!resultado.error) {
               todosLosFoliosCache = resultado.data || [];
+              actualizarBloquePredeterminado();
               foliosCacheCargado = true;
               duplicadosGlobales = obtenerDuplicadosPorFolio(todosLosFoliosCache);
             }
@@ -1081,7 +1096,14 @@
         } else {
           todosLosFoliosCache[indice] = { ...todosLosFoliosCache[indice], ...folio };
         }
+        actualizarBloquePredeterminado();
         duplicadosGlobales = obtenerDuplicadosPorFolio(todosLosFoliosCache);
+      }
+
+      function actualizarBloquePredeterminado() {
+        // El caché conserva el orden de creación descendente: el primer folio
+        // es el último creado y su bloque queda como sugerencia para el siguiente.
+        bloqueActual = todosLosFoliosCache[0]?.numero_bloque || "01";
       }
 
       async function obtenerTotalRegistros(filtro = "") {
@@ -2686,7 +2708,6 @@
           return;
         }
 
-        inpBloque.value = bloqueActual;
         crearFilaNombre();
         await cargarConfigVisual();
         aplicarConfigVisual(false);
