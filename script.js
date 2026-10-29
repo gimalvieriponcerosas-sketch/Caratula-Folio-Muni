@@ -248,6 +248,7 @@
       let historialConfigRehacer = [];
       let estadoActualHistorialConfig = null;
       let paginaActual = 0, totalPaginas = 1, filtroActivo = "", totalRegistros = 0, cargoActual = "", bloqueActual = "01";
+      let ajustesAvanzados = { limpiarAlGuardar: false, abrirFolioCreado: false };
       let notasPagoVisibles = false, modoMostrarFilas = "ultimos", duplicadosGlobales = {};
       let ordenarListaPorBloque = false;
       const foliosAbiertos = new Set();
@@ -515,6 +516,8 @@
       async function cargarConfigVisual() {
         // 1) Carga instantánea desde el caché del navegador (evita parpadeos).
         try {
+          const ajustesGuardados = localStorage.getItem(claveLocalPorUsuario("ajustesAvanzados"));
+          if (ajustesGuardados) ajustesAvanzados = { ...ajustesAvanzados, ...JSON.parse(ajustesGuardados) };
           const guardado = localStorage.getItem(claveLocalPorUsuario("configVisualCaratula"));
           if (guardado) configVisual = { ...configVisual, ...JSON.parse(guardado) };
           const configuracionesGuardadas = localStorage.getItem(claveLocalPorUsuario("configuracionesPorFolioCaratula"));
@@ -544,6 +547,10 @@
             console.warn("No se pudo cargar la configuración de esta cuenta:", error.message);
           } else if (data) {
             configVisual = { ...configVisual, ...(data.config_global || {}) };
+            if (data.config_global?.ajustesAvanzados) {
+              ajustesAvanzados = { ...ajustesAvanzados, ...data.config_global.ajustesAvanzados };
+              localStorage.setItem(claveLocalPorUsuario("ajustesAvanzados"), JSON.stringify(ajustesAvanzados));
+            }
             configuracionesPorFolio = data.config_por_folio || {};
             if (data.cargo) cargoActual = data.cargo;
             if (Array.isArray(data.impresos)) foliosImpresos = data.impresos.map(String);
@@ -585,6 +592,7 @@
           configVisual.espacioSeparador = 0;
         }
         configuracionGlobal = { ...configVisual };
+        configuracionGlobal.ajustesAvanzados = { ...ajustesAvanzados };
       }
 
       function obtenerClaveFolioActual() { return inpId.value ? String(inpId.value) : "actual_form"; }
@@ -2149,6 +2157,7 @@
 
       /* OPERACIONES CRUD */
       $("btnGuardar").onclick = async () => {
+        const esNuevoFolio = !inpId.value;
         const usuarios = obtenerUsuarios();
         const payload = {
           owner_id: usuarioAutenticado.id,
@@ -2185,7 +2194,25 @@
         if (error) { alert("Error al guardar: " + error.message); return; }
 
         const idGuardado = inpId.value || data?.id || null;
-  if (idGuardado) actualizarFoliosCache({ ...payload, ...(data || {}), id: idGuardado });
+        if (idGuardado) actualizarFoliosCache({ ...payload, ...(data || {}), id: idGuardado });
+        if (esNuevoFolio) {
+          paginaActual = 0;
+          if (ajustesAvanzados.abrirFolioCreado && idGuardado) {
+            buscador.value = "";
+            filtroActivo = "";
+            foliosAbiertos.clear();
+            foliosAbiertos.add(String(idGuardado));
+            const foliosOrdenados = [...todosLosFoliosCache];
+            if (ordenarListaPorBloque) {
+              foliosOrdenados.sort((a, b) => {
+                const porBloque = compararNumericoNatural(a.numero_bloque, b.numero_bloque);
+                return porBloque || compararNumericoNatural(a.numero_folio, b.numero_folio);
+              });
+            }
+            const indiceNuevo = foliosOrdenados.findIndex((folio) => String(folio.id) === String(idGuardado));
+            if (indiceNuevo >= 0) paginaActual = Math.floor(indiceNuevo / PAGE_SIZE);
+          }
+        }
 
         // Guardar es normal: NO abrimos ninguna ventana de duplicados aquí.
         // Los nombres duplicados quedan marcados en rojo en "Folios guardados".
@@ -2199,6 +2226,7 @@
         actualizarVisibilidadFilas();
         mostrarUltimosNombres(true);
         await recargarUltimaPagina();
+        if (ajustesAvanzados.limpiarAlGuardar) limpiarFormulario();
       };
 
       function editarFolio(folio) {
@@ -2455,6 +2483,8 @@
           $("cfgCvLabel").value = configVisual.textoCvLabel ?? "Curriculum vitae";
         }
         $("cfgRubroActual").value = cargoActual;
+        $("cfgLimpiarAlGuardar").checked = ajustesAvanzados.limpiarAlGuardar;
+        $("cfgAbrirFolioCreado").checked = ajustesAvanzados.abrirFolioCreado;
         $("cfgFuenteSubgerencia").value = configVisual.fuenteSubgerencia;
         $("cfgFuenteCv").value = configVisual.fuenteCv;
         $("valorTamanoTitulo").value = configVisual.tamanoTitulo;
@@ -2648,12 +2678,23 @@
         configVisual.textoCvLabel = cv;
         
         cargoActual = $("cfgRubroActual").value.trim();
-        // El cargo se guarda junto al resto de la configuración visual (en Supabase).
-        clienteDB.from("config_visual_por_usuario").upsert({
+        ajustesAvanzados = {
+          limpiarAlGuardar: $("cfgLimpiarAlGuardar").checked,
+          abrirFolioCreado: $("cfgAbrirFolioCreado").checked
+        };
+        configuracionGlobal.ajustesAvanzados = { ...ajustesAvanzados };
+        // Cargo y preferencias avanzadas se guardan en la configuración privada de la cuenta.
+        const { error: errorAjustes } = await clienteDB.from("config_visual_por_usuario").upsert({
           owner_id: usuarioAutenticado.id,
-          cargo: cargoActual
-        })
-          .then(({ error }) => { if (error) console.warn("No se pudo guardar el cargo:", error.message); });
+          cargo: cargoActual || null,
+          config_global: configuracionGlobal,
+          actualizado_en: new Date().toISOString()
+        });
+        if (errorAjustes) {
+          alert("No se pudieron guardar los ajustes avanzados: " + errorAjustes.message);
+          return;
+        }
+        localStorage.setItem(claveLocalPorUsuario("ajustesAvanzados"), JSON.stringify(ajustesAvanzados));
 
         await guardarConfigVisual();
         if (Object.keys(configVisualPendiente).length) {

@@ -129,10 +129,23 @@
         </div>
 
         <details class="config-seccion config-acordeon">
-          <summary class="config-seccion-titulo">Cargo</summary>
+          <summary class="config-seccion-titulo">Ajustes avanzados</summary>
           <div class="config-cuerpo-seccion">
-            <input type="text" id="cfgRubroActual" />
-            <small style="color:#777;">Los nuevos nombres agregados tomarán este cargo de forma predeterminada.</small>
+            <details class="opcion">
+              <summary>Cargo predeterminado</summary>
+              <div class="opcion-cuerpo">
+                <input type="text" id="cfgRubroActual" />
+                <small style="color:#64748b;">Los nuevos nombres agregados tomarán este cargo de forma predeterminada.</small>
+              </div>
+            </details>
+            <label class="ajuste-avanzado-opcion" for="cfgLimpiarAlGuardar">
+              <span><strong>Limpiar el formulario al guardar</strong><small>Deja el formulario listo para registrar otro contrato.</small></span>
+              <input type="checkbox" id="cfgLimpiarAlGuardar" />
+            </label>
+            <label class="ajuste-avanzado-opcion" for="cfgAbrirFolioCreado">
+              <span><strong>Mostrar automáticamente el folio creado</strong><small>Abre su contenido en la lista y cierra el folio que estaba abierto.</small></span>
+              <input type="checkbox" id="cfgAbrirFolioCreado" />
+            </label>
           </div>
         </details>
 
