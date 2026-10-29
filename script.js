@@ -656,7 +656,39 @@
 
       function obtenerConfiguracionParaFolio(id) {
         const clave = String(id || "actual_form");
-        return { ...obtenerConfiguracionGlobalPorModo(obtenerModoConfiguracionFolio(clave)), ...(configuracionesPorFolio[clave] || {}) };
+        const modo = obtenerModoConfiguracionFolio(clave);
+        const guardada = configuracionesPorFolio[clave] || {};
+        const especifica = obtenerOverridesFolioModo(clave, modo);
+        return { ...obtenerConfiguracionGlobalPorModo(modo), ...especifica };
+      }
+
+      function obtenerOverridesFolioModo(clave, modo, mapa = configuracionesPorFolio) {
+        const guardada = mapa[clave] || {};
+        return guardada._por_modo
+          ? (guardada._por_modo[modo] || {})
+          : (modo === obtenerModoConfiguracionFolio(clave) ? guardada : {});
+      }
+
+      function establecerConfiguracionFolioPorModo(clave, modo, valores, destino = configuracionesPorFolio) {
+        const configFolio = { ...(destino[clave] || {}) };
+        let porModo = configFolio._por_modo ? { ...configFolio._por_modo } : {};
+        if (!configFolio._por_modo && Object.keys(configFolio).length) {
+          // Migra ajustes antiguos al modo al que pertenecía ese folio.
+          const modoAnterior = obtenerModoConfiguracionFolio(clave);
+          porModo[modoAnterior] = { ...configFolio };
+          Object.keys(configFolio).forEach((campo) => delete configFolio[campo]);
+        }
+        const actual = { ...(porModo[modo] || {}) };
+        Object.entries(valores).forEach(([campo, valor]) => {
+          if (valor === undefined) delete actual[campo];
+          else actual[campo] = valor;
+        });
+        if (Object.keys(actual).length) porModo[modo] = actual;
+        else delete porModo[modo];
+        if (Object.keys(porModo).length) configFolio._por_modo = porModo;
+        else delete configFolio._por_modo;
+        if (Object.keys(configFolio).length) destino[clave] = configFolio;
+        else delete destino[clave];
       }
 
       function actualizarBotonesHistorialConfig() {
@@ -842,13 +874,13 @@
               if ((modoConfigPlantilla === "documentos") !== esModoDocumentos) return;
               const { id } = folioExistente;
               const clave = String(id);
-              const configuracionFolio = { ...(configuracionesExistentesConservadas[clave] || {}) };
-              campos.forEach((campo) => {
-                if (!Object.prototype.hasOwnProperty.call(configuracionFolio, campo)) {
-                  configuracionFolio[campo] = configuracionGlobalModo[campo];
-                }
-              });
-              configuracionesExistentesConservadas[clave] = configuracionFolio;
+              const overrides = obtenerOverridesFolioModo(clave, modoConfigPlantilla, configuracionesExistentesConservadas);
+              const faltantes = Object.fromEntries(campos
+                .filter((campo) => !Object.prototype.hasOwnProperty.call(overrides, campo))
+                .map((campo) => [campo, configuracionGlobalModo[campo]]));
+              if (Object.keys(faltantes).length) {
+                establecerConfiguracionFolioPorModo(clave, modoConfigPlantilla, faltantes, configuracionesExistentesConservadas);
+              }
             });
 
             if (!foliosExistentes || foliosExistentes.length < tamanoPagina) break;
@@ -880,33 +912,23 @@
           Object.entries(configuracionesPorFolio).forEach(([clave, configFolio]) => {
             const folio = todosLosFoliosCache.find((item) => String(item.id) === String(clave));
             if (!folio || (modoConfigPlantilla === "documentos") !== esFolioModoDocumentos(folio)) return;
-            campos.forEach((campo) => { delete configFolio[campo]; });
-            if (Object.keys(configFolio).length) configuracionesPorFolio[clave] = configFolio;
-            else delete configuracionesPorFolio[clave];
+            establecerConfiguracionFolioPorModo(clave, modoConfigPlantilla,
+              Object.fromEntries(campos.map((campo) => [campo, undefined])));
           });
         } else if (alcance === "uno") {
           idsDestino.forEach((id) => {
-            const configFolio = { ...(configuracionesPorFolio[id] || {}) };
-            campos.forEach((campo) => { configFolio[campo] = configVisualPendiente[campo]; });
-            configuracionesPorFolio[id] = configFolio;
+            establecerConfiguracionFolioPorModo(String(id), modoConfigPlantilla, configVisualPendiente);
           });
         } else {
           configuracionesPorFolio = configuracionesExistentesConservadas;
           if (alcance === "este-y-nuevos" && claveFolioConfigPendiente && claveFolioConfigPendiente !== "actual_form" && obtenerModoConfiguracionFolio(claveFolioConfigPendiente) === modoConfigPlantilla) {
-            const configFolioActual = { ...(configuracionesPorFolio[claveFolioConfigPendiente] || {}) };
-            campos.forEach((campo) => { configFolioActual[campo] = configVisualPendiente[campo]; });
-            configuracionesPorFolio[claveFolioConfigPendiente] = configFolioActual;
+            establecerConfiguracionFolioPorModo(claveFolioConfigPendiente, modoConfigPlantilla, configVisualPendiente);
           }
           // El formulario vacío no es un folio existente. Quita sus valores antiguos
           // para que los folios nuevos hereden los valores globales recién guardados.
           if ((modoConfigPlantilla === "documentos") === ($("selectTipoRegistro")?.value === "documentos")) {
-            const configuracionFormularioNuevo = { ...(configuracionesPorFolio.actual_form || {}) };
-            campos.forEach((campo) => { delete configuracionFormularioNuevo[campo]; });
-            if (Object.keys(configuracionFormularioNuevo).length) {
-              configuracionesPorFolio.actual_form = configuracionFormularioNuevo;
-            } else {
-              delete configuracionesPorFolio.actual_form;
-            }
+            establecerConfiguracionFolioPorModo("actual_form", modoConfigPlantilla,
+              Object.fromEntries(campos.map((campo) => [campo, undefined])));
           }
           campos.forEach((campo) => { configuracionGlobalModo[campo] = configVisualPendiente[campo]; });
         }
@@ -2105,6 +2127,9 @@
         if (claveBorradorModoRegistro(modoRegistroActual) !== claveBorradorModoRegistro(modoAnterior)) {
           restaurarBorradorModoRegistro(modoRegistroActual);
         }
+        // Cada modo usa su propia plantilla global (incluidos colores y contorno).
+        // Recarga esa configuración al cambiar el selector del formulario.
+        cargarConfiguracionParaFolio(obtenerClaveFolioActual());
         notasPagoVisibles = evento.target.value === "notas";
         actualizarVisibilidadNotas();
         actualizarPreview();
