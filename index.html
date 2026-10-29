@@ -123,6 +123,13 @@
             <div class="periodo" id="configVistaPeriodo">2023-2024</div>
           </div>
         </div>
+        <div class="config-modo-plantilla">
+          <label for="cfgModoPlantilla">Configurar carátula para:</label>
+          <select id="cfgModoPlantilla">
+            <option value="normal">Normal y Notas</option>
+            <option value="documentos">N.º de documentos</option>
+          </select>
+        </div>
         <div class="config-herramientas">
           <button type="button" id="btnAlternarTodasConfig" class="btn btn-gray">🔽 Expandir / contraer todo</button>
           <small class="config-ayuda">Toca el nombre de una sección para abrir sus opciones.</small>
@@ -145,6 +152,14 @@
             <label class="ajuste-avanzado-opcion" for="cfgAbrirFolioCreado">
               <span><strong>Mostrar automáticamente el folio creado</strong><small>Abre su contenido en la lista y cierra el folio que estaba abierto.</small></span>
               <input type="checkbox" id="cfgAbrirFolioCreado" />
+            </label>
+            <label class="ajuste-avanzado-opcion" for="cfgFolioAutomatico">
+              <span><strong>N° de folio automático</strong><small>Usa el siguiente número después del último folio que registres o cambies.</small></span>
+              <input type="checkbox" id="cfgFolioAutomatico" />
+            </label>
+            <label class="ajuste-avanzado-opcion" for="cfgPeriodoAutomatico">
+              <span><strong>Periodo automático</strong><small>Conserva el último periodo que registres o cambies para los folios nuevos.</small></span>
+              <input type="checkbox" id="cfgPeriodoAutomatico" />
             </label>
           </div>
         </details>
@@ -546,9 +561,15 @@
         <input type="text" id="inpPeriodo" />
 
         <div class="nombres-cabecera">
-          <label>Apellidos y Nombres / Cargo</label>
-          <button id="btnMostrarNotas" type="button">⚙️ Notas</button>
+          <label for="selectTipoRegistro">Modo de carátula</label>
+          <select id="selectTipoRegistro" aria-label="Tipo de registro">
+            <option value="normal" selected>Normal</option>
+            <option value="notas">Notas</option>
+            <option value="documentos">N.º de documentos</option>
+          </select>
         </div>
+
+        <label id="etiquetaDatosRegistro" class="etiqueta-datos-registro">Apellidos y Nombres / Cargo</label>
 
         <div id="contNombres"></div>
 
@@ -585,7 +606,7 @@
           <div class="titulo">MUNICIPALIDAD DISTRITAL DE CHINCHAO</div>
           <img class="escudo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiij9VKAtMBiHfcGy8Q-NeekFK54ihGvJrZXLHmxDx9CH1jUUrDz5Gfvc&s=10" alt="Escudo">
           <div class="subgerencia" id="txtSubgerencia">SUB GERENCIA DE<br />RECURSOS HUMANOS</div>
-          <div class="cv-label" id="txtCvLabel">Curriculum vitae</div>
+          <div class="cv-label" id="txtCvLabel">CURRICULUM VITAE</div>
           <div class="nombres" id="previewNombres"></div>
           <div class="folio-circulo" id="previewNumero">01</div>
           <div class="periodo" id="previewPeriodo">2023-2024</div>
