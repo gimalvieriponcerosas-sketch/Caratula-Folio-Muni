@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Registro fotográfico de folios</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <header class="cabecera">
+    <h1>Municipalidad Distrital de Chinchao</h1>
+    <p>Registro de folios</p>
+  </header>
+
+  <main>
+    <!-- 1. FOLIO -->
+    <nav class="navegacion-secciones" role="tablist" aria-label="Secciones del registro">
+      <button type="button" id="tabFolio" class="tab-seccion activo" role="tab" aria-selected="true" aria-controls="panelFolio" data-tab-seccion="panelFolio">Folio</button>
+      <button type="button" id="tabFotos" class="tab-seccion" role="tab" aria-selected="false" aria-controls="panelFotos" data-tab-seccion="panelFotos">Fotografías</button>
+      <button type="button" id="tabAnexo" class="tab-seccion" role="tab" aria-selected="false" aria-controls="panelAnexo" data-tab-seccion="panelAnexo">Vista previa / Word</button>
+    </nav>
+
+    <section id="panelFolio" class="panel" data-panel-seccion role="tabpanel" aria-labelledby="tabFolio" tabindex="0">
+      <h2 id="t-folio">1. Folio</h2>
+
+      <div class="fila-selector">
+        <div class="campo">
+          <label for="selFolio">Folio guardado</label>
+          <select id="selFolio"></select>
+        </div>
+        <button id="btnNuevo" type="button" class="btn secundario">Nuevo folio</button>
+      </div>
+
+      <form id="formFolio" novalidate>
+        <div class="rejilla-form">
+          <div class="campo">
+            <label for="tipoFolio">Tipo de folio</label>
+            <input id="tipoFolio" name="tipoFolio" type="text" autocomplete="off" aria-describedby="err-tipoFolio">
+            <span class="error-campo" id="err-tipoFolio"></span>
+          </div>
+          <div class="campo">
+            <label for="cargo">Cargo</label>
+            <input id="cargo" name="cargo" type="text" autocomplete="off" aria-describedby="err-cargo">
+            <span class="error-campo" id="err-cargo"></span>
+          </div>
+          <div class="campo">
+            <label for="anio">Año</label>
+            <input id="anio" name="anio" type="number" min="1900" max="9999" step="1" inputmode="numeric" aria-describedby="err-anio">
+            <span class="error-campo" id="err-anio"></span>
+          </div>
+          <div class="campo">
+            <label for="ubicacion">Ubicación</label>
+            <input id="ubicacion" name="ubicacion" type="text" autocomplete="off" aria-describedby="err-ubicacion">
+            <span class="error-campo" id="err-ubicacion"></span>
+          </div>
+          <div class="campo ancho-completo">
+            <label for="numeroFolio">Número de folio</label>
+            <input id="numeroFolio" name="numeroFolio" type="text" autocomplete="off" aria-describedby="err-numeroFolio">
+            <span class="error-campo" id="err-numeroFolio"></span>
+          </div>
+        </div>
+        <div class="acciones">
+          <button id="btnGuardarFolio" type="submit" class="btn primario">Guardar folio</button>
+          <button id="btnEliminarFolio" type="button" class="btn peligro">Eliminar folio</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 2. FOTOGRAFIAS -->
+    <section id="panelFotos" class="panel" data-panel-seccion role="tabpanel" aria-labelledby="tabFotos" tabindex="0" hidden>
+      <h2 id="t-fotos">2. Fotografías</h2>
+      <p id="avisoSinFolio" class="aviso-caja">Guarda un folio para poder agregar fotos.</p>
+
+      <div class="acciones">
+        <button id="btnTomar" type="button" class="btn primario">Tomar foto</button>
+        <button id="btnAgregar" type="button" class="btn secundario">Agregar imágenes</button>
+      </div>
+      <input id="inpCamara" type="file" accept="image/*" capture="environment" hidden>
+      <input id="inpArchivos" type="file" accept="image/*" multiple hidden>
+
+      <p class="nota">
+        La fecha y hora de cada foto es el momento en que se incorporó a esta aplicación.
+        No certifica la fecha original de la imagen.
+      </p>
+
+      <div class="controles-galeria">
+        <div class="campo">
+          <label for="buscarFotos">Buscar fotos registradas</label>
+          <input id="buscarFotos" type="search" autocomplete="off" placeholder="Número, nombre de archivo o descripción">
+        </div>
+        <div class="campo">
+          <label for="filtroFotos">Mostrar</label>
+          <select id="filtroFotos">
+            <option value="todas">Todas las fotos</option>
+            <option value="descritas">Con descripción</option>
+            <option value="pendientes">Pendientes de descripción</option>
+          </select>
+        </div>
+      </div>
+      <p id="resumenFotos" class="resumen-fotos" aria-live="polite"></p>
+      <ol id="galeria" class="galeria" aria-label="Galería de fotografías"></ol>
+    </section>
+
+    <!-- 3. ANEXO -->
+    <section id="panelAnexo" class="panel" data-panel-seccion role="tabpanel" aria-labelledby="tabAnexo" tabindex="0" hidden>
+      <h2 id="t-anexo">3. Vista previa del anexo del folio</h2>
+      <div id="vistaPrevia" class="contenedor-anexo"></div>
+
+      <div id="panelProblemas" class="problemas" role="alert" hidden></div>
+
+      <div class="acciones">
+        <button id="btnGenerar" type="button" class="btn primario grande">Generar Word</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="dlgCamara" aria-labelledby="dlgCamaraTitulo">
+    <h2 id="dlgCamaraTitulo">Tomar foto con la cámara</h2>
+    <video id="videoCamara" autoplay playsinline></video>
+    <p id="estadoCamara" class="nota">Iniciando cámara…</p>
+    <div class="acciones">
+      <button id="btnCapturar" type="button" class="btn primario" disabled>Capturar foto</button>
+      <button id="btnCerrarCamara" type="button" class="btn secundario">Cancelar</button>
+    </div>
+  </dialog>
+
+  <!-- Vista previa antes de confirmar una foto -->
+  <dialog id="dlgFoto" aria-labelledby="dlgFotoTitulo">
+    <form method="dialog">
+      <h2 id="dlgFotoTitulo">Vista previa de la foto</h2>
+      <img id="dlgFotoImg" alt="Vista previa de la foto que se va a agregar">
+      <div class="campo">
+        <label for="dlgFotoDescripcion">Descripción (puedes completarla después)</label>
+        <textarea id="dlgFotoDescripcion" rows="3" maxlength="500"></textarea>
+      </div>
+      <div class="acciones">
+        <button type="submit" value="confirmar" class="btn primario">Confirmar y guardar</button>
+        <button type="submit" value="descartar" class="btn secundario" formnovalidate>Descartar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Confirmación genérica -->
+  <dialog id="dlgConfirmar" aria-labelledby="dlgConfirmarTexto">
+    <form method="dialog">
+      <p id="dlgConfirmarTexto"></p>
+      <div class="acciones">
+        <button type="submit" value="si" class="btn peligro">Sí, continuar</button>
+        <button type="submit" value="no" class="btn secundario" autofocus>Cancelar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="mensajes" class="mensajes" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/docx@9.5.0/dist/index.umd.cjs"></script>
+  <script src="Db.js"></script>
+  <script src="Exportar.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
