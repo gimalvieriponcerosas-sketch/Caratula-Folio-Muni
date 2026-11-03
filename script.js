@@ -188,7 +188,12 @@
       const contNombres = $("contNombres");
       const previewNombres = $("previewNombres");
       const KEY_FOLIOS_IMPRESOS = "foliosImpresosGuardados";
+      const KEY_FOLIOS_DESCARGADOS = "foliosExcelDescargados";
       let foliosImpresos = [];
+      let foliosDescargados = [];
+      let foliosPendientesDeDescarga = [];
+      let exportacionExcelEnCurso = false;
+      let mostrarArchivosDescargados = true;
       const previewNumero = $("previewNumero");
       const previewPeriodo = $("previewPeriodo");
       const inpNumero = $("inpNumero");
@@ -222,7 +227,7 @@
         textoSubgerencia: "OFICINA DE RECURSOS HUMANOS",
         textoCvLabel: "CURRICULUM VITAE",
         tamanoEscudo: 130, fuenteNombres: "Arial", tamanoNombres: 15, espacioNombres: 0,
-        alineacionNombres: "izquierda",
+        alineacionNombres: "izquierda", mostrarMarcadoresNombres: true, ocultarNotaPaginaEnCaratula: false,
         grosorBordePrincipal: 5, colorBordePrincipal: "#000000", lineasContorno: 0,
         grosorLineaContorno1: 5, colorLineaContorno1: "#dc2626",
         grosorLineaContorno2: 5, colorLineaContorno2: "#2563eb",
@@ -240,6 +245,7 @@
       let configVisual = { ...CONFIG_VISUAL_PREDETERMINADA };
       let configuracionGlobal = { ...configVisual };
       let configuracionGlobalDocumentos = { ...CONFIG_VISUAL_PREDETERMINADA };
+      let configuracionGlobalNotas = { ...CONFIG_VISUAL_PREDETERMINADA };
       let modoConfigPlantilla = "normal";
       let configuracionesPorFolio = {};
       let estadoConfigAntesModal = null;
@@ -255,6 +261,8 @@
         abrirFolioCreado: false,
         folioAutomatico: false,
         periodoAutomatico: false,
+        exportarNumeroDocumentos: false,
+        exportarNotasPaginas: false,
         ultimoFolioAutomatico: "",
         ultimoPeriodoAutomatico: "",
         secuenciaFolioIniciada: false
@@ -388,13 +396,26 @@
 
       function esFolioModoDocumentos(folio) {
         if (!folio) return false;
-        if (folio.tipo_registro === "documentos" || String(folio.numero_documentos || "").trim()) return true;
+        if (["documentos", "documentos_sin_notas"].includes(folio.tipo_registro) || String(folio.numero_documentos || "").trim()) return true;
         const nombres = Array.isArray(folio.nombres) ? folio.nombres : (folio.nombres ? [folio.nombres] : []);
         const rangoAnterior = String(nombres[0] || "").trim();
         const rangoValido = /^(?:n\s*[°º.]?\s*)?\d+\s*(?:-|–|—|al|a)\s*\d+$/i.test(rangoAnterior);
         const cargos = Array.isArray(folio.cargos) ? folio.cargos : [];
         const notas = Array.isArray(folio.notas_pago) ? folio.notas_pago : [];
         return nombres.length === 1 && rangoValido && !String(cargos[0] || "").trim() && !String(notas[0] || "").trim();
+      }
+
+      function esModoDocumentos(modo = $("selectTipoRegistro")?.value) {
+        return ["documentos", "documentos_sin_notas"].includes(modo);
+      }
+
+      function modoConfiguracionFormulario(modo = $("selectTipoRegistro")?.value) {
+        return esModoDocumentos(modo) ? "documentos" : (modo === "notas" ? "notas" : "normal");
+      }
+
+      function obtenerModoDeFolio(folio) {
+        if (esFolioModoDocumentos(folio)) return "documentos";
+        return folio?.tipo_registro === "notas" ? "notas" : "normal";
       }
 
       function obtenerDatosSeparador(nombre) {
@@ -438,6 +459,14 @@
 
       function cerrarModal(idModal) {
         if (idModal === "modalConfig") restaurarConfigAntesModal();
+        if (idModal === "modalExportarExcel") {
+          foliosPendientesDeDescarga = [];
+          $("confirmarExportacionWrap").hidden = true;
+          $("confirmarExportacionWrap").style.display = "none";
+          cancelarConfirmacionDeshacerDescarga();
+          $("selectorFoliosExcel").style.display = "block";
+          $("btnConfirmarExportarExcel").style.display = "";
+        }
         $(idModal).classList.remove("mostrar");
         if (idModal === "modalImpresion") {
           idsPendientesDeConfirmarImpresion = [];
@@ -466,6 +495,97 @@
           impresos: lista
         })
           .then(({ error }) => { if (error) console.warn("No se pudo sincronizar los impresos:", error.message); });
+      }
+
+      function cargarFoliosDescargados() {
+        try {
+          const guardado = localStorage.getItem(claveLocalPorUsuario(KEY_FOLIOS_DESCARGADOS));
+          const lista = guardado ? JSON.parse(guardado) : [];
+          return Array.isArray(lista) ? lista.map(String) : [];
+        } catch (error) {
+          console.warn("No se pudo leer la lista de descargas:", error);
+          return [];
+        }
+      }
+
+      function guardarFoliosDescargados() {
+        const lista = [...new Set(foliosDescargados.map(String))];
+        localStorage.setItem(claveLocalPorUsuario(KEY_FOLIOS_DESCARGADOS), JSON.stringify(lista));
+        clienteDB.from("config_visual_por_usuario").upsert({
+          owner_id: usuarioAutenticado.id,
+          descargados: lista
+        }).then(({ error }) => {
+          if (error) console.warn("No se pudo sincronizar la lista de descargas. Ejecuta supabase_folios_descargados.sql.", error.message);
+        });
+      }
+
+      function renderizarArchivosDescargados() {
+        const contenedor = $("listaArchivosDescargados");
+        const boton = $("btnToggleArchivosDescargados");
+        if (!contenedor || !boton) return;
+        const query = $("buscarFoliosExcel")?.value?.trim() || "";
+        const folios = ordenarPorCreacionDescendente(todosLosFoliosCache)
+          .filter((folio) => foliosDescargados.includes(String(folio.id)))
+          .filter((folio) => coincideBusquedaListaExportar(folio, query));
+        boton.textContent = mostrarArchivosDescargados ? "Ocultar descargados" : "Ver descargados";
+        boton.setAttribute("aria-expanded", String(mostrarArchivosDescargados));
+        contenedor.style.display = mostrarArchivosDescargados ? "block" : "none";
+        if (!folios.length) {
+          const hayDescargados = foliosDescargados.some((id) => todosLosFoliosCache.some((folio) => String(folio.id) === String(id)));
+          contenedor.innerHTML = hayDescargados && query
+            ? '<div style="color:#64748b;font-size:13px;">No hay archivos descargados que coincidan con la búsqueda.</div>'
+            : '<div style="color:#64748b;font-size:13px;">Todavía no hay folios registrados como descargados.</div>';
+          return;
+        }
+        contenedor.innerHTML = folios.map((folio) => `
+          <div class="folio-impreso-item">
+            <div class="folio-impreso-datos">
+              <span class="folio-impreso-numero">Folio Nro. ${escaparHtml(folio.numero_folio)}</span>
+              ${folio.numero_bloque ? `<span class="folio-impreso-bloque">Bloque ${escaparHtml(folio.numero_bloque)}</span>` : ""}
+              <span class="folio-impreso-periodo">Periodo: ${escaparHtml(folio.periodo)}</span>
+              <span class="folio-impreso-periodo">${esFolioModoDocumentos(folio) ? "Nro. de documentos" : "Normal / Notas"}</span>
+            </div>
+            <button type="button" class="btn-deshacer-impreso" data-quitar-descarga="${escaparHtml(folio.id)}">Deshacer</button>
+          </div>`).join("");
+      }
+
+      function registrarFoliosDescargados(ids) {
+        const idsNuevos = [...new Set((ids || []).map(String).filter(Boolean))];
+        foliosDescargados = [...new Set([...foliosDescargados, ...idsNuevos])];
+        guardarFoliosDescargados();
+        renderizarArchivosDescargados();
+      }
+
+      let idDescargaPendienteDeDeshacer = null;
+
+      function quitarFolioDescargado(id) {
+        const folio = todosLosFoliosCache.find((item) => String(item.id) === String(id));
+        const etiqueta = folio ? `Folio Nro. ${folio.numero_folio}` : `ID ${id}`;
+        idDescargaPendienteDeDeshacer = String(id);
+        $("mensajeConfirmarDeshacerDescarga").textContent = `Se quitará ${etiqueta} de Archivos descargados y volverá a la lista de exportación.`;
+        $("confirmarDeshacerDescargaWrap").hidden = false;
+        $("confirmarDeshacerDescargaWrap").style.display = "flex";
+      }
+
+      function cancelarConfirmacionDeshacerDescarga() {
+        idDescargaPendienteDeDeshacer = null;
+        const dialogo = $("confirmarDeshacerDescargaWrap");
+        if (!dialogo) return;
+        dialogo.hidden = true;
+        dialogo.style.display = "none";
+      }
+
+      function confirmarDeshacerDescarga() {
+        if (!idDescargaPendienteDeDeshacer) return;
+        const id = idDescargaPendienteDeDeshacer;
+        const folio = todosLosFoliosCache.find((item) => String(item.id) === id);
+        const etiqueta = folio ? `Folio Nro. ${folio.numero_folio}` : `ID ${id}`;
+        cancelarConfirmacionDeshacerDescarga();
+        foliosDescargados = foliosDescargados.filter((item) => item !== id);
+        guardarFoliosDescargados();
+        renderizarArchivosDescargados();
+        renderizarSelectorFoliosExcel();
+        agregarHistorial("Descarga deshecha", etiqueta);
       }
 
       function esFolioImpreso(id) {
@@ -527,12 +647,20 @@
       }
 
       function actualizarPaginacionImpresion(totalPaginas) {
-        const info = $("infoPaginaImpresion");
-        const anterior = $("btnPaginaImpresionAnterior");
-        const siguiente = $("btnPaginaImpresionSiguiente");
-        info.textContent = `Página ${paginaImpresionActual + 1} de ${totalPaginas}`;
-        anterior.disabled = paginaImpresionActual === 0;
-        siguiente.disabled = paginaImpresionActual >= totalPaginas - 1;
+        const select = $("selectPaginaImpresion");
+        select.innerHTML = "";
+        for (let i = 0; i < totalPaginas; i++) {
+          const opcion = document.createElement("option");
+          opcion.value = String(i);
+          opcion.textContent = String(i + 1);
+          opcion.selected = i === paginaImpresionActual;
+          select.appendChild(opcion);
+        }
+        $("totalPaginasImpresion").textContent = `de ${totalPaginas}`;
+        $("btnImpresionPrimera").disabled = paginaImpresionActual === 0;
+        $("btnPaginaImpresionAnterior").disabled = paginaImpresionActual === 0;
+        $("btnPaginaImpresionSiguiente").disabled = paginaImpresionActual >= totalPaginas - 1;
+        $("btnImpresionUltima").disabled = paginaImpresionActual >= totalPaginas - 1;
       }
 
       /* CONFIGURACIÓN VISUAL */
@@ -540,7 +668,10 @@
         // 1) Carga instantánea desde el caché del navegador (evita parpadeos).
         try {
           const ajustesGuardados = localStorage.getItem(claveLocalPorUsuario("ajustesAvanzados"));
-          if (ajustesGuardados) ajustesAvanzados = { ...ajustesAvanzados, ...JSON.parse(ajustesGuardados) };
+          if (ajustesGuardados) {
+            const ajustesLocales = JSON.parse(ajustesGuardados);
+            ajustesAvanzados = { ...ajustesAvanzados, ...ajustesLocales };
+          }
           const guardado = localStorage.getItem(claveLocalPorUsuario("configVisualCaratula"));
           if (guardado) configVisual = { ...configVisual, ...JSON.parse(guardado) };
           const configuracionesGuardadas = localStorage.getItem(claveLocalPorUsuario("configuracionesPorFolioCaratula"));
@@ -593,8 +724,14 @@
 
           // Compatibilidad con configuraciones antiguas que no tenían estos campos.
           const configDocumentosGuardada = configVisual._configuracionDocumentos;
+          const configNotasGuardada = configVisual._configuracionNotas;
           if (configDocumentosGuardada && typeof configDocumentosGuardada === "object") {
             configuracionGlobalDocumentos = { ...CONFIG_VISUAL_PREDETERMINADA, ...configDocumentosGuardada };
+          }
+          if (configNotasGuardada && typeof configNotasGuardada === "object") {
+            configuracionGlobalNotas = { ...CONFIG_VISUAL_PREDETERMINADA, ...configNotasGuardada };
+          } else {
+            configuracionGlobalNotas = { ...CONFIG_VISUAL_PREDETERMINADA, ...configVisual };
           }
           if (!String(configuracionGlobalDocumentos.textoSubgerencia || "").trim()) {
             configuracionGlobalDocumentos.textoSubgerencia = CONFIG_VISUAL_PREDETERMINADA.textoSubgerencia;
@@ -602,7 +739,11 @@
           if (!String(configuracionGlobalDocumentos.textoCvLabel || "").trim()) {
             configuracionGlobalDocumentos.textoCvLabel = CONFIG_VISUAL_PREDETERMINADA.textoCvLabel;
           }
+          normalizarAjusteNotaCaratula(configVisual);
+          normalizarAjusteNotaCaratula(configuracionGlobalDocumentos);
+          normalizarAjusteNotaCaratula(configuracionGlobalNotas);
           delete configVisual._configuracionDocumentos;
+          delete configVisual._configuracionNotas;
           if (!String(configVisual.textoSubgerencia || "").trim()) {
             configVisual.textoSubgerencia = CONFIG_VISUAL_PREDETERMINADA.textoSubgerencia;
           }
@@ -638,20 +779,30 @@
       function obtenerClaveFolioActual() { return inpId.value ? String(inpId.value) : "actual_form"; }
 
       function obtenerConfiguracionGlobalPorModo(modo = modoConfigPlantilla) {
-        return modo === "documentos" ? configuracionGlobalDocumentos : configuracionGlobal;
+        if (modo === "documentos") return configuracionGlobalDocumentos;
+        if (modo === "notas") return configuracionGlobalNotas;
+        return configuracionGlobal;
       }
 
       function obtenerConfiguracionGlobalPersistible() {
-        return { ...configuracionGlobal, _configuracionDocumentos: { ...configuracionGlobalDocumentos } };
+        return { ...configuracionGlobal, _configuracionDocumentos: { ...configuracionGlobalDocumentos }, _configuracionNotas: { ...configuracionGlobalNotas } };
       }
 
       function obtenerModoConfiguracionFolio(id) {
         const clave = String(id || "actual_form");
         if (clave === "actual_form" || clave === String(inpId.value || "")) {
-          return $("selectTipoRegistro")?.value === "documentos" ? "documentos" : "normal";
+          return modoConfiguracionFormulario();
         }
         const folio = todosLosFoliosCache.find((item) => String(item.id) === clave);
-        return esFolioModoDocumentos(folio) ? "documentos" : "normal";
+        return obtenerModoDeFolio(folio);
+      }
+
+      function normalizarAjusteNotaCaratula(config) {
+        if (typeof config.ocultarNotaPaginaEnCaratula !== "boolean" && typeof config.mostrarNotaPaginaEnCaratula === "boolean") {
+          config.ocultarNotaPaginaEnCaratula = !config.mostrarNotaPaginaEnCaratula;
+        }
+        delete config.mostrarNotaPaginaEnCaratula;
+        return config;
       }
 
       function obtenerConfiguracionParaFolio(id) {
@@ -659,7 +810,7 @@
         const modo = obtenerModoConfiguracionFolio(clave);
         const guardada = configuracionesPorFolio[clave] || {};
         const especifica = obtenerOverridesFolioModo(clave, modo);
-        return { ...obtenerConfiguracionGlobalPorModo(modo), ...especifica };
+        return normalizarAjusteNotaCaratula({ ...obtenerConfiguracionGlobalPorModo(modo), ...especifica });
       }
 
       function obtenerOverridesFolioModo(clave, modo, mapa = configuracionesPorFolio) {
@@ -703,10 +854,10 @@
         };
         return {
           lineas: Math.min(2, Math.max(0, Number.parseInt(config.lineasContorno, 10) || 0)),
-          grosorPrincipal: obtenerGrosor(config.grosorBordePrincipal, 5, 15),
+          grosorPrincipal: obtenerGrosor(config.grosorBordePrincipal, 5, 35),
           colorPrincipal: /^#[\da-f]{6}$/i.test(config.colorBordePrincipal) ? config.colorBordePrincipal : CONFIG_VISUAL_PREDETERMINADA.colorBordePrincipal,
-          grosor1: obtenerGrosor(config.grosorLineaContorno1, 5, 10),
-          grosor2: obtenerGrosor(config.grosorLineaContorno2, 5, 10),
+          grosor1: obtenerGrosor(config.grosorLineaContorno1, 5, 30),
+          grosor2: obtenerGrosor(config.grosorLineaContorno2, 5, 30),
           color1: /^#[\da-f]{6}$/i.test(config.colorLineaContorno1) ? config.colorLineaContorno1 : CONFIG_VISUAL_PREDETERMINADA.colorLineaContorno1,
           color2: /^#[\da-f]{6}$/i.test(config.colorLineaContorno2) ? config.colorLineaContorno2 : CONFIG_VISUAL_PREDETERMINADA.colorLineaContorno2
         };
@@ -744,13 +895,16 @@
       }
 
       function cargarModoConfigPlantilla(modo) {
-        modoConfigPlantilla = modo === "documentos" ? "documentos" : "normal";
-        const modoFormulario = $("selectTipoRegistro")?.value === "documentos" ? "documentos" : "normal";
+        modoConfigPlantilla = ["notas", "documentos"].includes(modo) ? modo : "normal";
+        const modoFormulario = modoConfiguracionFormulario();
         configVisual = modoConfigPlantilla === modoFormulario
           ? obtenerConfiguracionParaFolio(obtenerClaveFolioActual())
           : { ...obtenerConfiguracionGlobalPorModo(modoConfigPlantilla) };
         $("cfgSubgerencia").value = configVisual.textoSubgerencia || "";
         $("cfgCvLabel").value = configVisual.textoCvLabel || "CURRICULUM VITAE";
+        $("cfgMostrarMarcadoresNombres").checked = configVisual.mostrarMarcadoresNombres !== false;
+        $("cfgOcultarNotaPaginaCaratula").checked = configVisual.ocultarNotaPaginaEnCaratula === true;
+        $("opcionOcultarNotaPaginaCaratula").hidden = modoConfigPlantilla !== "documentos";
         aplicarConfigVisual(false);
         configVisualModalInicio = { ...configVisual };
         iniciarHistorialConfig();
@@ -779,6 +933,9 @@
         $("cfgCvLabel").value = estado.textoCvLabel;
         $("cfgFuenteSubgerencia").value = configVisual.fuenteSubgerencia;
         $("cfgFuenteCv").value = configVisual.fuenteCv;
+        $("cfgMostrarMarcadoresNombres").checked = configVisual.mostrarMarcadoresNombres !== false;
+        $("cfgOcultarNotaPaginaCaratula").checked = configVisual.ocultarNotaPaginaEnCaratula === true;
+        $("opcionOcultarNotaPaginaCaratula").hidden = modoConfigPlantilla !== "documentos";
         estadoActualHistorialConfig = capturarEstadoHistorialConfig();
         aplicarConfigVisual(true);
         actualizarVistaPreviaConfiguracion();
@@ -870,8 +1027,7 @@
             }
 
             (foliosExistentes || []).forEach((folioExistente) => {
-              const esModoDocumentos = esFolioModoDocumentos(folioExistente);
-              if ((modoConfigPlantilla === "documentos") !== esModoDocumentos) return;
+              if (obtenerModoDeFolio(folioExistente) !== modoConfigPlantilla) return;
               const { id } = folioExistente;
               const clave = String(id);
               const overrides = obtenerOverridesFolioModo(clave, modoConfigPlantilla, configuracionesExistentesConservadas);
@@ -911,7 +1067,7 @@
           campos.forEach((campo) => { configuracionGlobalModo[campo] = configVisualPendiente[campo]; });
           Object.entries(configuracionesPorFolio).forEach(([clave, configFolio]) => {
             const folio = todosLosFoliosCache.find((item) => String(item.id) === String(clave));
-            if (!folio || (modoConfigPlantilla === "documentos") !== esFolioModoDocumentos(folio)) return;
+            if (!folio || obtenerModoDeFolio(folio) !== modoConfigPlantilla) return;
             establecerConfiguracionFolioPorModo(clave, modoConfigPlantilla,
               Object.fromEntries(campos.map((campo) => [campo, undefined])));
           });
@@ -926,7 +1082,7 @@
           }
           // El formulario vacío no es un folio existente. Quita sus valores antiguos
           // para que los folios nuevos hereden los valores globales recién guardados.
-          if ((modoConfigPlantilla === "documentos") === ($("selectTipoRegistro")?.value === "documentos")) {
+          if (modoConfigPlantilla === modoConfiguracionFormulario()) {
             establecerConfiguracionFolioPorModo("actual_form", modoConfigPlantilla,
               Object.fromEntries(campos.map((campo) => [campo, undefined])));
           }
@@ -970,6 +1126,9 @@
           configVisual: { ...configVisual },
           configuracionGlobal: { ...configuracionGlobal },
           configuracionGlobalDocumentos: { ...configuracionGlobalDocumentos },
+          configuracionGlobalNotas: { ...configuracionGlobalNotas },
+          ajustesAvanzados: { ...ajustesAvanzados },
+          cargoActual,
           modoConfigPlantilla,
           configuracionesPorFolio: { ...configuracionesPorFolio },
           configVisualPendiente: {},
@@ -983,8 +1142,21 @@
         configVisual = { ...estadoConfigAntesModal.configVisual };
         configuracionGlobal = { ...estadoConfigAntesModal.configuracionGlobal };
         configuracionGlobalDocumentos = { ...estadoConfigAntesModal.configuracionGlobalDocumentos };
+        configuracionGlobalNotas = { ...estadoConfigAntesModal.configuracionGlobalNotas };
+        ajustesAvanzados = { ...estadoConfigAntesModal.ajustesAvanzados };
+        cargoActual = estadoConfigAntesModal.cargoActual ?? cargoActual;
+        $("cfgRubroActual").value = cargoActual;
+        $("cfgLimpiarAlGuardar").checked = ajustesAvanzados.limpiarAlGuardar;
+        $("cfgAbrirFolioCreado").checked = ajustesAvanzados.abrirFolioCreado;
+        $("cfgFolioAutomatico").checked = ajustesAvanzados.folioAutomatico;
+        $("cfgPeriodoAutomatico").checked = ajustesAvanzados.periodoAutomatico;
+        $("cfgExportarNumeroDocumentos").checked = ajustesAvanzados.exportarNumeroDocumentos === true;
+        $("cfgExportarNotasPaginas").checked = ajustesAvanzados.exportarNotasPaginas === true;
+        $("cfgMostrarMarcadoresNombres").checked = configVisual.mostrarMarcadoresNombres !== false;
+        $("cfgOcultarNotaPaginaCaratula").checked = configVisual.ocultarNotaPaginaEnCaratula === true;
         modoConfigPlantilla = estadoConfigAntesModal.modoConfigPlantilla || "normal";
         $("cfgModoPlantilla").value = modoConfigPlantilla;
+        $("opcionOcultarNotaPaginaCaratula").hidden = modoConfigPlantilla !== "documentos";
         configuracionesPorFolio = { ...estadoConfigAntesModal.configuracionesPorFolio };
         configVisualPendiente = { ...estadoConfigAntesModal.configVisualPendiente };
         claveFolioConfigPendiente = estadoConfigAntesModal.claveFolioConfigPendiente;
@@ -1016,7 +1188,7 @@
         const nombres = $("configVistaNombres");
         const numero = $("configVistaNumero");
         const periodo = $("configVistaPeriodo");
-        const modoFormulario = $("selectTipoRegistro")?.value === "documentos" ? "documentos" : "normal";
+        const modoFormulario = modoConfiguracionFormulario();
         const modosCoinciden = modoFormulario === modoConfigPlantilla;
 
         const textoSubgerencia = $("cfgSubgerencia")?.value || "";
@@ -1038,6 +1210,8 @@
         vista.classList.toggle("modo-documentos", modoConfigPlantilla === "documentos");
         vista.classList.toggle("area-sobre-escudo", configVisual.posicionSubgerencia === "encima-escudo");
         vista.classList.toggle("nombres-centrados", configVisual.alineacionNombres === "centrado");
+        vista.classList.toggle("sin-marcadores-nombres", configVisual.mostrarMarcadoresNombres === false);
+        vista.classList.toggle("sin-notas-pagina-caratula", modoConfigPlantilla === "documentos" && configVisual.ocultarNotaPaginaEnCaratula === true);
         aplicarContorno(vista, configVisual);
 
         vista.style.setProperty("--tamano-titulo", `${configVisual.tamanoTitulo}px`);
@@ -1079,6 +1253,8 @@
         caratula.classList.toggle("area-sobre-escudo", configVisual.posicionSubgerencia === "encima-escudo");
         configVisual.alineacionNombres = configVisual.alineacionNombres === "centrado" ? "centrado" : "izquierda";
         caratula.classList.toggle("nombres-centrados", configVisual.alineacionNombres === "centrado");
+        caratula.classList.toggle("sin-marcadores-nombres", configVisual.mostrarMarcadoresNombres === false);
+        caratula.classList.toggle("sin-notas-pagina-caratula", modoConfiguracionFormulario() === "documentos" && configVisual.ocultarNotaPaginaEnCaratula === true);
         aplicarContorno(caratula, configVisual);
 
         txtSubgerencia.style.fontFamily = `"${configVisual.fuenteSubgerencia}", Arial, sans-serif`;
@@ -1153,8 +1329,8 @@
         if (!texto) return true;
         const query = normalizarTexto(texto);
 
-        if (query.startsWith("bloque")) {
-          const numBloqueBuscado = query.replace("bloque", "").trim();
+        if (query.startsWith("blo")) {
+          const numBloqueBuscado = query.replace(/^blo[a-z]*/, "").trim();
           const bloqFolio = normalizarTexto(f.numero_bloque);
           
           if (!numBloqueBuscado) return bloqFolio.length > 0;
@@ -1465,6 +1641,22 @@
         navegarAUbicacionFolio(ubicacion.dataset.folioId, ubicacion.dataset.nombre || "");
       });
 
+      function renderizarContenidoDocumentos(folio, nombres, notas) {
+        const entradas = nombres.length ? nombres : [folio.numero_documentos || ""];
+        let numeroDocumento = 0;
+        return entradas.map((entrada, indice) => {
+          const nota = folio.tipo_registro === "documentos_sin_notas" ? "" : (notas[indice] || "");
+          const notaHtml = nota && !esSeparador(entrada)
+            ? '<div style="font-size:11px;color:#64748b;margin-left:14px;">📄 Nota de páginas: ' +
+              escaparHtml(nota) + ' · Total: ' + escaparHtml(contarTotalDocumentos(nota)) + ' página(s)</div>'
+            : "";
+          if (esSeparador(entrada)) return "";
+          numeroDocumento++;
+          return '<div class="detalle-nombre"><b>' + numeroDocumento + '.</b> ' +
+            escaparHtml(entrada) + notaHtml + '</div>';
+        }).join("") || '<div class="detalle-vacio">No hay documentos registrados.</div>';
+      }
+
       function renderizarLista(folios, duplicados = {}) {
         listaFolios.innerHTML = folios.map((f) => {
           const nombres = Array.isArray(f.nombres) ? f.nombres : [];
@@ -1475,7 +1667,7 @@
           const bloqueTieneDuplicados = nombres.some((nombre) => nombre && !esSeparador(nombre) && duplicados[normalizarTexto(nombre)]);
 
           const contenido = esModoDocumentos
-            ? `<div class="detalle-nombre"><b>N.º de documentos:</b> ${escaparHtml(f.numero_documentos || nombres[0] || "")}</div>`
+            ? renderizarContenidoDocumentos(f, nombres, notas)
             : nombres.length ? nombres.map((nombre, index) => {
             if (esSeparador(nombre)) return "";
             const nota = notas[index] ?? "", cargo = cargos[index] ?? "";
@@ -1509,7 +1701,7 @@
             </div>
             <details style="margin-top:6px;" data-folio-id="${f.id}" ${isOpen ? 'open' : ''}>
               <summary style="cursor:pointer;color:#0ea5e9;">Ver contenido</summary>
-              <div style="margin-top:6px;">${contenido}${f.observaciones ? `<div style="margin-top:6px;border-top:1px dashed #cbd5e1;padding-top:6px;font-size:12px;color:#475569;">📝 <b>Observaciones:</b> ${escaparHtml(f.observaciones)}</div>` : ''}</div>
+              <div style="margin-top:6px;">${contenido}</div>
             </details>
             <div class="acciones">
               <button class="btn-accion btn-editar" data-action="editar" data-folio-id="${escaparHtml(f.id)}">✏️ Editar</button>
@@ -1574,16 +1766,18 @@
       function validarRangoNotaPago(rango) {
         const texto = String(rango || "").trim();
         if (!texto) return { valido: true, total: null };
-        const match = texto.match(/^\s*(\d+)\s*-\s*(\d+)\s*$/);
-        if (!match) return { valido: false, mensaje: "Usa el formato página inicial-página final." };
-        const inicio = Number(match[1]), fin = Number(match[2]);
+        // Acepta una página suelta o un rango, en cualquier dirección.
+        const paginaMatch = texto.match(/^\D*(\d+)\D*$/);
+        const rangoMatch = texto.match(/^\D*(\d+)\s*-\s*(\d+)\D*$/);
+        if (!paginaMatch && !rangoMatch) return { valido: false, mensaje: "Escribe una página (123) o un rango (123-456)." };
+        const inicio = Number((rangoMatch || paginaMatch)[1]);
+        const fin = rangoMatch ? Number(rangoMatch[2]) : inicio;
         if (inicio < 1 || fin < 1) return { valido: false, mensaje: "Las páginas deben ser mayores que 0." };
-        if (inicio > fin) return { valido: false, mensaje: "La página inicial no puede ser mayor que la página final." };
-        return { valido: true, total: fin - inicio + 1 };
+        return { valido: true, total: Math.abs(fin - inicio) + 1 };
       }
 
-      function actualizarTotalNotaPago(row) {
-        const input = row.querySelector(".inpNotaPago"), total = row.querySelector(".nota-pago-total");
+      function actualizarTotalNotaPago(row, selector = ".inpNotaPago") {
+        const input = row.querySelector(selector), total = row.querySelector(".nota-pago-total");
         if (!input || !total) return;
         const res = validarRangoNotaPago(input.value);
         if (!input.value.trim()) { total.className = "nota-pago-total"; total.textContent = ""; return; }
@@ -1617,40 +1811,44 @@
       }
 
       function actualizarCamposTipoRegistro() {
-        const modoDocumentos = $("selectTipoRegistro")?.value === "documentos";
+        const modoDocumentos = esModoDocumentos();
+        const modoDocumentosConNotas = $("selectTipoRegistro")?.value === "documentos";
         const etiqueta = $("etiquetaDatosRegistro");
         if (etiqueta) etiqueta.textContent = modoDocumentos ? "N.º de documentos" : "Apellidos y Nombres / Cargo";
 
         const btnAgregarNombre = $("btnAgregarNombre");
         const btnAgregarSeparador = $("btnAgregarSeparador");
         if (btnAgregarNombre) {
-          btnAgregarNombre.disabled = modoDocumentos;
-          btnAgregarNombre.title = modoDocumentos ? "En este modo solo se permite un rango de documentos" : "";
+          btnAgregarNombre.disabled = false;
+          btnAgregarNombre.textContent = modoDocumentos ? "+ Agregar documento" : "+ Agregar nombre";
+          btnAgregarNombre.title = "";
         }
         if (btnAgregarSeparador) {
-          btnAgregarSeparador.disabled = modoDocumentos;
-          btnAgregarSeparador.title = modoDocumentos ? "Los documentos se registran en una sola fila" : "";
+          btnAgregarSeparador.disabled = false;
+          btnAgregarSeparador.textContent = "+ Agregar separador / tema";
+          btnAgregarSeparador.title = "";
         }
 
         const filasDatos = [...contNombres.querySelectorAll(".nombre-row:not(.separador-row)")];
         if (modoDocumentos && !filasDatos.length) crearFilaNombre();
-        filasDatos.forEach((fila, indice) => {
-          // En modo documentos solo se muestra una fila; las demás se conservan
-          // intactas por si el usuario vuelve al modo Normal sin guardar.
-          fila.hidden = modoDocumentos && indice > 0;
+        [...contNombres.querySelectorAll(".nombre-row")].forEach((fila) => {
+          const esSeparadorFila = fila.dataset.tipo === "separador";
           const dato = fila.querySelector(".inpNombreItem");
           const detalle = fila.querySelector(".inpCargoItem");
           const eliminar = fila.querySelector(".btn-eliminar-fila");
+          const notaWrap = fila.querySelector(".nota-pago-wrap");
+          const notaInput = fila.querySelector(".inpNotaPago");
+          const separadorInput = fila.querySelector(".inpSeparador");
           if (dato) dato.placeholder = "";
+          if (separadorInput) separadorInput.placeholder = "";
+          if (notaInput) notaInput.placeholder = "";
           if (detalle) {
             detalle.placeholder = "";
             detalle.hidden = modoDocumentos;
           }
-          if (eliminar) eliminar.disabled = modoDocumentos && indice === 0;
+          if (notaWrap) notaWrap.classList.toggle("mostrar", modoDocumentosConNotas || (!modoDocumentos && !esSeparadorFila && notasPagoVisibles));
+          if (eliminar) eliminar.disabled = false;
         });
-        contNombres.querySelectorAll(".separador-row").forEach((fila) => { fila.hidden = modoDocumentos; });
-        if (btnAgregarNombre) btnAgregarNombre.disabled = modoDocumentos;
-        if (btnAgregarSeparador) btnAgregarSeparador.disabled = modoDocumentos;
       }
 
       function capturarBorradorModoRegistro() {
@@ -1670,7 +1868,7 @@
       function claveBorradorModoRegistro(modo) {
         // Normal y Notas comparten las filas de nombres, cargos y sus notas.
         // Documentos conserva un borrador independiente.
-        return modo === "documentos" ? "documentos" : "normal";
+        return esModoDocumentos(modo) ? "documentos" : "normal";
       }
 
       function restaurarBorradorModoRegistro(modo) {
@@ -1697,6 +1895,7 @@
           <button type="button" class="btn-eliminar-fila" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>
           </div>`;
         contNombres.appendChild(row);
+        actualizarCamposTipoRegistro();
         configurarFilaModoReordenar(row);
       }
 
@@ -1759,7 +1958,7 @@
         }
       }
 
-      function obtenerUsuarios() {
+      function obtenerUsuarios(incluirFilasSoloConNota = false) {
         return Array.from(document.querySelectorAll(".nombre-row")).map((row) => {
           if (row.dataset.tipo === "separador") {
             const texto = row.querySelector(".inpSeparador")?.value.trim() || "";
@@ -1772,12 +1971,12 @@
             cargo: row.querySelector(".inpCargoItem")?.value.trim() || "",
             separador: false
           };
-        }).filter((u) => u.nombre.length > 0);
+        }).filter((u) => u.nombre.length > 0 || (incluirFilasSoloConNota && u.nota.length > 0));
       }
 
       function actualizarMarcadoDuplicadosFormulario() {
         const inputs = Array.from(contNombres.querySelectorAll(".inpNombreItem"));
-        if ($("selectTipoRegistro")?.value === "documentos") {
+        if (esModoDocumentos()) {
           inputs.forEach((input) => {
             input.classList.remove("nombre-duplicado-input");
             input.title = "";
@@ -1942,13 +2141,20 @@
 
       function actualizarPreview() {
         actualizarMarcadoDuplicadosFormulario();
-        $("caratula")?.classList.toggle("modo-documentos", $("selectTipoRegistro")?.value === "documentos");
-        const usuarios = obtenerUsuarios();
+        const modoDocumentosConNotas = $("selectTipoRegistro")?.value === "documentos";
+        $("caratula")?.classList.toggle("modo-documentos", esModoDocumentos());
+        const usuarios = obtenerUsuarios(true);
         const visibles = usuarios.slice(0, MAX_NOMBRES_VISIBLES);
-
-        previewNombres.innerHTML = visibles.length ? visibles.map((u) => u.separador
-          ? obtenerHtmlSeparador(u.textoSeparador, "normal", configVisual)
-          : `<div>${escaparHtml(u.nombre)}</div>`).join("") : '<div class="sin-nombres"></div>';
+        previewNombres.innerHTML = visibles.length ? visibles.map((u) => {
+          const contenido = u.separador
+            ? obtenerHtmlSeparador(u.textoSeparador, "normal", configVisual)
+            : u.nombre
+              ? `<div>${escaparHtml(u.nombre)}</div>`
+              : '<div class="sin-nombres"></div>';
+          if (u.separador || !u.nota || (esModoDocumentos() && !modoDocumentosConNotas)) return contenido;
+          return '<div class="documento-con-nota-preview">' + contenido +
+            '<div class="nota-pagina-preview">' + escaparHtml(u.nota) + '</div></div>';
+        }).join("") : '<div class="sin-nombres"></div>';
         previewNumero.textContent = inpNumero.value || "--";
         previewPeriodo.textContent = inpPeriodo.value || "----";
 
@@ -2158,15 +2364,20 @@
         const contorno = obtenerConfiguracionContorno(config);
         const modoDocumentos = esFolioModoDocumentos(folio);
         const nombres = modoDocumentos
-          ? [folio.numero_documentos || folio.nombres?.[0] || ""]
+          ? (Array.isArray(folio.nombres) && folio.nombres.length ? folio.nombres : [folio.numero_documentos || ""])
           : (Array.isArray(folio.nombres) ? folio.nombres.slice(0, 10) : [folio.nombres || ""]);
-        const nombresHtml = nombres.map((nombre) => {
-          if (!esSeparador(nombre)) return `<div>${escaparHtml(nombre)}</div>`;
+        const notas = Array.isArray(folio.notas_pago) ? folio.notas_pago : [];
+        const nombresHtml = nombres.map((nombre, indice) => {
+          if (!esSeparador(nombre)) {
+            const contenido = `<div>${escaparHtml(nombre)}</div>`;
+            const nota = modoDocumentos && folio.tipo_registro !== "documentos_sin_notas" ? notas[indice] : "";
+            return nota ? `<div class="documento-con-nota-preview">${contenido}<div class="nota-pagina-preview">${escaparHtml(nota)}</div></div>` : contenido;
+          }
           const separador = obtenerDatosSeparador(nombre);
           return obtenerHtmlSeparador(separador.texto, "normal", config);
         }).join("");
         return `
-          <div class="caratula ${modoDocumentos ? "modo-documentos" : ""} ${config.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba"} ${config.posicionSubgerencia === "encima-escudo" ? "area-sobre-escudo" : ""} ${config.alineacionNombres === "centrado" ? "nombres-centrados" : ""} ${contorno.lineas >= 1 ? "contorno-linea-1" : ""} ${contorno.lineas >= 2 ? "contorno-linea-2" : ""}" style="border-color:${contorno.colorPrincipal}; border-width:${contorno.grosorPrincipal}px; --grosor-borde-principal:${contorno.grosorPrincipal}px; --color-borde-principal:${contorno.colorPrincipal}; --grosor-linea-contorno-1:${contorno.grosor1}px; --grosor-linea-contorno-2:${contorno.grosor2}px; --color-linea-contorno-1:${contorno.color1}; --color-linea-contorno-2:${contorno.color2}; --tamano-titulo:${config.tamanoTitulo}px; --espacio-titulo:${config.espacioTitulo}px; --tamano-escudo:${config.tamanoEscudo}px; --fuente-nombres:'${escaparHtml(config.fuenteNombres || "Arial")}'; --tamano-nombres:${Number(config.tamanoNombres) || 15}px; --espacio-gerencia:${config.espacioGerencia}px; --espacio-curriculum:${config.espacioCurriculum}px; --espacio-nombres:${config.espacioNombres}px; --tamano-folio:${config.tamanoFolio}px; --posicion-folio:${config.posicionFolio}px; --tamano-periodo:${config.tamanoPeriodo}px; --posicion-periodo:${config.posicionPeriodo}px;">
+          <div class="caratula ${modoDocumentos ? "modo-documentos" : ""} ${config.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba"} ${config.posicionSubgerencia === "encima-escudo" ? "area-sobre-escudo" : ""} ${config.alineacionNombres === "centrado" ? "nombres-centrados" : ""} ${config.mostrarMarcadoresNombres === false ? "sin-marcadores-nombres" : ""} ${modoDocumentos && config.ocultarNotaPaginaEnCaratula === true ? "sin-notas-pagina-caratula" : ""} ${contorno.lineas >= 1 ? "contorno-linea-1" : ""} ${contorno.lineas >= 2 ? "contorno-linea-2" : ""}" style="border-color:${contorno.colorPrincipal}; border-width:${contorno.grosorPrincipal}px; --grosor-borde-principal:${contorno.grosorPrincipal}px; --color-borde-principal:${contorno.colorPrincipal}; --grosor-linea-contorno-1:${contorno.grosor1}px; --grosor-linea-contorno-2:${contorno.grosor2}px; --color-linea-contorno-1:${contorno.color1}; --color-linea-contorno-2:${contorno.color2}; --tamano-titulo:${config.tamanoTitulo}px; --espacio-titulo:${config.espacioTitulo}px; --tamano-escudo:${config.tamanoEscudo}px; --fuente-nombres:'${escaparHtml(config.fuenteNombres || "Arial")}'; --tamano-nombres:${Number(config.tamanoNombres) || 15}px; --espacio-gerencia:${config.espacioGerencia}px; --espacio-curriculum:${config.espacioCurriculum}px; --espacio-nombres:${config.espacioNombres}px; --tamano-folio:${config.tamanoFolio}px; --posicion-folio:${config.posicionFolio}px; --tamano-periodo:${config.tamanoPeriodo}px; --posicion-periodo:${config.posicionPeriodo}px;">
             <div class="titulo">MUNICIPALIDAD DISTRITAL DE CHINCHAO</div>
             <img class="escudo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiij9VKAtMBiHfcGy8Q-NeekFK54ihGvJrZXLHmxDx9CH1jUUrDz5Gfvc&s=10" alt="Escudo">
             ${config.textoSubgerencia?.trim() ? `<div class="subgerencia" style="font-family:'${config.fuenteSubgerencia}', Arial, sans-serif; font-size:${config.tamanoSubgerencia}px;">${escaparHtml(config.textoSubgerencia).replace(/\n/g, "<br>")}</div>` : ""}
@@ -2314,22 +2525,20 @@
         });
       }
 
-      $("btnPaginaImpresionAnterior").addEventListener("click", () => {
-        if (paginaImpresionActual === 0) return;
-        paginaImpresionActual--;
-        renderizarListaImpresion(obtenerFoliosParaImpresion());
-      });
-
-      $("btnPaginaImpresionSiguiente").addEventListener("click", () => {
-        const totalPaginas = Math.ceil(
-          obtenerFoliosFiltradosParaImpresion(
-            obtenerFoliosParaImpresion(),
-            (buscadorImpresion?.value || "").trim()
-          ).length / PAGE_SIZE_IMPRESION
-        );
-        if (paginaImpresionActual >= totalPaginas - 1) return;
-        paginaImpresionActual++;
-        renderizarListaImpresion(obtenerFoliosParaImpresion());
+      function irPaginaImpresion(pagina) {
+        const disponibles = obtenerFoliosParaImpresion();
+        const total = Math.max(1, Math.ceil(obtenerFoliosFiltradosParaImpresion(disponibles, (buscadorImpresion?.value || "").trim()).length / PAGE_SIZE_IMPRESION));
+        paginaImpresionActual = Math.max(0, Math.min(pagina, total - 1));
+        renderizarListaImpresion(disponibles);
+      }
+      $("btnImpresionPrimera").addEventListener("click", () => irPaginaImpresion(0));
+      $("btnPaginaImpresionAnterior").addEventListener("click", () => irPaginaImpresion(paginaImpresionActual - 1));
+      $("selectPaginaImpresion").addEventListener("change", (evento) => irPaginaImpresion(Number(evento.target.value)));
+      $("btnPaginaImpresionSiguiente").addEventListener("click", () => irPaginaImpresion(paginaImpresionActual + 1));
+      $("btnImpresionUltima").addEventListener("click", () => {
+        const disponibles = obtenerFoliosParaImpresion();
+        const total = Math.max(1, Math.ceil(obtenerFoliosFiltradosParaImpresion(disponibles, (buscadorImpresion?.value || "").trim()).length / PAGE_SIZE_IMPRESION));
+        irPaginaImpresion(total - 1);
       });
 
       const chkMarcarTodosVisibles = $("chkMarcarTodosVisibles");
@@ -2446,29 +2655,29 @@
       $("btnGuardar").onclick = async () => {
         const esNuevoFolio = !inpId.value;
         const usuariosFormulario = obtenerUsuarios();
-        const usuarios = $("selectTipoRegistro").value === "documentos"
-          ? usuariosFormulario.filter((usuario) => !usuario.separador).slice(0, 1)
-          : usuariosFormulario;
+        const modoDocumentos = esModoDocumentos();
+        const modoDocumentosSinNotas = $("selectTipoRegistro").value === "documentos_sin_notas";
+        const usuarios = usuariosFormulario;
+        const documentos = usuarios.filter((usuario) => !usuario.separador);
         const payload = {
           owner_id: usuarioAutenticado.id,
           tipo_registro: $("selectTipoRegistro").value,
           numero_folio: inpNumero.value.trim(),
           numero_bloque: inpBloque.value.trim() || null,
           periodo: inpPeriodo.value.trim(),
-          numero_documentos: $("selectTipoRegistro").value === "documentos" ? (usuarios[0]?.nombre || "").trim() : null,
-          nombres: $("selectTipoRegistro").value === "documentos" ? [] : usuarios.map(u => u.nombre),
-          notas_pago: $("selectTipoRegistro").value === "documentos" ? [] : usuarios.map(u => u.nota || null),
-          cargos: $("selectTipoRegistro").value === "documentos" ? [] : usuarios.map(u => u.cargo || null),
+          numero_documentos: modoDocumentos ? (documentos[0]?.nombre || "").trim() : null,
+          nombres: usuarios.map((usuario) => usuario.nombre),
+          notas_pago: usuarios.map((usuario) => modoDocumentosSinNotas ? null : (usuario.nota || null)),
+          cargos: modoDocumentos ? usuarios.map(() => null) : usuarios.map((usuario) => usuario.cargo || null),
           observaciones: inpObservaciones.value.trim() || null,
           actualizado_en: new Date().toISOString(),
         };
 
-        const modoDocumentos = payload.tipo_registro === "documentos";
-        if (!payload.numero_folio || !payload.periodo || (modoDocumentos ? !payload.numero_documentos : payload.nombres.length === 0)) {
-          alert("Completa número de folio, periodo y al menos un nombre."); return;
+        if (!payload.numero_folio || !payload.periodo || (modoDocumentos ? documentos.length === 0 : payload.nombres.length === 0)) {
+          alert(modoDocumentos ? "Completa el número de folio, periodo y agrega al menos un documento." : "Completa número de folio, periodo y al menos un nombre."); return;
         }
 
-        for (const u of usuarios) {
+        for (const u of usuarios.filter((usuario) => !modoDocumentosSinNotas)) {
           const r = validarRangoNotaPago(u.nota);
           if (!r.valido) { alert(`Revisa la nota de página de "${u.nombre}": ${r.mensaje}`); notasPagoVisibles = true; actualizarVisibilidadNotas(); return; }
         }
@@ -2484,7 +2693,14 @@
           ({ data, error } = await clienteDB.from("folios_cv").insert(payload).select().single());
         }
 
-        if (error) { alert("Error al guardar: " + error.message); return; }
+        if (error) {
+          if (error.code === "23514" && String(error.message || "").includes("folios_cv_tipo_registro_check")) {
+            alert("La base de datos todavía no acepta el modo 'documentos_sin_notas'. Ejecuta el archivo supabase_modo_documentos_sin_notas.sql en el SQL Editor de Supabase y vuelve a guardar.");
+          } else {
+            alert("Error al guardar: " + error.message);
+          }
+          return;
+        }
 
         if (ajustesAvanzados.folioAutomatico && Number.isFinite(Number(payload.numero_folio))) {
           ajustesAvanzados.ultimoFolioAutomatico = payload.numero_folio;
@@ -2535,7 +2751,7 @@
 
       function editarFolio(folio) {
         inpId.value = folio.id; 
-        modoRegistroActual = esFolioModoDocumentos(folio) ? "documentos" : (["normal", "notas"].includes(folio.tipo_registro) ? folio.tipo_registro : "normal");
+        modoRegistroActual = esFolioModoDocumentos(folio) ? (folio.tipo_registro === "documentos_sin_notas" ? "documentos_sin_notas" : "documentos") : (["normal", "notas"].includes(folio.tipo_registro) ? folio.tipo_registro : "normal");
         $("selectTipoRegistro").value = modoRegistroActual;
         Object.keys(borradoresModoRegistro).forEach((modo) => { borradoresModoRegistro[modo] = null; });
         cargarConfiguracionParaFolio(folio.id);
@@ -2546,8 +2762,16 @@
         contNombres.innerHTML = "";
 
         const notas = folio.notas_pago || [], cargos = folio.cargos || [];
-        if (modoRegistroActual === "documentos") {
-          crearFilaNombre(folio.numero_documentos || folio.nombres?.[0] || "");
+        if (esModoDocumentos(modoRegistroActual)) {
+          const documentosGuardados = Array.isArray(folio.nombres) && folio.nombres.length
+            ? folio.nombres
+            : [folio.numero_documentos || ""];
+          documentosGuardados.forEach((valor, indice) => {
+            if (esSeparador(valor)) {
+              const separador = obtenerDatosSeparador(valor);
+              crearFilaSeparador(separador.texto);
+            } else crearFilaNombre(valor, notas[indice] || "");
+          });
         } else {
         (folio.nombres || [""]).forEach((n, i) => {
           if (esSeparador(n)) {
@@ -2571,7 +2795,7 @@
 
       function duplicarFolio(folio) {
         inpId.value = ""; 
-        modoRegistroActual = esFolioModoDocumentos(folio) ? "documentos" : (["normal", "notas"].includes(folio.tipo_registro) ? folio.tipo_registro : "normal");
+        modoRegistroActual = esFolioModoDocumentos(folio) ? (folio.tipo_registro === "documentos_sin_notas" ? "documentos_sin_notas" : "documentos") : (["normal", "notas"].includes(folio.tipo_registro) ? folio.tipo_registro : "normal");
         $("selectTipoRegistro").value = modoRegistroActual;
         Object.keys(borradoresModoRegistro).forEach((modo) => { borradoresModoRegistro[modo] = null; });
         cargarConfiguracionParaFolio("actual_form");
@@ -2582,10 +2806,20 @@
         contNombres.innerHTML = "";
 
         const notas = folio.notas_pago || [], cargos = folio.cargos || [];
-        if (modoRegistroActual === "documentos") {
-          crearFilaNombre(folio.numero_documentos || folio.nombres?.[0] || "");
+        if (esModoDocumentos(modoRegistroActual)) {
+          const documentosGuardados = Array.isArray(folio.nombres) && folio.nombres.length
+            ? folio.nombres
+            : [folio.numero_documentos || ""];
+          documentosGuardados.forEach((valor, indice) => {
+            if (esSeparador(valor)) {
+              const separador = obtenerDatosSeparador(valor);
+              crearFilaSeparador(separador.texto);
+            } else crearFilaNombre(valor, notas[indice] || "");
+          });
         } else {
-        (folio.nombres || [""]).forEach((n, i) => crearFilaNombre(n, notas[i] || "", cargos[i] || ""));
+        (folio.nombres || [""]).forEach((n, i) => esSeparador(n)
+          ? crearFilaSeparador(obtenerDatosSeparador(n).texto)
+          : crearFilaNombre(n, notas[i] || "", cargos[i] || ""));
         }
 
         modoEdicion.classList.remove("mostrar"); 
@@ -2651,50 +2885,282 @@
       }, true);
 
       /* EXPORTACIÓN A EXCEL */
+      const PAGE_SIZE_EXPORTAR = 5;
+      let paginaExportar = 0;
+      let idsMarcadosExportar = new Set();
+
+      function ordenarPorCreacionDescendente(folios) {
+        return [...folios].sort((a, b) => {
+          const fechaA = Date.parse(a.creado_en || a.actualizado_en || 0) || 0;
+          const fechaB = Date.parse(b.creado_en || b.actualizado_en || 0) || 0;
+          return fechaB - fechaA;
+        });
+      }
+
+      function coincideBusquedaListaExportar(folio, texto) {
+        const query = normalizarTexto(texto).trim();
+        if (!query) return true;
+
+        // Acepta el número solo o escrito como "Folio Nro. 32" y busca el folio exacto.
+        const queryLimpia = query.replace(/[^a-z0-9]+/g, " ").trim();
+        const coincidenciaNumeroFolio = queryLimpia.match(/^(?:(?:folio(?:\s+(?:nro|numero|n))?|nro|numero|n)\s+)?0*(\d{1,3})$/);
+        if (coincidenciaNumeroFolio) {
+          const numeroFolio = normalizarTexto(folio.numero_folio);
+          return numeroFolio === coincidenciaNumeroFolio[1] || Number(numeroFolio) === Number(coincidenciaNumeroFolio[1]);
+        }
+
+        // Solo interpreta como bloque una consulta completa como "Bloque" o "Bloque 03".
+        const consultaDeBloque = /^blo(?:que)?(?:\s*\d+)?$/.test(queryLimpia);
+        const consultaDePeriodo = /^\d{4}(\s*-\s*\d{4})?$/.test(queryLimpia);
+        if (consultaDeBloque || consultaDePeriodo) {
+          return cumpleFiltroInteligente(folio, query);
+        }
+
+        const nombres = Array.isArray(folio.nombres) ? folio.nombres.join(" ") : String(folio.nombres || "");
+        const cargos = Array.isArray(folio.cargos) ? folio.cargos.join(" ") : String(folio.cargos || "");
+        const notas = Array.isArray(folio.notas_pago) ? folio.notas_pago.join(" ") : String(folio.notas_pago || "");
+        const tipo = esFolioModoDocumentos(folio) ? "documentos numero de documentos" : (folio.tipo_registro || "normal");
+        const textoBusqueda = normalizarTexto([
+          "Folio Nro.", folio.numero_folio, `Bloque ${folio.numero_bloque || ""}`,
+          folio.periodo, folio.numero_documentos, nombres, cargos, notas, folio.observaciones, tipo
+        ].join(" ")).replace(/[^a-z0-9]+/g, " ").trim();
+        return textoBusqueda.includes(queryLimpia)
+          || (!queryLimpia.startsWith("blo") && cumpleFiltroInteligente(folio, query));
+      }
+
+      function obtenerFoliosFiltradosExportar() {
+        const todos = ordenarPorCreacionDescendente(window.foliosDisponiblesParaExportar || [])
+          .filter((folio) => !foliosDescargados.includes(String(folio.id)));
+        const query = normalizarTexto($("buscarFoliosExcel").value.trim());
+        const modo = $("filtroModoFoliosExcel").value;
+        return todos.filter((folio) => {
+          const esDocumentos = esFolioModoDocumentos(folio);
+          const tipo = esDocumentos
+            ? (folio.tipo_registro === "documentos_sin_notas" ? "documentos_sin_notas" : "documentos")
+            : (["normal", "notas"].includes(folio.tipo_registro) ? folio.tipo_registro : "normal");
+          if (modo === "normal_notas" && !["normal", "notas"].includes(tipo)) return false;
+          if (modo !== "todos" && modo !== "normal_notas" && tipo !== modo) return false;
+          return coincideBusquedaListaExportar(folio, query);
+        });
+      }
+
+      function renderizarSelectorFoliosExcel() {
+        const filtrados = obtenerFoliosFiltradosExportar();
+        const paginas = Math.max(1, Math.ceil(filtrados.length / PAGE_SIZE_EXPORTAR));
+        paginaExportar = Math.min(paginaExportar, paginas - 1);
+        const visibles = filtrados.slice(paginaExportar * PAGE_SIZE_EXPORTAR, (paginaExportar + 1) * PAGE_SIZE_EXPORTAR);
+
+        $("listaCheckboxFolios").innerHTML = visibles.length ? visibles.map((folio) => {
+          const id = String(folio.id);
+          const bloque = folio.numero_bloque ? ` [Bloque ${escaparHtml(folio.numero_bloque)}]` : "";
+          return `<label style="display:flex;align-items:center;gap:8px;padding:8px 4px;font-weight:normal;border-bottom:1px solid #e2e8f0;">
+            <input type="checkbox" class="chkFolioExportar" value="${escaparHtml(id)}" ${idsMarcadosExportar.has(id) ? "checked" : ""} style="width:auto;">
+            Folio Nro. ${escaparHtml(folio.numero_folio)}${bloque} - ${escaparHtml(folio.periodo)}
+          </label>`;
+        }).join("") : '<div style="padding:12px;color:#64748b;">No se encontraron folios.</div>';
+
+        const selectorPagina = $("selectPaginaExportar");
+        selectorPagina.innerHTML = "";
+        for (let i = 0; i < paginas; i++) {
+          const opcion = document.createElement("option");
+          opcion.value = String(i);
+          opcion.textContent = String(i + 1);
+          opcion.selected = i === paginaExportar;
+          selectorPagina.appendChild(opcion);
+        }
+        $("totalPaginasExportar").textContent = `de ${paginas}`;
+        $("btnExportarPrimera").disabled = paginaExportar === 0;
+        $("btnPaginaExportarAnterior").disabled = paginaExportar === 0;
+        $("btnPaginaExportarSiguiente").disabled = paginaExportar >= paginas - 1;
+        $("btnExportarUltima").disabled = paginaExportar >= paginas - 1;
+      }
+
       $("btnExportarExcel").addEventListener("click", async () => {
+        if (exportacionExcelEnCurso) {
+          mostrarMensaje("Espera a que termine la exportación actual.");
+          return;
+        }
         const { data: foliosCache, error } = await cargarFoliosCache();
-        const data = foliosCache ? [...foliosCache] : null;
+        const data = foliosCache ? ordenarPorCreacionDescendente(foliosCache) : null;
         if (error || !data || !data.length) { alert(error ? error.message : "No hay folios para exportar."); return; }
 
-        data.sort((a, b) => {
-          const porBloque = compararNumericoNatural(a.numero_bloque, b.numero_bloque);
-          if (porBloque !== 0) return porBloque;
-          return compararNumericoNatural(a.numero_folio, b.numero_folio);
-        });
-
-        $("listaCheckboxFolios").innerHTML = data.map((f) => {
-          const bloqTexto = f.numero_bloque ? ` [Bloque ${escaparHtml(f.numero_bloque)}]` : "";
-          return `<label style="display:flex;align-items:center;gap:6px;padding:4px 0;font-weight:normal;">
-            <input type="checkbox" class="chkFolioExportar" value="${f.id}" style="width:auto;"> 📁 Folio N° ${escaparHtml(f.numero_folio)}${bloqTexto} - ${escaparHtml(f.periodo)}
-          </label>`;
-        }).join("");
-
-        $("chkExportarTodos").checked = true;
-        $("listaCheckboxFolios").style.display = "none";
         window.foliosDisponiblesParaExportar = data;
+        idsMarcadosExportar = new Set();
+        paginaExportar = 0;
+        $("buscarFoliosExcel").value = "";
+        $("filtroModoFoliosExcel").value = "todos";
+        $("chkExportarTodos").checked = false;
+        $("selectorFoliosExcel").style.display = "block";
+        renderizarSelectorFoliosExcel();
+        renderizarArchivosDescargados();
         $("modalExportarExcel").classList.add("mostrar");
       });
 
-      $("chkExportarTodos").addEventListener("change", function () { $("listaCheckboxFolios").style.display = this.checked ? "none" : "block"; });
-
-      $("btnConfirmarExportarExcel").addEventListener("click", async () => {
-        const data = window.foliosDisponiblesParaExportar || [];
-        const exportarTodos = $("chkExportarTodos").checked;
-        const folios = exportarTodos ? data : data.filter((f) => Array.from(document.querySelectorAll(".chkFolioExportar:checked")).map(c => c.value).includes(String(f.id)));
-
-        if (!folios.length) { alert("Selecciona al menos un folio para exportar."); return; }
-        cerrarModal("modalExportarExcel");
-        await exportarFoliosAExcel(folios, exportarTodos);
+      $("chkExportarTodos").addEventListener("change", function () {
+        const modo = $("filtroModoFoliosExcel").value;
+        const foliosModo = obtenerFoliosFiltradosExportar();
+        if (this.checked) {
+          idsMarcadosExportar = new Set(foliosModo.map((folio) => String(folio.id)));
+          $("selectorFoliosExcel").style.display = "block";
+        } else {
+          idsMarcadosExportar.clear();
+          $("selectorFoliosExcel").style.display = "block";
+        }
+        renderizarSelectorFoliosExcel();
+      });
+      $("buscarFoliosExcel").addEventListener("input", () => {
+        paginaExportar = 0;
+        renderizarSelectorFoliosExcel();
+        renderizarArchivosDescargados();
+      });
+      $("filtroModoFoliosExcel").addEventListener("change", () => {
+        paginaExportar = 0;
+        $("chkExportarTodos").checked = false;
+        $("selectorFoliosExcel").style.display = "block";
+        renderizarSelectorFoliosExcel();
+      });
+      $("listaCheckboxFolios").addEventListener("change", (evento) => {
+        const casilla = evento.target.closest(".chkFolioExportar");
+        if (!casilla) return;
+        if (casilla.checked) idsMarcadosExportar.add(String(casilla.value));
+        else idsMarcadosExportar.delete(String(casilla.value));
+      });
+      $("btnExportarPrimera").addEventListener("click", () => { paginaExportar = 0; renderizarSelectorFoliosExcel(); });
+      $("btnPaginaExportarAnterior").addEventListener("click", () => {
+        if (paginaExportar > 0) { paginaExportar--; renderizarSelectorFoliosExcel(); }
+      });
+      $("selectPaginaExportar").addEventListener("change", (evento) => {
+        paginaExportar = Number(evento.target.value) || 0;
+        renderizarSelectorFoliosExcel();
+      });
+      $("btnPaginaExportarSiguiente").addEventListener("click", () => {
+        paginaExportar++;
+        renderizarSelectorFoliosExcel();
+      });
+      $("btnExportarUltima").addEventListener("click", () => {
+        const total = obtenerFoliosFiltradosExportar().length;
+        paginaExportar = Math.max(0, Math.ceil(total / PAGE_SIZE_EXPORTAR) - 1);
+        renderizarSelectorFoliosExcel();
       });
 
-      async function exportarFoliosAExcel(data, exportarTodos) {
+      $("btnConfirmarExportarExcel").addEventListener("click", () => {
+        if (exportacionExcelEnCurso) return;
+        const data = obtenerFoliosFiltradosExportar();
+        const exportarTodos = $("chkExportarTodos").checked && $("filtroModoFoliosExcel").value === "todos";
+        const folios = exportarTodos ? data : data.filter((folio) => idsMarcadosExportar.has(String(folio.id)));
+        if (!folios.length) { alert("Selecciona al menos un folio para exportar."); return; }
+
+        foliosPendientesDeDescarga = folios;
+        const textoFolios = folios.length === 1 ? "1 folio" : `${folios.length} folios`;
+        $("mensajeConfirmarExportacion").textContent = `Se exportará ${textoFolios}. ¿Deseas continuar?`;
+        $("confirmarExportacionWrap").hidden = false;
+        $("confirmarExportacionWrap").style.display = "flex";
+      });
+
+      $("btnVolverConfirmarExportacion").addEventListener("click", () => {
+        foliosPendientesDeDescarga = [];
+        $("confirmarExportacionWrap").hidden = true;
+        $("confirmarExportacionWrap").style.display = "none";
+      });
+
+      $("btnEjecutarExportacionConfirmada").addEventListener("click", async (evento) => {
+        const boton = evento.currentTarget;
+        if (exportacionExcelEnCurso || !foliosPendientesDeDescarga.length) return;
+        exportacionExcelEnCurso = true;
+        boton.disabled = true;
+        boton.textContent = "Exportando...";
+        const exportarTodos = $("chkExportarTodos").checked && $("filtroModoFoliosExcel").value === "todos";
+        const separarPorModo = $("chkExportarSeparadoPorModo").checked;
+        const foliosAExportar = [...foliosPendientesDeDescarga];
+        const ids = foliosAExportar.map((folio) => String(folio.id));
+        const cantidad = foliosAExportar.length;
+        foliosPendientesDeDescarga = [];
+        $("confirmarExportacionWrap").hidden = true;
+        $("confirmarExportacionWrap").style.display = "none";
+        const botonPrepararExportacion = $("btnConfirmarExportarExcel");
+        botonPrepararExportacion.disabled = true;
+        botonPrepararExportacion.textContent = "Exportando...";
         try {
-          const { data: config } = await clienteDB.from("config_caratula_por_usuario")
-            .select("texto_subgerencia, texto_cv_label")
-            .eq("owner_id", usuarioAutenticado.id)
-            .maybeSingle();
+          const resultado = await exportarFoliosAExcel(foliosAExportar, exportarTodos, "", separarPorModo);
+          if (!resultado) return;
+
+          registrarFoliosDescargados(ids);
+          ids.forEach((id) => idsMarcadosExportar.delete(id));
+          renderizarSelectorFoliosExcel();
+          agregarHistorial("Exportacion Excel", `Folios agregados a Archivos descargados: ${cantidad}`);
+          mostrarMensaje(`${cantidad} folio(s) registrados en Archivos descargados.`);
+        } finally {
+          exportacionExcelEnCurso = false;
+          boton.disabled = false;
+          boton.textContent = "Sí";
+          botonPrepararExportacion.disabled = false;
+          botonPrepararExportacion.textContent = "Exportar";
+        }
+      });
+
+      $("listaArchivosDescargados").addEventListener("click", (evento) => {
+        const boton = evento.target.closest("[data-quitar-descarga]");
+        if (boton) quitarFolioDescargado(boton.dataset.quitarDescarga);
+      });
+      $("btnCancelarDeshacerDescarga").addEventListener("click", cancelarConfirmacionDeshacerDescarga);
+      $("btnAceptarDeshacerDescarga").addEventListener("click", confirmarDeshacerDescarga);
+      $("btnToggleArchivosDescargados").addEventListener("click", () => {
+        mostrarArchivosDescargados = !mostrarArchivosDescargados;
+        renderizarArchivosDescargados();
+      });
+
+      function contarTotalDocumentos(valor) {
+        const texto = String(valor ?? "");
+        const referencias = [...texto.matchAll(/(\d+)(?:\s*(?:-|\u2013|\u2014|al|a)\s*(\d+))?/gi)];
+        if (!referencias.length) return "";
+        return referencias.reduce((total, coincidencia) => {
+          const inicio = Number(coincidencia[1]);
+          const fin = coincidencia[2] ? Number(coincidencia[2]) : inicio;
+          return total + Math.abs(fin - inicio) + 1;
+        }, 0);
+      }
+
+      function extraerReferenciasNumericas(valor) {
+        return (String(valor ?? "").match(/\d+\s*(?:-|\u2013|\u2014|al|a)\s*\d+|\d+/gi) || [])
+          .map((referencia) => referencia.replace(/\s+/g, " ").trim())
+          .join(", ");
+      }
+
+      async function exportarFoliosAExcel(data, exportarTodos, nombreArchivoBase = "", separarPorModo = true) {
+        if (separarPorModo && data.length > 1) {
+          const fechaArchivo = new Date().toISOString().slice(0, 10);
+          for (let indice = 0; indice < data.length; indice++) {
+            const folio = data[indice];
+            const modoArchivo = esFolioModoDocumentos(folio) ? "Documentos" : "Normal_Notas";
+            const nombreArchivo = `Folio_${folio.numero_folio}_${modoArchivo}_${fechaArchivo}`;
+            const exportado = await exportarFoliosAExcel([folio], false, nombreArchivo, false);
+            if (!exportado) return false;
+            if (indice < data.length - 1) await new Promise((resolver) => setTimeout(resolver, 500));
+          }
+          return true;
+        }
+
+        try {
+          const [{ data: config }, { data: configVisualUsuario, error: errorConfigVisualUsuario }] = await Promise.all([
+            clienteDB.from("config_caratula_por_usuario")
+              .select("texto_subgerencia, texto_cv_label")
+              .eq("owner_id", usuarioAutenticado.id)
+              .maybeSingle(),
+            clienteDB.from("config_visual_por_usuario")
+              .select("config_global")
+              .eq("owner_id", usuarioAutenticado.id)
+              .maybeSingle()
+          ]);
+          if (errorConfigVisualUsuario) {
+            throw new Error("No se pudo cargar la preferencia de exportación: " + errorConfigVisualUsuario.message);
+          }
           const cargoSubgerencia = config ? (config.texto_subgerencia || "").replace(/\n/g, " ") : "";
           const tipoDocumento = config ? config.texto_cv_label : "";
+          const preferenciaExportarNumeroDocumentos =
+            configVisualUsuario?.config_global?.ajustesAvanzados?.exportarNumeroDocumentos;
+          const exportarTextoCompletoNumeroDocumentos = typeof preferenciaExportarNumeroDocumentos === "boolean"
+            ? !preferenciaExportarNumeroDocumentos
+            : ajustesAvanzados.exportarNumeroDocumentos !== true;
 
           const workbook = new ExcelJS.Workbook();
           const hoja = workbook.addWorksheet("Folios");
@@ -2742,7 +3208,10 @@
               const row = hoja.getRow(filaExcel++);
               const resNota = validarRangoNotaPago(nota);
               const tipoDocumentoFolio = obtenerConfiguracionParaFolio(f.id).textoCvLabel ?? tipoDocumento;
-              const valores = [numeroCorrelativo++, f.numero_bloque || "", f.numero_folio, f.periodo, cargoSubgerencia, tipoDocumentoFolio, limpiarNombreParaExportar(nombre), cargoItem, nota, resNota.total || ""];
+              const exportarNotas = ajustesAvanzados.exportarNotasPaginas !== true;
+              const notaExcel = exportarNotas ? nota : extraerReferenciasNumericas(nota);
+              const totalNotaExcel = resNota.total || "";
+              const valores = [numeroCorrelativo++, f.numero_bloque || "", f.numero_folio, f.periodo, cargoSubgerencia, tipoDocumentoFolio, limpiarNombreParaExportar(nombre), cargoItem, notaExcel, totalNotaExcel];
 
               valores.forEach((v, i) => {
                 const cel = row.getCell(i + 1); cel.value = v;
@@ -2765,8 +3234,10 @@
               { header: "Periodo", key: "periodo", width: 14 },
               { header: "Ubicación del documento", key: "ubicacion", width: 30 },
               { header: "Tipo de documento", key: "tipo", width: 28 },
-              { header: "N° de documentos", key: "documentos", width: 26 },
-              { header: "Observaciones", key: "observaciones", width: 32 }
+              { header: "N° de documentos", key: "documentos", width: 22 },
+              { header: "Total de documentos", key: "totalDocumentos", width: 20 },
+              { header: "Nota de páginas", key: "notaPaginas", width: 18 },
+              { header: "Total páginas", key: "totalPaginas", width: 16 },
             ];
             hojaDocumentos.columns = columnasDocumentos.map(({ width }) => ({ width }));
             const ultimaColumna = String.fromCharCode(64 + columnasDocumentos.length);
@@ -2797,20 +3268,43 @@
               celda.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
             });
             encabezadoTabla.height = 34;
-            foliosDocumentos.forEach((folio, indice) => {
-              const fila = hojaDocumentos.getRow(indice + 6);
+            let filaDocumentoExcel = 6;
+            let correlativoDocumento = 1;
+            foliosDocumentos.forEach((folio) => {
               const configFolio = obtenerConfiguracionParaFolio(folio.id);
-              const valores = [indice + 1, folio.numero_bloque || "", folio.numero_folio, folio.periodo,
-                configFolio.textoSubgerencia ?? cargoSubgerencia, configFolio.textoCvLabel ?? tipoDocumento,
-                folio.numero_documentos || folio.nombres?.[0] || "", folio.observaciones || ""];
-              valores.forEach((valor, columna) => {
-                const celda = fila.getCell(columna + 1);
-                celda.value = valor;
-                celda.alignment = { vertical: "middle", horizontal: columna < 4 ? "center" : "left", wrapText: true };
-                celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: indice % 2 === 0 ? "FFD9E7F5" : "FFFFFFFF" } };
-                celda.border = { top: { style: "thin", color: { argb: "FFCCCCCC" } }, bottom: { style: "thin", color: { argb: "FFCCCCCC" } }, left: { style: "thin", color: { argb: "FFCCCCCC" } }, right: { style: "thin", color: { argb: "FFCCCCCC" } } };
+              const registros = (Array.isArray(folio.nombres) && folio.nombres.length
+                ? folio.nombres
+                : [folio.numero_documentos || ""])
+                .map((registro, indiceRegistro) => ({ registro, indiceRegistro }))
+                .filter(({ registro }) => !esSeparador(registro));
+              const notasFolio = Array.isArray(folio.notas_pago) ? folio.notas_pago : [];
+              registros.forEach(({ registro, indiceRegistro }) => {
+                const fila = hojaDocumentos.getRow(filaDocumentoExcel++);
+                const rangoDocumentos = limpiarNombreParaExportar(registro);
+                const notaPaginas = folio.tipo_registro === "documentos_sin_notas" ? "" : (notasFolio[indiceRegistro] || "");
+                const exportarNotas = ajustesAvanzados.exportarNotasPaginas !== true;
+                const textoRegistro = exportarTextoCompletoNumeroDocumentos
+                  ? rangoDocumentos
+                  : extraerReferenciasNumericas(rangoDocumentos);
+                const totalDocumentosExcel = contarTotalDocumentos(rangoDocumentos);
+                const notaPaginasExcel = exportarNotas ? notaPaginas : extraerReferenciasNumericas(notaPaginas);
+                const totalPaginasExcel = contarTotalDocumentos(notaPaginas);
+                const valores = [
+                  correlativoDocumento++, folio.numero_bloque || "", folio.numero_folio, folio.periodo,
+                  configFolio.textoSubgerencia ?? cargoSubgerencia, configFolio.textoCvLabel ?? tipoDocumento,
+                  textoRegistro,
+                  totalDocumentosExcel,
+                  notaPaginasExcel, totalPaginasExcel
+                ];
+                valores.forEach((valor, columna) => {
+                  const celda = fila.getCell(columna + 1);
+                  celda.value = valor;
+                  celda.alignment = { vertical: "middle", horizontal: [0, 1, 2, 3, 6, 7, 8, 9].includes(columna) ? "center" : "left", wrapText: true };
+                  celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: filaDocumentoExcel % 2 === 0 ? "FFD9E7F5" : "FFFFFFFF" } };
+                  celda.border = { top: { style: "thin", color: { argb: "FFCCCCCC" } }, bottom: { style: "thin", color: { argb: "FFCCCCCC" } }, left: { style: "thin", color: { argb: "FFCCCCCC" } }, right: { style: "thin", color: { argb: "FFCCCCCC" } } };
+                });
+                fila.height = notaPaginas ? 44 : 32;
               });
-              fila.height = 32;
             });
             hojaDocumentos.pageSetup = { orientation: "landscape", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: "1:5", horizontalCentered: true, margins: { left: 0.25, right: 0.25, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } };
           }
@@ -2829,10 +3323,23 @@
           if (!foliosNormales.length) workbook.removeWorksheet(hoja.id);
           const buffer = await workbook.xlsx.writeBuffer();
           const a = document.createElement("a");
-          a.href = URL.createObjectURL(new Blob([buffer], { type: "application/octet-stream" }));
-          a.download = exportarTodos ? `Folios_Todos_${new Date().toISOString().slice(0, 10)}.xlsx` : `Folio_${data[0].numero_folio}.xlsx`;
+          const url = URL.createObjectURL(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+          a.href = url;
+          a.download = nombreArchivoBase
+            ? `${nombreArchivoBase}.xlsx`
+            : exportarTodos
+              ? `Folios_Todos_${new Date().toISOString().slice(0, 10)}.xlsx`
+              : `Folio_${data[0].numero_folio}.xlsx`;
+          a.style.display = "none";
+          document.body.appendChild(a);
           a.click();
-        } catch (err) { alert("Error al exportar: " + err.message); }
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          return true;
+        } catch (err) {
+          alert("Error al exportar: " + err.message);
+          return false;
+        }
       }
 
       /* CONFIGURACIÓN Y MODAL DE PLANTILLA */
@@ -2845,12 +3352,15 @@
           configVisual: { ...configVisual },
           configuracionGlobal: { ...configuracionGlobal },
           configuracionGlobalDocumentos: { ...configuracionGlobalDocumentos },
+          configuracionGlobalNotas: { ...configuracionGlobalNotas },
+          ajustesAvanzados: { ...ajustesAvanzados },
+          cargoActual,
           modoConfigPlantilla,
           configuracionesPorFolio: { ...configuracionesPorFolio },
           configVisualPendiente: { ...configVisualPendiente },
           claveFolioConfigPendiente
         };
-        modoConfigPlantilla = $("selectTipoRegistro").value === "documentos" ? "documentos" : "normal";
+        modoConfigPlantilla = modoConfiguracionFormulario();
         $("cfgModoPlantilla").value = modoConfigPlantilla;
         cargarConfiguracionParaFolio(obtenerClaveFolioActual());
         configVisualModalInicio = { ...configVisual };
@@ -2874,6 +3384,11 @@
         $("cfgAbrirFolioCreado").checked = ajustesAvanzados.abrirFolioCreado;
         $("cfgFolioAutomatico").checked = ajustesAvanzados.folioAutomatico;
         $("cfgPeriodoAutomatico").checked = ajustesAvanzados.periodoAutomatico;
+        $("cfgExportarNumeroDocumentos").checked = ajustesAvanzados.exportarNumeroDocumentos === true;
+        $("cfgExportarNotasPaginas").checked = ajustesAvanzados.exportarNotasPaginas === true;
+        $("cfgMostrarMarcadoresNombres").checked = configVisual.mostrarMarcadoresNombres !== false;
+        $("cfgOcultarNotaPaginaCaratula").checked = configVisual.ocultarNotaPaginaEnCaratula === true;
+        $("opcionOcultarNotaPaginaCaratula").hidden = modoConfigPlantilla !== "documentos";
         $("cfgFuenteSubgerencia").value = configVisual.fuenteSubgerencia;
         $("cfgFuenteCv").value = configVisual.fuenteCv;
         $("valorTamanoTitulo").value = configVisual.tamanoTitulo;
@@ -2941,21 +3456,21 @@
         document.querySelectorAll("#modalConfig details.opcion").forEach((o) => { o.open = false; });
       };
       const camposNumericosConfig = {
-        valorTamanoTitulo: { campo: "tamanoTitulo", min: 12, max: 40 },
-        valorEspacioTitulo: { campo: "espacioTitulo", min: 0, max: 60 },
-        valorTamanoSubgerencia: { campo: "tamanoSubgerencia", min: 10, max: 50 },
-        valorEspacioGerencia: { campo: "espacioGerencia", min: 0, max: 80 },
-        valorTamanoCv: { campo: "tamanoCv", min: 10, max: 60 },
-        valorEspacioCurriculum: { campo: "espacioCurriculum", min: 0, max: 80 },
-        valorTamanoEscudo: { campo: "tamanoEscudo", min: 60, max: 220 },
-        valorTamanoSeparador: { campo: "tamanoSeparador", min: 10, max: 60, grupo: "separador" },
-        valorEspacioSeparador: { campo: "espacioSeparador", min: 0, max: 80, grupo: "separador" },
-        valorTamanoNombres: { campo: "tamanoNombres", min: 8, max: 40 },
-        valorEspacioNombres: { campo: "espacioNombres", min: 0, max: 80 },
-        valorTamanoFolio: { campo: "tamanoFolio", min: 14, max: 70 },
-        valorPosicionFolio: { campo: "posicionFolio", min: -80, max: 80 },
-        valorTamanoPeriodo: { campo: "tamanoPeriodo", min: 8, max: 50 },
-        valorPosicionPeriodo: { campo: "posicionPeriodo", min: -80, max: 80 }
+        valorTamanoTitulo: { campo: "tamanoTitulo", min: 12, max: 60 },
+        valorEspacioTitulo: { campo: "espacioTitulo", min: 0, max: 80 },
+        valorTamanoSubgerencia: { campo: "tamanoSubgerencia", min: 10, max: 70 },
+        valorEspacioGerencia: { campo: "espacioGerencia", min: 0, max: 100 },
+        valorTamanoCv: { campo: "tamanoCv", min: 10, max: 80 },
+        valorEspacioCurriculum: { campo: "espacioCurriculum", min: 0, max: 100 },
+        valorTamanoEscudo: { campo: "tamanoEscudo", min: 60, max: 240 },
+        valorTamanoSeparador: { campo: "tamanoSeparador", min: 10, max: 80, grupo: "separador" },
+        valorEspacioSeparador: { campo: "espacioSeparador", min: 0, max: 100, grupo: "separador" },
+        valorTamanoNombres: { campo: "tamanoNombres", min: 8, max: 60 },
+        valorEspacioNombres: { campo: "espacioNombres", min: 0, max: 100 },
+        valorTamanoFolio: { campo: "tamanoFolio", min: 14, max: 90 },
+        valorPosicionFolio: { campo: "posicionFolio", min: -100, max: 100 },
+        valorTamanoPeriodo: { campo: "tamanoPeriodo", min: 8, max: 70 },
+        valorPosicionPeriodo: { campo: "posicionPeriodo", min: -100, max: 100 }
       };
       Object.entries(camposNumericosConfig).forEach(([id, definicion]) => {
         $(id).addEventListener("change", (evento) => {
@@ -2973,15 +3488,15 @@
         });
       });
       $("btnMenosTitulo").onclick = () => { if (configVisual.tamanoTitulo > 12) { configVisual.tamanoTitulo--; aplicarConfigVisual(); } };
-      $("btnMasTitulo").onclick = () => { if (configVisual.tamanoTitulo < 40) { configVisual.tamanoTitulo++; aplicarConfigVisual(); } };
+      $("btnMasTitulo").onclick = () => { if (configVisual.tamanoTitulo < 60) { configVisual.tamanoTitulo++; aplicarConfigVisual(); } };
       $("btnMenosEspacioTitulo").onclick = () => { if (configVisual.espacioTitulo > 0) { configVisual.espacioTitulo -= 2; aplicarConfigVisual(); } };
-      $("btnMasEspacioTitulo").onclick = () => { if (configVisual.espacioTitulo < 60) { configVisual.espacioTitulo += 2; aplicarConfigVisual(); } };
+      $("btnMasEspacioTitulo").onclick = () => { if (configVisual.espacioTitulo < 80) { configVisual.espacioTitulo += 2; aplicarConfigVisual(); } };
       $("btnMenosSubgerencia").onclick = () => { if (configVisual.tamanoSubgerencia > 10) { configVisual.tamanoSubgerencia--; aplicarConfigVisual(); } };
-      $("btnMasSubgerencia").onclick = () => { if (configVisual.tamanoSubgerencia < 50) { configVisual.tamanoSubgerencia++; aplicarConfigVisual(); } };
+      $("btnMasSubgerencia").onclick = () => { if (configVisual.tamanoSubgerencia < 70) { configVisual.tamanoSubgerencia++; aplicarConfigVisual(); } };
       $("btnMenosCv").onclick = () => { if (configVisual.tamanoCv > 10) { configVisual.tamanoCv--; aplicarConfigVisual(); } };
-      $("btnMasCv").onclick = () => { if (configVisual.tamanoCv < 60) { configVisual.tamanoCv++; aplicarConfigVisual(); } };
+      $("btnMasCv").onclick = () => { if (configVisual.tamanoCv < 80) { configVisual.tamanoCv++; aplicarConfigVisual(); } };
       $("btnMenosEspacioGerencia").onclick = () => { if (configVisual.espacioGerencia > 0) { configVisual.espacioGerencia -= 2; aplicarConfigVisual(); } };
-      $("btnMasEspacioGerencia").onclick = () => { if (configVisual.espacioGerencia < 80) { configVisual.espacioGerencia += 2; aplicarConfigVisual(); } };
+      $("btnMasEspacioGerencia").onclick = () => { if (configVisual.espacioGerencia < 100) { configVisual.espacioGerencia += 2; aplicarConfigVisual(); } };
       $("cfgPosicionSubgerencia").onchange = (e) => {
         configVisual.posicionSubgerencia = e.target.value === "encima-escudo" ? "encima-escudo" : "debajo-escudo";
         aplicarConfigVisual();
@@ -2990,23 +3505,20 @@
         configVisual.lineasContorno = Math.min(2, Math.max(0, Number.parseInt(e.target.value, 10) || 0));
         aplicarConfigVisual();
       };
-      $("cfgGrosorBordePrincipal").onchange = (e) => {
-        configVisual.grosorBordePrincipal = Number.parseInt(e.target.value, 10);
+      const actualizarGrosorContorno = (evento, campo, maximo) => {
+        const valor = Number.parseInt(evento.target.value, 10);
+        configVisual[campo] = Number.isFinite(valor) ? Math.min(maximo, Math.max(1, valor)) : 5;
+        evento.target.value = configVisual[campo];
         aplicarConfigVisual();
       };
+      $("cfgGrosorBordePrincipal").onchange = (e) => actualizarGrosorContorno(e, "grosorBordePrincipal", 35);
       $("cfgColorBordePrincipal").oninput = (e) => {
         configVisual.colorBordePrincipal = e.target.value;
         aplicarConfigVisual(false);
       };
       $("cfgColorBordePrincipal").onchange = () => aplicarConfigVisual();
-      $("cfgGrosorLineaContorno1").onchange = (e) => {
-        configVisual.grosorLineaContorno1 = Number.parseInt(e.target.value, 10);
-        aplicarConfigVisual();
-      };
-      $("cfgGrosorLineaContorno2").onchange = (e) => {
-        configVisual.grosorLineaContorno2 = Number.parseInt(e.target.value, 10);
-        aplicarConfigVisual();
-      };
+      $("cfgGrosorLineaContorno1").onchange = (e) => actualizarGrosorContorno(e, "grosorLineaContorno1", 30);
+      $("cfgGrosorLineaContorno2").onchange = (e) => actualizarGrosorContorno(e, "grosorLineaContorno2", 30);
       $("cfgColorLineaContorno1").oninput = (e) => {
         configVisual.colorLineaContorno1 = e.target.value;
         aplicarConfigVisual(false);
@@ -3018,13 +3530,13 @@
       };
       $("cfgColorLineaContorno2").onchange = () => aplicarConfigVisual();
       $("btnMenosEspacioCurriculum").onclick = () => { if (configVisual.espacioCurriculum > 0) { configVisual.espacioCurriculum -= 2; aplicarConfigVisual(); } };
-      $("btnMasEspacioCurriculum").onclick = () => { if (configVisual.espacioCurriculum < 80) { configVisual.espacioCurriculum += 2; aplicarConfigVisual(); } };
+      $("btnMasEspacioCurriculum").onclick = () => { if (configVisual.espacioCurriculum < 100) { configVisual.espacioCurriculum += 2; aplicarConfigVisual(); } };
       $("btnMenosEscudo").onclick = () => { if (configVisual.tamanoEscudo > 60) { configVisual.tamanoEscudo -= 5; aplicarConfigVisual(); } };
-      $("btnMasEscudo").onclick = () => { if (configVisual.tamanoEscudo < 220) { configVisual.tamanoEscudo += 5; aplicarConfigVisual(); } };
+      $("btnMasEscudo").onclick = () => { if (configVisual.tamanoEscudo < 240) { configVisual.tamanoEscudo += 5; aplicarConfigVisual(); } };
       $("btnMenosEspacioNombres").onclick = () => { if (configVisual.espacioNombres > 0) { configVisual.espacioNombres -= 2; aplicarConfigVisual(); } };
-      $("btnMasEspacioNombres").onclick = () => { if (configVisual.espacioNombres < 80) { configVisual.espacioNombres += 2; aplicarConfigVisual(); } };
+      $("btnMasEspacioNombres").onclick = () => { if (configVisual.espacioNombres < 100) { configVisual.espacioNombres += 2; aplicarConfigVisual(); } };
       $("btnMenosTamanoNombres").onclick = () => { if (configVisual.tamanoNombres > 8) { configVisual.tamanoNombres--; aplicarConfigVisual(); } };
-      $("btnMasTamanoNombres").onclick = () => { if (configVisual.tamanoNombres < 40) { configVisual.tamanoNombres++; aplicarConfigVisual(); } };
+      $("btnMasTamanoNombres").onclick = () => { if (configVisual.tamanoNombres < 60) { configVisual.tamanoNombres++; aplicarConfigVisual(); } };
 
       // CONFIGURACIÓN GLOBAL DEL SEPARADOR
       $("cfgFuenteSeparador").onchange = (e) => {
@@ -3035,25 +3547,25 @@
         if (configVisual.tamanoSeparador > 10) { configVisual.tamanoSeparador--; aplicarConfigVisual(true, "separador"); }
       };
       $("btnMasSeparador").onclick = () => {
-        if (configVisual.tamanoSeparador < 60) { configVisual.tamanoSeparador++; aplicarConfigVisual(true, "separador"); }
+        if (configVisual.tamanoSeparador < 80) { configVisual.tamanoSeparador++; aplicarConfigVisual(true, "separador"); }
       };
       $("btnMenosEspacioSeparador").onclick = () => {
         if (configVisual.espacioSeparador > 0) { configVisual.espacioSeparador -= 2; aplicarConfigVisual(true, "separador"); }
       };
       $("btnMasEspacioSeparador").onclick = () => {
-        if (configVisual.espacioSeparador < 80) { configVisual.espacioSeparador += 2; aplicarConfigVisual(true, "separador"); }
+        if (configVisual.espacioSeparador < 100) { configVisual.espacioSeparador += 2; aplicarConfigVisual(true, "separador"); }
       };
 
       // Controles independientes del folio y del año/periodo.
       $("btnMenosFolio").onclick = () => { if (configVisual.tamanoFolio > 14) { configVisual.tamanoFolio--; aplicarConfigVisual(); } };
-      $("btnMasFolio").onclick = () => { if (configVisual.tamanoFolio < 70) { configVisual.tamanoFolio++; aplicarConfigVisual(); } };
-      $("btnSubirFolio").onclick = () => { if (configVisual.posicionFolio > -80) { configVisual.posicionFolio -= 2; aplicarConfigVisual(); } };
-      $("btnBajarFolio").onclick = () => { if (configVisual.posicionFolio < 80) { configVisual.posicionFolio += 2; aplicarConfigVisual(); } };
+      $("btnMasFolio").onclick = () => { if (configVisual.tamanoFolio < 90) { configVisual.tamanoFolio++; aplicarConfigVisual(); } };
+      $("btnSubirFolio").onclick = () => { if (configVisual.posicionFolio > -100) { configVisual.posicionFolio -= 2; aplicarConfigVisual(); } };
+      $("btnBajarFolio").onclick = () => { if (configVisual.posicionFolio < 100) { configVisual.posicionFolio += 2; aplicarConfigVisual(); } };
 
       $("btnMenosPeriodo").onclick = () => { if (configVisual.tamanoPeriodo > 8) { configVisual.tamanoPeriodo--; aplicarConfigVisual(); } };
-      $("btnMasPeriodo").onclick = () => { if (configVisual.tamanoPeriodo < 50) { configVisual.tamanoPeriodo++; aplicarConfigVisual(); } };
-      $("btnSubirPeriodo").onclick = () => { if (configVisual.posicionPeriodo > -80) { configVisual.posicionPeriodo -= 2; aplicarConfigVisual(); } };
-      $("btnBajarPeriodo").onclick = () => { if (configVisual.posicionPeriodo < 80) { configVisual.posicionPeriodo += 2; aplicarConfigVisual(); } };
+      $("btnMasPeriodo").onclick = () => { if (configVisual.tamanoPeriodo < 70) { configVisual.tamanoPeriodo++; aplicarConfigVisual(); } };
+      $("btnSubirPeriodo").onclick = () => { if (configVisual.posicionPeriodo > -100) { configVisual.posicionPeriodo -= 2; aplicarConfigVisual(); } };
+      $("btnBajarPeriodo").onclick = () => { if (configVisual.posicionPeriodo < 100) { configVisual.posicionPeriodo += 2; aplicarConfigVisual(); } };
 
       $("cfgOrdenFolioPeriodo").onchange = (e) => {
         configVisual.ordenFolioPeriodo = e.target.value === "folio-arriba" ? "folio-arriba" : "periodo-arriba";
@@ -3067,6 +3579,14 @@
         aplicarConfigVisual();
       };
       $("cfgFuenteCv").onchange = (e) => { configVisual.fuenteCv = e.target.value; aplicarConfigVisual(); };
+      $("cfgMostrarMarcadoresNombres").onchange = (e) => {
+        configVisual.mostrarMarcadoresNombres = e.target.checked;
+        aplicarConfigVisual();
+      };
+      $("cfgOcultarNotaPaginaCaratula").onchange = (e) => {
+        configVisual.ocultarNotaPaginaEnCaratula = e.target.checked;
+        aplicarConfigVisual();
+      };
       $("cfgSubgerencia").oninput = actualizarVistaPreviaConfiguracion;
       $("cfgCvLabel").oninput = actualizarVistaPreviaConfiguracion;
 
@@ -3085,7 +3605,9 @@
           limpiarAlGuardar: $("cfgLimpiarAlGuardar").checked,
           abrirFolioCreado: $("cfgAbrirFolioCreado").checked,
           folioAutomatico: $("cfgFolioAutomatico").checked,
-          periodoAutomatico: $("cfgPeriodoAutomatico").checked
+          periodoAutomatico: $("cfgPeriodoAutomatico").checked,
+          exportarNumeroDocumentos: $("cfgExportarNumeroDocumentos").checked,
+          exportarNotasPaginas: $("cfgExportarNotasPaginas").checked
         };
         configuracionGlobal.ajustesAvanzados = { ...ajustesAvanzados };
         // Cargo y preferencias avanzadas se guardan en la configuración privada de la cuenta.
@@ -3101,6 +3623,13 @@
         }
         localStorage.setItem(claveLocalPorUsuario("ajustesAvanzados"), JSON.stringify(ajustesAvanzados));
 
+        // Estos ajustes ya quedaron guardados aunque luego falle la aplicaciÃ³n del diseÃ±o.
+        if (estadoConfigAntesModal) {
+          estadoConfigAntesModal.ajustesAvanzados = { ...ajustesAvanzados };
+          estadoConfigAntesModal.cargoActual = cargoActual;
+          estadoConfigAntesModal.configuracionGlobal = { ...configuracionGlobal };
+        }
+
         await guardarConfigVisual();
         if (Object.keys(configVisualPendiente).length) {
           const aplicado = await aplicarConfiguracionVisualPendiente();
@@ -3111,6 +3640,9 @@
           configVisual: { ...configVisual },
           configuracionGlobal: { ...configuracionGlobal },
           configuracionGlobalDocumentos: { ...configuracionGlobalDocumentos },
+          configuracionGlobalNotas: { ...configuracionGlobalNotas },
+          ajustesAvanzados: { ...ajustesAvanzados },
+          cargoActual,
           modoConfigPlantilla,
           configuracionesPorFolio: { ...configuracionesPorFolio },
           configVisualPendiente: { ...configVisualPendiente },
@@ -3123,7 +3655,13 @@
 
       /* TECLAS ESCAPE PARA MODALES */
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") ["modalDuplicados", "modalExportarExcel", "modalConfig", "modalImpresion"].forEach(cerrarModal);
+        if (e.key === "Escape") {
+          if (!$("confirmarDeshacerDescargaWrap").hidden) {
+            cancelarConfirmacionDeshacerDescarga();
+            return;
+          }
+          ["modalDuplicados", "modalExportarExcel", "modalConfig", "modalImpresion"].forEach(cerrarModal);
+        }
       });
 
       /* INICIALIZACIÓN GLOBAL */
@@ -3188,12 +3726,16 @@
         // Configuración privada de esta cuenta: cargo, folios impresos e historial.
         try {
           const { data: cfg } = await clienteDB.from("config_visual_por_usuario")
-            .select("cargo, impresos, historial").eq("owner_id", usuarioAutenticado.id).maybeSingle();
+            .select("cargo, impresos, descargados, historial").eq("owner_id", usuarioAutenticado.id).maybeSingle();
           if (cfg) {
             if (cfg.cargo) { cargoActual = cfg.cargo; $("cfgRubroActual").value = cfg.cargo; }
             if (Array.isArray(cfg.impresos)) {
               foliosImpresos = cfg.impresos.map(String);
               localStorage.setItem(claveLocalPorUsuario(KEY_FOLIOS_IMPRESOS), JSON.stringify(foliosImpresos));
+            }
+            if (Array.isArray(cfg.descargados)) {
+              foliosDescargados = cfg.descargados.map(String);
+              localStorage.setItem(claveLocalPorUsuario(KEY_FOLIOS_DESCARGADOS), JSON.stringify(foliosDescargados));
             }
             if (Array.isArray(cfg.historial) && cfg.historial.length) {
               localStorage.setItem(claveLocalPorUsuario("historialFolios"), JSON.stringify(cfg.historial));
@@ -3206,6 +3748,8 @@
         renderizarHistorial();
         const listaImpresosActual = cargarFoliosImpresos();
         foliosImpresos = [...new Set([...foliosImpresos, ...listaImpresosActual])];
+        const listaDescargadosActual = cargarFoliosDescargados();
+        foliosDescargados = [...new Set([...foliosDescargados, ...listaDescargadosActual])];
 
         filtroActivo = buscador.value.trim().toLowerCase();
         totalRegistros = await obtenerTotalRegistros(filtroActivo);
