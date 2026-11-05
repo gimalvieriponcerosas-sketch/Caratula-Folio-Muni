@@ -522,7 +522,7 @@
 
   .hoja-impresion-pagina .caratula {
     width: 300px !important; height: auto !important; min-height: 900px !important; max-height: none !important;
-    flex: 0 0 300px !important; transform: scale(0.9) !important; transform-origin: center;
+    flex: 0 0 300px !important; transform: scale(1) !important; transform-origin: center;
   }
 
   .hoja-impresion-pagina:not(:last-child) {
