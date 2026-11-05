@@ -200,6 +200,8 @@
       const inpBloque = $("inpBloque");
       const inpPeriodo = $("inpPeriodo");
       const inpObservaciones = $("inpObservaciones");
+      let observacionesPorModoFormulario = { normal: "", documentos: "" };
+      const MARCADOR_OBSERVACIONES_POR_MODO = "__OBSERVACIONES_POR_MODO_V1__:";
       const inpId = $("inpId");
       const modoEdicion = $("modoEdicion");
       const buscador = $("buscador");
@@ -411,6 +413,64 @@
 
       function modoConfiguracionFormulario(modo = $("selectTipoRegistro")?.value) {
         return esModoDocumentos(modo) ? "documentos" : (modo === "notas" ? "notas" : "normal");
+      }
+
+      function claveObservacionesPorModo(modo = modoRegistroActual) {
+        return esModoDocumentos(modo) ? "documentos" : "normal";
+      }
+
+      function leerObservacionesPorModo(valor, modoAntiguo = "normal") {
+        const texto = String(valor ?? "");
+        if (texto.startsWith(MARCADOR_OBSERVACIONES_POR_MODO)) {
+          try {
+            const guardadas = JSON.parse(texto.slice(MARCADOR_OBSERVACIONES_POR_MODO.length));
+            return {
+              normal: String(guardadas?.normal ?? ""),
+              documentos: String(guardadas?.documentos ?? "")
+            };
+          } catch (error) {
+            console.warn("No se pudieron leer las observaciones separadas:", error);
+          }
+        }
+        return modoAntiguo === "documentos"
+          ? { normal: "", documentos: texto }
+          : { normal: texto, documentos: "" };
+      }
+
+      function guardarObservacionModoActual() {
+        observacionesPorModoFormulario[claveObservacionesPorModo()] = inpObservaciones.value;
+      }
+
+      function actualizarEtiquetaObservaciones() {
+        const etiqueta = $("etiquetaObservaciones");
+        if (etiqueta) etiqueta.textContent = "Observaciones";
+      }
+
+      function cargarObservacionesDeFolio(folio) {
+        const modoFolio = obtenerModoDeFolio(folio);
+        observacionesPorModoFormulario = leerObservacionesPorModo(folio?.observaciones, modoFolio);
+        inpObservaciones.value = observacionesPorModoFormulario[claveObservacionesPorModo(modoRegistroActual)];
+        actualizarEtiquetaObservaciones();
+      }
+
+      function serializarObservacionesPorModo() {
+        guardarObservacionModoActual();
+        const normal = observacionesPorModoFormulario.normal.trim();
+        const documentos = observacionesPorModoFormulario.documentos.trim();
+        if (!normal && !documentos) return null;
+        return MARCADOR_OBSERVACIONES_POR_MODO + JSON.stringify({ normal, documentos });
+      }
+
+      function obtenerTextoObservaciones(folio) {
+        const modoFolio = obtenerModoDeFolio(folio);
+        const observaciones = leerObservacionesPorModo(folio?.observaciones, modoFolio);
+        return `${observaciones.normal} ${observaciones.documentos}`.trim();
+      }
+
+      function obtenerObservacionDelModoFolio(folio) {
+        const modoFolio = obtenerModoDeFolio(folio);
+        const observaciones = leerObservacionesPorModo(folio?.observaciones, modoFolio);
+        return observaciones[modoFolio === "documentos" ? "documentos" : "normal"].trim();
       }
 
       function obtenerModoDeFolio(folio) {
@@ -1358,7 +1418,7 @@
         const num = normalizarTexto(f.numero_folio);
         const bloq = normalizarTexto(f.numero_bloque);
         const per = normalizarTexto(f.periodo);
-        const obs = normalizarTexto(f.observaciones);
+        const obs = normalizarTexto(obtenerTextoObservaciones(f));
         const numDocumentos = normalizarTexto(f.numero_documentos);
         const terminos = query.split(" ");
         const nombres = Array.isArray(f.nombres) ? f.nombres : [f.nombres || ""];
@@ -1690,6 +1750,10 @@
             </div>`;
           }).join("") : `<div class="detalle-vacio">No hay nombres registrados.</div>`;
 
+          const observacion = obtenerObservacionDelModoFolio(f);
+          const observacionHtml = observacion
+            ? `<div class="detalle-observaciones" style="margin:8px 0 0;padding:6px 0 0;border-top:1px dashed #cbd5e1;font-size:11px;line-height:1.35;white-space:pre-wrap;">📝 <span style="color:#1e3a8a;font-weight:normal;">Observaciones:</span> ${escaparHtml(observacion)}</div>`
+            : "";
           const nombresReales = nombres.filter((n) => !esSeparador(n));
           const tipoBadge = `<span style="background:${esModoDocumentos ? "#fef3c7" : "#e0f2fe"};color:${esModoDocumentos ? "#92400e" : "#075985"};padding:2px 6px;border-radius:4px;font-size:10px;margin-left:4px;">${esModoDocumentos ? "Documentos" : "Normal"}</span>`;
           const bloqBadge = f.numero_bloque ? `<span style="background:#e2e8f0;color:#334155;padding:2px 6px;border-radius:4px;font-size:11px;margin-left:4px;">Bloque ${escaparHtml(f.numero_bloque)}</span>` : "";
@@ -1701,7 +1765,7 @@
             </div>
             <details style="margin-top:6px;" data-folio-id="${f.id}" ${isOpen ? 'open' : ''}>
               <summary style="cursor:pointer;color:#0ea5e9;">Ver contenido</summary>
-              <div style="margin-top:6px;">${contenido}</div>
+              <div style="margin-top:6px;">${contenido}${observacionHtml}</div>
             </details>
             <div class="acciones">
               <button class="btn-accion btn-editar" data-action="editar" data-folio-id="${escaparHtml(f.id)}">✏️ Editar</button>
@@ -2177,8 +2241,10 @@
         inpPeriodo.value = ""; 
         aplicarValoresAutomaticosFormulario();
         contNombres.innerHTML = "";
-        crearFilaNombre(); 
+        crearFilaNombre();
+        observacionesPorModoFormulario = { normal: "", documentos: "" };
         inpObservaciones.value = "";
+        actualizarEtiquetaObservaciones();
         modoEdicion.classList.remove("mostrar");
         notasPagoVisibles = modoRegistroActual === "notas";
         modoMostrarFilas = "ultimos";
@@ -2327,7 +2393,10 @@
       $("selectTipoRegistro").addEventListener("change", (evento) => {
         const modoAnterior = modoRegistroActual;
         borradoresModoRegistro[claveBorradorModoRegistro(modoRegistroActual)] = capturarBorradorModoRegistro();
+        guardarObservacionModoActual();
         modoRegistroActual = evento.target.value;
+        inpObservaciones.value = observacionesPorModoFormulario[claveObservacionesPorModo(modoRegistroActual)] || "";
+        actualizarEtiquetaObservaciones();
         // Normal y Notas son dos presentaciones del mismo registro. Solo al
         // cambiar a Documentos se conserva/restaura una lista separada.
         if (claveBorradorModoRegistro(modoRegistroActual) !== claveBorradorModoRegistro(modoAnterior)) {
@@ -2650,6 +2719,7 @@
       });
       inpNumero.addEventListener("input", actualizarPreview);
       inpPeriodo.addEventListener("input", actualizarPreview);
+      inpObservaciones.addEventListener("input", guardarObservacionModoActual);
 
       /* OPERACIONES CRUD */
       $("btnGuardar").onclick = async () => {
@@ -2669,7 +2739,7 @@
           nombres: usuarios.map((usuario) => usuario.nombre),
           notas_pago: usuarios.map((usuario) => modoDocumentosSinNotas ? null : (usuario.nota || null)),
           cargos: modoDocumentos ? usuarios.map(() => null) : usuarios.map((usuario) => usuario.cargo || null),
-          observaciones: inpObservaciones.value.trim() || null,
+          observaciones: serializarObservacionesPorModo(),
           actualizado_en: new Date().toISOString(),
         };
 
@@ -2758,7 +2828,7 @@
         inpNumero.value = folio.numero_folio;
         inpBloque.value = folio.numero_bloque || "";
         inpPeriodo.value = folio.periodo;
-        inpObservaciones.value = folio.observaciones || ""; 
+        cargarObservacionesDeFolio(folio);
         contNombres.innerHTML = "";
 
         const notas = folio.notas_pago || [], cargos = folio.cargos || [];
@@ -2802,7 +2872,7 @@
         inpNumero.value = folio.numero_folio + " (copia)";
         inpBloque.value = folio.numero_bloque || bloqueActual;
         inpPeriodo.value = folio.periodo;
-        inpObservaciones.value = folio.observaciones || ""; 
+        cargarObservacionesDeFolio(folio);
         contNombres.innerHTML = "";
 
         const notas = folio.notas_pago || [], cargos = folio.cargos || [];
@@ -2922,7 +2992,7 @@
         const tipo = esFolioModoDocumentos(folio) ? "documentos numero de documentos" : (folio.tipo_registro || "normal");
         const textoBusqueda = normalizarTexto([
           "Folio Nro.", folio.numero_folio, `Bloque ${folio.numero_bloque || ""}`,
-          folio.periodo, folio.numero_documentos, nombres, cargos, notas, folio.observaciones, tipo
+          folio.periodo, folio.numero_documentos, nombres, cargos, notas, obtenerTextoObservaciones(folio), tipo
         ].join(" ")).replace(/[^a-z0-9]+/g, " ").trim();
         return textoBusqueda.includes(queryLimpia)
           || (!queryLimpia.startsWith("blo") && cumpleFiltroInteligente(folio, query));
@@ -3238,6 +3308,7 @@
               { header: "Total de documentos", key: "totalDocumentos", width: 20 },
               { header: "Nota de páginas", key: "notaPaginas", width: 18 },
               { header: "Total páginas", key: "totalPaginas", width: 16 },
+              { header: "Observaciones", key: "observaciones", width: 36 },
             ];
             hojaDocumentos.columns = columnasDocumentos.map(({ width }) => ({ width }));
             const ultimaColumna = String.fromCharCode(64 + columnasDocumentos.length);
@@ -3289,12 +3360,13 @@
                 const totalDocumentosExcel = contarTotalDocumentos(rangoDocumentos);
                 const notaPaginasExcel = exportarNotas ? notaPaginas : extraerReferenciasNumericas(notaPaginas);
                 const totalPaginasExcel = contarTotalDocumentos(notaPaginas);
+                const observacionesDocumento = obtenerObservacionDelModoFolio(folio);
                 const valores = [
                   correlativoDocumento++, folio.numero_bloque || "", folio.numero_folio, folio.periodo,
                   configFolio.textoSubgerencia ?? cargoSubgerencia, configFolio.textoCvLabel ?? tipoDocumento,
                   textoRegistro,
                   totalDocumentosExcel,
-                  notaPaginasExcel, totalPaginasExcel
+                  notaPaginasExcel, totalPaginasExcel, observacionesDocumento
                 ];
                 valores.forEach((valor, columna) => {
                   const celda = fila.getCell(columna + 1);
@@ -3303,7 +3375,8 @@
                   celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: filaDocumentoExcel % 2 === 0 ? "FFD9E7F5" : "FFFFFFFF" } };
                   celda.border = { top: { style: "thin", color: { argb: "FFCCCCCC" } }, bottom: { style: "thin", color: { argb: "FFCCCCCC" } }, left: { style: "thin", color: { argb: "FFCCCCCC" } }, right: { style: "thin", color: { argb: "FFCCCCCC" } } };
                 });
-                fila.height = notaPaginas ? 44 : 32;
+                const lineasObservacion = Math.max(1, Math.ceil(String(observacionesDocumento || "").length / 42));
+                fila.height = Math.max(notaPaginas ? 44 : 32, Math.min(120, 18 * lineasObservacion));
               });
             });
             hojaDocumentos.pageSetup = { orientation: "landscape", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: "1:5", horizontalCentered: true, margins: { left: 0.25, right: 0.25, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } };
