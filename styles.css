@@ -451,11 +451,13 @@
 
       /* ESTILOS EXCLUSIVOS DE IMPRESIÓN FÍSICA / PDF */
       @media print {
-    @page {
+  @page {
     size: A4 portrait;
     margin: 0;
-    #modalImpresion .modal-impresion-caja { zoom: 1 !important; }
   }
+
+  #modalImpresion .modal-impresion-caja { zoom: 1 !important; }
+
   body * { visibility: hidden; }
   #hojaImpresionImprimible, #hojaImpresionImprimible * { visibility: visible; }
 
@@ -520,7 +522,7 @@
 
   .hoja-impresion-pagina .caratula {
     width: 300px !important; height: auto !important; min-height: 900px !important; max-height: none !important;
-    flex: 0 0 300px !important; transform: none !important;
+    flex: 0 0 300px !important; transform: scale(0.8) !important; transform-origin: center;
   }
 
   .hoja-impresion-pagina:not(:last-child) {
