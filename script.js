@@ -2859,10 +2859,6 @@
         agregarHistorial(accion, detalle);
 
         if (!inpId.value && data) { inpId.value = data.id; modoEdicion.classList.add("mostrar"); }
-        modoMostrarFilas = "ultimos";
-        $("selectMostrarFilas").value = "ultimos";
-        actualizarVisibilidadFilas();
-        mostrarUltimosNombres(true);
         await recargarUltimaPagina();
         if (ajustesAvanzados.limpiarAlGuardar) limpiarFormulario();
       };
