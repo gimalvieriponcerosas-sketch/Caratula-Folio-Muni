@@ -443,11 +443,11 @@
         display: flex; flex-direction: column; align-items: center; gap: 16px; width: max-content; min-width: 100%;
       }
       .hoja-impresion-pagina {
-        flex: 0 0 auto; background: #fff; width: 210mm; min-height: 297mm; padding: 10mm; display: flex; flex-direction: row; justify-content: space-evenly; align-items: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); zoom: 0.8;
+        flex: 0 0 auto; box-sizing: border-box; background: #fff; width: 210mm; height: 297mm; padding: 10mm; display: flex; flex-direction: row; justify-content: space-evenly; align-items: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); zoom: 0.8;
       }
       .hoja-impresion-pagina .caratula {
-        width: 300px; height: auto; min-height: 900px; max-height: none; flex: 0 0 300px;
-        transform: scale(var(--escala-vista-caratula, 0.9)); transform-origin: center;
+        width: 300px; height: auto; min-height: 900px; max-height: none; flex: 0 0 auto;
+        zoom: var(--escala-impresion, 1); transform: none;
       }
       @media (max-width: 850px) {
         .modal-impresion-caja { width: 96vw; height: 94vh; }
@@ -471,6 +471,10 @@
 
   body * { visibility: hidden; }
   #hojaImpresionImprimible, #hojaImpresionImprimible * { visibility: visible; }
+
+  /* Evita que el contenido de la aplicación reserve espacio antes del modal
+     y empuje las hojas impresas a una página posterior. */
+  body > *:not(#modalImpresion) { display: none !important; }
 
     .modal-overlay, .panel, .btn-group, #modoEdicion, .historial-panel, .encabezado, .caratula-wrap {
     display: none !important;
@@ -525,9 +529,9 @@
   }
 
   .hoja-impresion-pagina {
-    width: 210mm !important; height: auto !important; min-height: 0 !important;
-    padding: 10mm 0 !important; display: flex !important;
-    justify-content: space-around !important; align-items: center !important;
+    box-sizing: border-box !important; width: 210mm !important; height: 296mm !important; min-height: 296mm !important;
+    margin: 0 auto !important; padding: 10mm !important; display: flex !important;
+    justify-content: space-evenly !important; align-items: center !important;
     box-shadow: none !important; zoom: 1 !important; transform: none !important;
     page-break-after: auto; break-after: auto;
     page-break-inside: avoid; break-inside: avoid;
@@ -535,7 +539,7 @@
 
   .hoja-impresion-pagina .caratula {
     width: 300px !important; height: auto !important; min-height: 900px !important; max-height: none !important;
-    flex: 0 0 300px !important; transform: none !important; zoom: var(--escala-impresion, 1) !important; transform-origin: center;
+    flex: 0 0 auto !important; transform: none !important; zoom: var(--escala-impresion, 1) !important;
   }
 
   .hoja-impresion-pagina:not(:last-child) {

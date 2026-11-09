@@ -15,6 +15,14 @@
         botonTamanoImpresion?.setAttribute("aria-expanded", "false");
         if (devolverFoco) botonTamanoImpresion?.focus();
       };
+      const calcularEscalaImpresion = (hoja, escalaSolicitada) => {
+        const altoDisponibleA4 = (297 / 25.4) * 96 - (20 / 25.4) * 96 - 24;
+        const altoMaximoCaratula = Math.max(0, ...[...(hoja?.querySelectorAll(".caratula") || [])]
+          .map(caratula => Math.max(caratula.scrollHeight, caratula.offsetHeight)));
+        return altoMaximoCaratula
+          ? Math.min(escalaSolicitada, altoDisponibleA4 / altoMaximoCaratula)
+          : escalaSolicitada;
+      };
       botonTamanoImpresion?.addEventListener("click", () => {
         const abierto = panelTamanoImpresion?.hidden;
         if (!panelTamanoImpresion) return;
@@ -25,8 +33,8 @@
       const actualizarTamanoImpresion = () => {
         const porcentaje = Number(controlTamanoImpresion?.value) || 100;
         const hojaImpresion = $("hojaImpresionImprimible");
-        hojaImpresion?.style.setProperty("--escala-impresion", String(porcentaje / 100));
-        hojaImpresion?.style.setProperty("--escala-vista-caratula", String(0.9 * porcentaje / 100));
+        const escalaAjustada = calcularEscalaImpresion(hojaImpresion, porcentaje / 100);
+        hojaImpresion?.style.setProperty("--escala-impresion", String(escalaAjustada));
         if (salidaTamanoImpresion) salidaTamanoImpresion.textContent = `${porcentaje}%`;
       };
       controlTamanoImpresion?.addEventListener("input", actualizarTamanoImpresion);
@@ -2703,16 +2711,23 @@
           });
           hoja.appendChild(pagina);
         }
+        actualizarTamanoImpresion();
       }
 
       function ejecutarImpresionDosFolios() {
         const idsSeleccionados = [...new Set(foliosMarcadosParaImprimir.map(String))];
+
+        const hojaImpresion = $("hojaImpresionImprimible");
+        const escalaSolicitada = (Number(controlTamanoImpresion?.value) || 100) / 100;
+        const escalaAjustada = calcularEscalaImpresion(hojaImpresion, escalaSolicitada);
+        hojaImpresion?.style.setProperty("--escala-impresion", String(escalaAjustada));
 
         // Si no hay nada marcado en la lista, se imprime la carátula actual del
         // formulario (la que se ve en la vista previa), aunque esté vacía o sin guardar.
         // Solo se registra como "Impreso" lo que corresponde a un folio real guardado.
         idsPendientesDeConfirmarImpresion = idsSeleccionados;
         window.print();
+        actualizarTamanoImpresion();
 
         // Ya no usamos "afterprint" para preguntar automáticamente, porque ese evento
         // se dispara igual si el usuario imprime o si cancela el diálogo del sistema.
