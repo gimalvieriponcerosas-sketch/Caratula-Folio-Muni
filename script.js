@@ -5,6 +5,39 @@
 
       /* ELEMENTOS DOM RECURRENTES */
       const $ = (id) => document.getElementById(id);
+      const controlTamanoImpresion = $("tamanoImpresion");
+      const salidaTamanoImpresion = $("valorTamanoImpresion");
+      const botonTamanoImpresion = $("btnControlTamanoImpresion");
+      const panelTamanoImpresion = $("panelControlTamanoImpresion");
+      const cerrarPanelTamanoImpresion = (devolverFoco = false) => {
+        if (!panelTamanoImpresion || panelTamanoImpresion.hidden) return;
+        panelTamanoImpresion.hidden = true;
+        botonTamanoImpresion?.setAttribute("aria-expanded", "false");
+        if (devolverFoco) botonTamanoImpresion?.focus();
+      };
+      botonTamanoImpresion?.addEventListener("click", () => {
+        const abierto = panelTamanoImpresion?.hidden;
+        if (!panelTamanoImpresion) return;
+        panelTamanoImpresion.hidden = !abierto;
+        botonTamanoImpresion.setAttribute("aria-expanded", String(Boolean(abierto)));
+        if (abierto) controlTamanoImpresion?.focus();
+      });
+      const actualizarTamanoImpresion = () => {
+        const porcentaje = Number(controlTamanoImpresion?.value) || 100;
+        const hojaImpresion = $("hojaImpresionImprimible");
+        hojaImpresion?.style.setProperty("--escala-impresion", String(porcentaje / 100));
+        hojaImpresion?.style.setProperty("--escala-vista-caratula", String(0.9 * porcentaje / 100));
+        if (salidaTamanoImpresion) salidaTamanoImpresion.textContent = `${porcentaje}%`;
+      };
+      controlTamanoImpresion?.addEventListener("input", actualizarTamanoImpresion);
+      controlTamanoImpresion?.addEventListener("change", () => cerrarPanelTamanoImpresion(true));
+      document.addEventListener("pointerdown", (evento) => {
+        if (!evento.target.closest(".control-tamano-impresion")) cerrarPanelTamanoImpresion();
+      });
+      document.addEventListener("keydown", (evento) => {
+        if (evento.key === "Escape") cerrarPanelTamanoImpresion(true);
+      });
+      actualizarTamanoImpresion();
       let usuarioAutenticado = null;
       let procesandoAuth = false;
 

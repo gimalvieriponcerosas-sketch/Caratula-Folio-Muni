@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
     <!-- Tu archivo de estilos modular -->
-    <link rel="stylesheet" href="styles.css?v=20261105-13" />
+    <link rel="stylesheet" href="styles.css?v=20261108-2" />
   </head>
 
   <body>
@@ -81,6 +81,16 @@
           </div>
         </div>
         <div class="panel-vista-impresion">
+          <div class="control-tamano-impresion">
+            <button type="button" id="btnControlTamanoImpresion" class="btn-control-tamano-impresion" aria-expanded="false" aria-controls="panelControlTamanoImpresion">
+              <span aria-hidden="true">↕</span> Tamaño <strong id="valorTamanoImpresion">100%</strong>
+            </button>
+            <div id="panelControlTamanoImpresion" class="panel-control-tamano-impresion" hidden>
+              <label for="tamanoImpresion">Ajustar tamaño</label>
+              <input type="range" id="tamanoImpresion" min="90" max="110" step="1" value="100" aria-describedby="ayudaTamanoImpresion" />
+              <small id="ayudaTamanoImpresion">La carátula se mantiene dentro de la hoja.</small>
+            </div>
+          </div>
           <div class="hojas-impresion-preview" id="hojaImpresionImprimible">
             <!-- Dos carátulas renderizadas dinámicamente -->
           </div>
@@ -730,7 +740,7 @@
     </div>
 
     <!-- Tu archivo de lógica JavaScript modular -->
-    <script src="script.js?v=20261105-19"></script>
+    <script src="script.js?v=20261108-2"></script>
     <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
   </body>
 </html>

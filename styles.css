@@ -426,8 +426,19 @@
       .acciones-modal-impresion { flex: 0 0 auto; position: sticky; bottom: 0; margin-top: auto !important; padding-top: 10px; background: #fff; border-top: 1px solid #e2e8f0; }
       .acciones-modal-impresion .btn { min-height: 44px; font-size: 15px; }
       .panel-vista-impresion {
-        flex: 1; min-width: 0; padding: 20px; overflow: auto; display: flex; justify-content: flex-start; align-items: flex-start; background: #525659;
+        flex: 1; min-width: 0; padding: 20px; overflow: auto; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; background: #525659;
       }
+      .control-tamano-impresion {
+        display:flex; flex-direction:column; align-items:center; width:min(100%, 420px); margin:0 auto 12px;
+      }
+      .btn-control-tamano-impresion { display:inline-flex; align-items:center; gap:7px; padding:7px 11px; border:1px solid #cbd5e1; border-radius:999px; background:#fff; color:#334155; cursor:pointer; font:600 12px Arial,sans-serif; box-shadow:0 2px 7px rgba(15,23,42,.16); }
+      .btn-control-tamano-impresion:hover { background:#f8fafc; border-color:#94a3b8; }
+      .btn-control-tamano-impresion strong { color:#1e3a8a; }
+      .panel-control-tamano-impresion { width:min(100%, 320px); margin-top:7px; padding:10px 13px; border:1px solid #dbe3ee; border-radius:9px; background:#fff; color:#1e293b; box-shadow:0 4px 12px rgba(15,23,42,.2); }
+      .panel-control-tamano-impresion[hidden] { display:none !important; }
+      .panel-control-tamano-impresion label { display:block; margin:0 0 4px; font-size:12px; }
+      .panel-control-tamano-impresion input[type="range"] { display:block; width:100%; margin:5px 0; accent-color:#1e3a8a; }
+      .panel-control-tamano-impresion small { color:#64748b; font-size:10px; }
       .hojas-impresion-preview {
         display: flex; flex-direction: column; align-items: center; gap: 16px; width: max-content; min-width: 100%;
       }
@@ -436,7 +447,7 @@
       }
       .hoja-impresion-pagina .caratula {
         width: 300px; height: auto; min-height: 900px; max-height: none; flex: 0 0 300px;
-        transform: scale(0.9); transform-origin: center;
+        transform: scale(var(--escala-vista-caratula, 0.9)); transform-origin: center;
       }
       @media (max-width: 850px) {
         .modal-impresion-caja { width: 96vw; height: 94vh; }
@@ -498,6 +509,8 @@
     display: none !important;
   }
 
+  #modalImpresion .control-tamano-impresion { display: none !important; }
+
   #modalImpresion .panel-vista-impresion {
     width: auto !important;
     height: auto !important;
@@ -522,7 +535,7 @@
 
   .hoja-impresion-pagina .caratula {
     width: 300px !important; height: auto !important; min-height: 900px !important; max-height: none !important;
-    flex: 0 0 300px !important; transform: scale(1) !important; transform-origin: center;
+    flex: 0 0 300px !important; transform: none !important; zoom: var(--escala-impresion, 1) !important; transform-origin: center;
   }
 
   .hoja-impresion-pagina:not(:last-child) {
