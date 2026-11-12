@@ -2032,6 +2032,10 @@
         const contOpciones = $("contOpcionesFilas");
         const total = filas.length;
 
+        // Mantiene el formulario compacto cuando hay muchos nombres; "Mostrar todo"
+        // deja ver todos los registros dentro de un área desplazable.
+        contNombres.classList.toggle("lista-nombres-desplazable", total > MAX_NOMBRES_VISIBLES);
+
         if (total <= MAX_NOMBRES_VISIBLES) {
           filas.forEach((f) => f.classList.remove("fila-oculta"));
           contOpciones.style.display = "none";

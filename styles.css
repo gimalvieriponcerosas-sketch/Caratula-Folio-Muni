@@ -49,6 +49,7 @@
       .nombre-row-top input { flex: 1; min-width: 0; }
       .nombre-row-top button { background: #e11d48; color: #fff; border: none; border-radius: 6px; width: 32px; cursor: pointer; font-size: 16px; }
       .fila-oculta { display: none; }
+      #contNombres.lista-nombres-desplazable { max-height: 520px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 5px 2px 0; }
 
       .nombre-duplicado-input {
         color: #dc2626 !important; border: 2px solid #ef4444 !important; background: #fef2f2 !important; font-weight: 700;
