@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
     <!-- Tu archivo de estilos modular -->
-    <link rel="stylesheet" href="styles.css?v=20261108-2" />
+    <link rel="stylesheet" href="styles.css?v=20261113-3" />
   </head>
 
   <body>
@@ -418,7 +418,7 @@
                 </label>
                 <div class="config-borde-principal" id="opcionesSombreadoContorno" hidden>
                   <label class="config-color-linea" for="cfgColorSombreadoContorno">Color de la línea
-                    <input type="color" id="cfgColorSombreadoContorno" value="#8b6b2e" />
+                    <input type="color" id="cfgColorSombreadoContorno" value="#d4a72c" />
                   </label>
                   <label for="cfgGrosorSombreadoContorno">Grosor
                     <div class="control-grosor-contorno"><input type="number" id="cfgGrosorSombreadoContorno" min="1" max="15" step="1" /><span>px</span></div>
@@ -631,7 +631,8 @@
           <strong>Aplicar el diseño a:</strong>
           <select id="alcanceConfigPendiente" aria-label="Dónde aplicar el diseño">
             <option value="uno">Solo este folio</option>
-            <option value="todos">Todos los folios</option>
+            <option value="bloque">Solo este bloque</option>
+            <option value="todos">Todos los folios del modo actual</option>
             <option value="todos-excepto-editados" selected>Solo para folios nuevos</option>
             <option value="este-y-nuevos">Solo este folio y los folios nuevos</option>
           </select>
@@ -757,7 +758,7 @@
     </div>
 
     <!-- Tu archivo de lógica JavaScript modular -->
-    <script src="script.js?v=20261108-2"></script>
+    <script src="script.js?v=20261113-3"></script>
     <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
   </body>
 </html>

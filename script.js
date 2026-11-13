@@ -272,7 +272,7 @@
         tamanoEscudo: 130, fuenteNombres: "Arial", tamanoNombres: 15, espacioNombres: 0,
         alineacionNombres: "izquierda", mostrarMarcadoresNombres: true, ocultarNotaPaginaEnCaratula: false,
         grosorBordePrincipal: 5, colorBordePrincipal: "#000000", lineasContorno: 0,
-        sombreadoContorno: false, colorSombreadoContorno: "#8b6b2e", grosorSombreadoContorno: 5,
+        sombreadoContorno: false, colorSombreadoContorno: "#d4a72c", grosorSombreadoContorno: 5,
         grosorLineaContorno1: 5, colorLineaContorno1: "#dc2626",
         grosorLineaContorno2: 5, colorLineaContorno2: "#2563eb",
         // Configuración global de separadores
@@ -292,6 +292,7 @@
       let configuracionGlobalNotas = { ...CONFIG_VISUAL_PREDETERMINADA };
       let modoConfigPlantilla = "normal";
       let configuracionesPorFolio = {};
+      let configuracionesPorBloque = {};
       let estadoConfigAntesModal = null;
       let configVisualModalInicio = null;
       let configVisualPendiente = {};
@@ -824,6 +825,10 @@
 
         try {
 
+          const configBloquesGuardada = configVisual._configuracionPorBloque;
+          if (configBloquesGuardada && typeof configBloquesGuardada === "object") {
+            configuracionesPorBloque = { ...configBloquesGuardada };
+          }
           // Compatibilidad con configuraciones antiguas que no tenían estos campos.
           const configDocumentosGuardada = configVisual._configuracionDocumentos;
           const configNotasGuardada = configVisual._configuracionNotas;
@@ -846,6 +851,7 @@
           normalizarAjusteNotaCaratula(configuracionGlobalNotas);
           delete configVisual._configuracionDocumentos;
           delete configVisual._configuracionNotas;
+          delete configVisual._configuracionPorBloque;
           if (!String(configVisual.textoSubgerencia || "").trim()) {
             configVisual.textoSubgerencia = CONFIG_VISUAL_PREDETERMINADA.textoSubgerencia;
           }
@@ -856,7 +862,7 @@
           configVisual.posicionSubgerencia = configVisual.posicionSubgerencia === "encima-escudo" ? "encima-escudo" : "debajo-escudo";
           configVisual.lineasContorno = Math.min(2, Math.max(0, Number.parseInt(configVisual.lineasContorno, 10) || 0));
           configVisual.sombreadoContorno = configVisual.sombreadoContorno === true;
-          configVisual.colorSombreadoContorno = /^#[\da-f]{6}$/i.test(configVisual.colorSombreadoContorno) ? configVisual.colorSombreadoContorno : CONFIG_VISUAL_PREDETERMINADA.colorSombreadoContorno;
+          configVisual.colorSombreadoContorno = /^#[\da-f]{6}$/i.test(configVisual.colorSombreadoContorno) && configVisual.colorSombreadoContorno.toLowerCase() !== "#8b6b2e" ? configVisual.colorSombreadoContorno : CONFIG_VISUAL_PREDETERMINADA.colorSombreadoContorno;
           configVisual.grosorSombreadoContorno = Math.min(15, Math.max(1, Number.parseInt(configVisual.grosorSombreadoContorno, 10) || 5));
           configVisual.colorLineaContorno1 = /^#[\da-f]{6}$/i.test(configVisual.colorLineaContorno1) ? configVisual.colorLineaContorno1 : CONFIG_VISUAL_PREDETERMINADA.colorLineaContorno1;
           configVisual.colorLineaContorno2 = /^#[\da-f]{6}$/i.test(configVisual.colorLineaContorno2) ? configVisual.colorLineaContorno2 : CONFIG_VISUAL_PREDETERMINADA.colorLineaContorno2;
@@ -890,7 +896,22 @@
       }
 
       function obtenerConfiguracionGlobalPersistible() {
-        return { ...configuracionGlobal, _configuracionDocumentos: { ...configuracionGlobalDocumentos }, _configuracionNotas: { ...configuracionGlobalNotas } };
+        return { ...configuracionGlobal, _configuracionDocumentos: { ...configuracionGlobalDocumentos }, _configuracionNotas: { ...configuracionGlobalNotas }, _configuracionPorBloque: { ...configuracionesPorBloque } };
+      }
+
+      function obtenerClaveConfiguracionBloque(modo, bloque) {
+        return `${modo}::${String(bloque || "").trim().toLocaleLowerCase("es")}`;
+      }
+
+      function establecerConfiguracionBloque(modo, bloque, valores) {
+        const clave = obtenerClaveConfiguracionBloque(modo, bloque);
+        const actual = { ...(configuracionesPorBloque[clave] || {}) };
+        Object.entries(valores).forEach(([campo, valor]) => {
+          if (valor === undefined) delete actual[campo];
+          else actual[campo] = valor;
+        });
+        if (Object.keys(actual).length) configuracionesPorBloque[clave] = actual;
+        else delete configuracionesPorBloque[clave];
       }
 
       function obtenerModoConfiguracionFolio(id) {
@@ -913,9 +934,12 @@
       function obtenerConfiguracionParaFolio(id) {
         const clave = String(id || "actual_form");
         const modo = obtenerModoConfiguracionFolio(clave);
-        const guardada = configuracionesPorFolio[clave] || {};
         const especifica = obtenerOverridesFolioModo(clave, modo);
-        return normalizarAjusteNotaCaratula({ ...obtenerConfiguracionGlobalPorModo(modo), ...especifica });
+        const esFormularioActual = clave === "actual_form" || clave === String(inpId.value || "");
+        const folio = esFormularioActual ? null : todosLosFoliosCache.find((item) => String(item.id) === clave);
+        const bloque = folio?.numero_bloque ?? (esFormularioActual ? inpBloque.value : "");
+        const porBloque = configuracionesPorBloque[obtenerClaveConfiguracionBloque(modo, bloque)] || {};
+        return normalizarAjusteNotaCaratula({ ...obtenerConfiguracionGlobalPorModo(modo), ...porBloque, ...especifica });
       }
 
       function obtenerOverridesFolioModo(clave, modo, mapa = configuracionesPorFolio) {
@@ -960,7 +984,7 @@
         return {
           lineas: Math.min(2, Math.max(0, Number.parseInt(config.lineasContorno, 10) || 0)),
           sombreado: config.sombreadoContorno === true,
-          colorSombreado: /^#[\da-f]{6}$/i.test(config.colorSombreadoContorno) ? config.colorSombreadoContorno : CONFIG_VISUAL_PREDETERMINADA.colorSombreadoContorno,
+          colorSombreado: /^#[\da-f]{6}$/i.test(config.colorSombreadoContorno) && String(config.colorSombreadoContorno).toLowerCase() !== "#8b6b2e" ? config.colorSombreadoContorno : CONFIG_VISUAL_PREDETERMINADA.colorSombreadoContorno,
           grosorSombreado: Math.min(15, Math.max(1, Number.parseInt(config.grosorSombreadoContorno, 10) || 5)),
           grosorPrincipal: obtenerGrosor(config.grosorBordePrincipal, 5, 35),
           colorPrincipal: /^#[\da-f]{6}$/i.test(config.colorBordePrincipal) ? config.colorBordePrincipal : CONFIG_VISUAL_PREDETERMINADA.colorBordePrincipal,
@@ -1125,6 +1149,11 @@
 
         const alcance = $("alcanceConfigPendiente").value;
         const configuracionGlobalModo = obtenerConfiguracionGlobalPorModo(modoConfigPlantilla);
+        const bloqueObjetivo = String(inpBloque.value || "").trim();
+        if (alcance === "bloque" && !bloqueObjetivo) {
+          alert("Ingresa un número de bloque para aplicar el diseño a sus folios.");
+          return false;
+        }
         let configuracionesExistentesConservadas = null;
         if (alcance === "todos-excepto-editados" || alcance === "este-y-nuevos") {
           configuracionesExistentesConservadas = { ...configuracionesPorFolio };
@@ -1161,7 +1190,7 @@
         }
 
         const cambiosCaratula = {};
-        if (alcance !== "uno" && modoConfigPlantilla !== "documentos") {
+        if (alcance !== "uno" && alcance !== "bloque" && modoConfigPlantilla !== "documentos") {
           if (campos.includes("textoCvLabel")) cambiosCaratula.texto_cv_label = configVisualPendiente.textoCvLabel;
           if (campos.includes("textoSubgerencia")) cambiosCaratula.texto_subgerencia = configVisualPendiente.textoSubgerencia;
         }
@@ -1181,6 +1210,11 @@
 
         if (alcance === "todos") {
           campos.forEach((campo) => { configuracionGlobalModo[campo] = configVisualPendiente[campo]; });
+          Object.keys(configuracionesPorBloque).forEach((claveBloque) => {
+            if (!claveBloque.startsWith(`${modoConfigPlantilla}::`)) return;
+            establecerConfiguracionBloque(modoConfigPlantilla, claveBloque.slice(`${modoConfigPlantilla}::`.length),
+              Object.fromEntries(campos.map((campo) => [campo, undefined])));
+          });
           Object.entries(configuracionesPorFolio).forEach(([clave, configFolio]) => {
             const folio = todosLosFoliosCache.find((item) => String(item.id) === String(clave));
             if (!folio || obtenerModoDeFolio(folio) !== modoConfigPlantilla) return;
@@ -1191,6 +1225,16 @@
           idsDestino.forEach((id) => {
             establecerConfiguracionFolioPorModo(String(id), modoConfigPlantilla, configVisualPendiente);
           });
+        } else if (alcance === "bloque") {
+          const foliosDelBloque = todosLosFoliosCache.filter((folio) =>
+            String(folio.numero_bloque || "").trim() === bloqueObjetivo
+            && obtenerModoDeFolio(folio) === modoConfigPlantilla
+          );
+          foliosDelBloque.forEach((folio) => {
+            establecerConfiguracionFolioPorModo(String(folio.id), modoConfigPlantilla,
+              Object.fromEntries(campos.map((campo) => [campo, undefined])));
+          });
+          establecerConfiguracionBloque(modoConfigPlantilla, bloqueObjetivo, configVisualPendiente);
         } else {
           configuracionesPorFolio = configuracionesExistentesConservadas;
           if (alcance === "este-y-nuevos" && claveFolioConfigPendiente && claveFolioConfigPendiente !== "actual_form" && obtenerModoConfiguracionFolio(claveFolioConfigPendiente) === modoConfigPlantilla) {
@@ -1227,7 +1271,7 @@
           return false;
         }
 
-        const cantidad = alcance === "todos" ? "todos los folios" : alcance === "todos-excepto-editados" ? "todos los folios, excepto los editados" : alcance === "este-y-nuevos" ? "este folio y los folios nuevos" : "este folio";
+        await cargarPagina(paginaActual);
         configVisualPendiente = {};
         claveFolioConfigPendiente = null;
         configVisual = { ...obtenerConfiguracionGlobalPorModo(modoConfigPlantilla) };
@@ -1247,6 +1291,7 @@
           cargoActual,
           modoConfigPlantilla,
           configuracionesPorFolio: { ...configuracionesPorFolio },
+          configuracionesPorBloque: { ...configuracionesPorBloque },
           configVisualPendiente: {},
           claveFolioConfigPendiente: null
         };
@@ -1274,6 +1319,7 @@
         $("cfgModoPlantilla").value = modoConfigPlantilla;
         $("opcionOcultarNotaPaginaCaratula").hidden = modoConfigPlantilla !== "documentos";
         configuracionesPorFolio = { ...estadoConfigAntesModal.configuracionesPorFolio };
+        configuracionesPorBloque = { ...(estadoConfigAntesModal.configuracionesPorBloque || {}) };
         configVisualPendiente = { ...estadoConfigAntesModal.configVisualPendiente };
         claveFolioConfigPendiente = estadoConfigAntesModal.claveFolioConfigPendiente;
         configVisualModalInicio = null;
@@ -2302,9 +2348,9 @@
         // que el siguiente registro pueda capturarse con el mismo tipo.
         modoRegistroActual = $("selectTipoRegistro").value || modoRegistroActual;
         Object.keys(borradoresModoRegistro).forEach((modo) => { borradoresModoRegistro[modo] = null; });
-        cargarConfiguracionParaFolio("actual_form");
         inpNumero.value = ""; 
         inpBloque.value = bloqueActual; 
+        cargarConfiguracionParaFolio("actual_form");
         inpPeriodo.value = ""; 
         aplicarValoresAutomaticosFormulario();
         contNombres.innerHTML = "";
@@ -2898,9 +2944,9 @@
         modoRegistroActual = esFolioModoDocumentos(folio) ? (folio.tipo_registro === "documentos_sin_notas" ? "documentos_sin_notas" : "documentos") : (["normal", "notas"].includes(folio.tipo_registro) ? folio.tipo_registro : "normal");
         $("selectTipoRegistro").value = modoRegistroActual;
         Object.keys(borradoresModoRegistro).forEach((modo) => { borradoresModoRegistro[modo] = null; });
+        inpBloque.value = folio.numero_bloque || "";
         cargarConfiguracionParaFolio(folio.id);
         inpNumero.value = folio.numero_folio;
-        inpBloque.value = folio.numero_bloque || "";
         inpPeriodo.value = folio.periodo;
         cargarObservacionesDeFolio(folio);
         contNombres.innerHTML = "";
@@ -2942,9 +2988,9 @@
         modoRegistroActual = esFolioModoDocumentos(folio) ? (folio.tipo_registro === "documentos_sin_notas" ? "documentos_sin_notas" : "documentos") : (["normal", "notas"].includes(folio.tipo_registro) ? folio.tipo_registro : "normal");
         $("selectTipoRegistro").value = modoRegistroActual;
         Object.keys(borradoresModoRegistro).forEach((modo) => { borradoresModoRegistro[modo] = null; });
-        cargarConfiguracionParaFolio("actual_form");
         inpNumero.value = folio.numero_folio + " (copia)";
         inpBloque.value = folio.numero_bloque || bloqueActual;
+        cargarConfiguracionParaFolio("actual_form");
         inpPeriodo.value = folio.periodo;
         cargarObservacionesDeFolio(folio);
         contNombres.innerHTML = "";
@@ -3504,6 +3550,7 @@
           cargoActual,
           modoConfigPlantilla,
           configuracionesPorFolio: { ...configuracionesPorFolio },
+          configuracionesPorBloque: { ...configuracionesPorBloque },
           configVisualPendiente: { ...configVisualPendiente },
           claveFolioConfigPendiente
         };
@@ -3808,6 +3855,7 @@
           cargoActual,
           modoConfigPlantilla,
           configuracionesPorFolio: { ...configuracionesPorFolio },
+          configuracionesPorBloque: { ...configuracionesPorBloque },
           configVisualPendiente: { ...configVisualPendiente },
           claveFolioConfigPendiente
         };
