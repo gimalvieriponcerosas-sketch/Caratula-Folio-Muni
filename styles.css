@@ -321,6 +321,7 @@
       .caratula-wrap { display: flex; flex-direction: column; align-items: center; }
       #caratula:not(.configuracion-lista) { visibility: hidden; }
       .caratula { position: relative; width: 300px; height: auto; min-height: 900px; max-height: none; border: var(--grosor-borde-principal, 5px) solid var(--color-borde-principal, #000); border-radius: 40px; padding: 25px 20px; text-align: center; background: #fff; display: flex; flex-direction: column; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .caratula.contorno-sombreado { box-shadow: inset 0 0 0 calc(var(--desplazamiento-sombra-contorno, 9px) + var(--grosor-sombra-contorno, 5px)) var(--color-sombra-contorno, #8b6b2e), inset 0 0 0 var(--desplazamiento-sombra-contorno, 9px) #fff; }
       .caratula > * { position: relative; z-index: 1; }
       .caratula.contorno-linea-1::before,
       .caratula.contorno-linea-2::after { content: ""; position: absolute; z-index: 0; pointer-events: none; border: 2px solid; -webkit-print-color-adjust: exact; print-color-adjust: exact; }

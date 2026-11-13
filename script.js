@@ -272,6 +272,7 @@
         tamanoEscudo: 130, fuenteNombres: "Arial", tamanoNombres: 15, espacioNombres: 0,
         alineacionNombres: "izquierda", mostrarMarcadoresNombres: true, ocultarNotaPaginaEnCaratula: false,
         grosorBordePrincipal: 5, colorBordePrincipal: "#000000", lineasContorno: 0,
+        sombreadoContorno: false, colorSombreadoContorno: "#8b6b2e", grosorSombreadoContorno: 5,
         grosorLineaContorno1: 5, colorLineaContorno1: "#dc2626",
         grosorLineaContorno2: 5, colorLineaContorno2: "#2563eb",
         // Configuración global de separadores
@@ -854,6 +855,9 @@
           configVisual.ordenFolioPeriodo = configVisual.ordenFolioPeriodo === "periodo-arriba" ? "periodo-arriba" : "folio-arriba";
           configVisual.posicionSubgerencia = configVisual.posicionSubgerencia === "encima-escudo" ? "encima-escudo" : "debajo-escudo";
           configVisual.lineasContorno = Math.min(2, Math.max(0, Number.parseInt(configVisual.lineasContorno, 10) || 0));
+          configVisual.sombreadoContorno = configVisual.sombreadoContorno === true;
+          configVisual.colorSombreadoContorno = /^#[\da-f]{6}$/i.test(configVisual.colorSombreadoContorno) ? configVisual.colorSombreadoContorno : CONFIG_VISUAL_PREDETERMINADA.colorSombreadoContorno;
+          configVisual.grosorSombreadoContorno = Math.min(15, Math.max(1, Number.parseInt(configVisual.grosorSombreadoContorno, 10) || 5));
           configVisual.colorLineaContorno1 = /^#[\da-f]{6}$/i.test(configVisual.colorLineaContorno1) ? configVisual.colorLineaContorno1 : CONFIG_VISUAL_PREDETERMINADA.colorLineaContorno1;
           configVisual.colorLineaContorno2 = /^#[\da-f]{6}$/i.test(configVisual.colorLineaContorno2) ? configVisual.colorLineaContorno2 : CONFIG_VISUAL_PREDETERMINADA.colorLineaContorno2;
           configVisual.tamanoFolio = Number.isFinite(Number(configVisual.tamanoFolio)) ? Number(configVisual.tamanoFolio) : 28;
@@ -955,6 +959,9 @@
         };
         return {
           lineas: Math.min(2, Math.max(0, Number.parseInt(config.lineasContorno, 10) || 0)),
+          sombreado: config.sombreadoContorno === true,
+          colorSombreado: /^#[\da-f]{6}$/i.test(config.colorSombreadoContorno) ? config.colorSombreadoContorno : CONFIG_VISUAL_PREDETERMINADA.colorSombreadoContorno,
+          grosorSombreado: Math.min(15, Math.max(1, Number.parseInt(config.grosorSombreadoContorno, 10) || 5)),
           grosorPrincipal: obtenerGrosor(config.grosorBordePrincipal, 5, 35),
           colorPrincipal: /^#[\da-f]{6}$/i.test(config.colorBordePrincipal) ? config.colorBordePrincipal : CONFIG_VISUAL_PREDETERMINADA.colorBordePrincipal,
           grosor1: obtenerGrosor(config.grosorLineaContorno1, 5, 30),
@@ -968,12 +975,20 @@
         const contorno = obtenerConfiguracionContorno(config);
         caratula.classList.toggle("contorno-linea-1", contorno.lineas >= 1);
         caratula.classList.toggle("contorno-linea-2", contorno.lineas >= 2);
+        caratula.classList.toggle("contorno-sombreado", contorno.sombreado);
         caratula.style.setProperty("--grosor-borde-principal", `${contorno.grosorPrincipal}px`);
         caratula.style.setProperty("--color-borde-principal", contorno.colorPrincipal);
         caratula.style.setProperty("--grosor-linea-contorno-1", `${contorno.grosor1}px`);
         caratula.style.setProperty("--grosor-linea-contorno-2", `${contorno.grosor2}px`);
         caratula.style.setProperty("--color-linea-contorno-1", contorno.color1);
         caratula.style.setProperty("--color-linea-contorno-2", contorno.color2);
+        caratula.style.setProperty("--color-sombra-contorno", contorno.colorSombreado);
+        caratula.style.setProperty("--grosor-sombra-contorno", `${contorno.grosorSombreado}px`);
+        const desplazamientoSombreado = contorno.grosorPrincipal + 1
+          + (contorno.lineas >= 1 ? contorno.grosor1 + 2 : 0)
+          + (contorno.lineas >= 2 ? contorno.grosor2 + 2 : 0)
+          + 2;
+        caratula.style.setProperty("--desplazamiento-sombra-contorno", `${desplazamientoSombreado}px`);
         caratula.style.borderColor = contorno.colorPrincipal;
         caratula.style.borderWidth = `${contorno.grosorPrincipal}px`;
       }
@@ -1387,6 +1402,9 @@
         configVisual.grosorLineaContorno1 = contorno.grosor1;
         configVisual.grosorLineaContorno2 = contorno.grosor2;
         configVisual.lineasContorno = contorno.lineas;
+        configVisual.sombreadoContorno = contorno.sombreado;
+        configVisual.colorSombreadoContorno = contorno.colorSombreado;
+        configVisual.grosorSombreadoContorno = contorno.grosorSombreado;
         configVisual.colorLineaContorno1 = contorno.color1;
         configVisual.colorLineaContorno2 = contorno.color2;
         $("cfgGrosorBordePrincipal").value = String(contorno.grosorPrincipal);
@@ -1396,6 +1414,10 @@
         $("wrapLineaContorno1").hidden = contorno.lineas < 1;
         $("wrapLineaContorno2").hidden = contorno.lineas < 2;
         $("cfgLineasContorno").value = String(contorno.lineas);
+        $("cfgSombreadoContorno").checked = contorno.sombreado;
+        $("cfgColorSombreadoContorno").value = contorno.colorSombreado;
+        $("cfgGrosorSombreadoContorno").value = String(contorno.grosorSombreado);
+        $("opcionesSombreadoContorno").hidden = !contorno.sombreado;
         $("cfgColorLineaContorno1").value = contorno.color1;
         $("cfgColorLineaContorno2").value = contorno.color2;
         $("cfgFuenteNombres").value = configVisual.fuenteNombres;
@@ -2476,6 +2498,10 @@
       function obtenerHtmlCaratula(folio) {
         const config = obtenerConfiguracionParaFolio(folio.id);
         const contorno = obtenerConfiguracionContorno(config);
+        const desplazamientoSombreado = contorno.grosorPrincipal + 1
+          + (contorno.lineas >= 1 ? contorno.grosor1 + 2 : 0)
+          + (contorno.lineas >= 2 ? contorno.grosor2 + 2 : 0)
+          + 2;
         const modoDocumentos = esFolioModoDocumentos(folio);
         const nombres = modoDocumentos
           ? (Array.isArray(folio.nombres) && folio.nombres.length ? folio.nombres : [folio.numero_documentos || ""])
@@ -2491,7 +2517,7 @@
           return obtenerHtmlSeparador(separador.texto, "normal", config);
         }).join("");
         return `
-          <div class="caratula ${modoDocumentos ? "modo-documentos" : ""} ${config.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba"} ${config.posicionSubgerencia === "encima-escudo" ? "area-sobre-escudo" : ""} ${config.alineacionNombres === "centrado" ? "nombres-centrados" : ""} ${config.mostrarMarcadoresNombres === false ? "sin-marcadores-nombres" : ""} ${modoDocumentos && config.ocultarNotaPaginaEnCaratula === true ? "sin-notas-pagina-caratula" : ""} ${contorno.lineas >= 1 ? "contorno-linea-1" : ""} ${contorno.lineas >= 2 ? "contorno-linea-2" : ""}" style="border-color:${contorno.colorPrincipal}; border-width:${contorno.grosorPrincipal}px; --grosor-borde-principal:${contorno.grosorPrincipal}px; --color-borde-principal:${contorno.colorPrincipal}; --grosor-linea-contorno-1:${contorno.grosor1}px; --grosor-linea-contorno-2:${contorno.grosor2}px; --color-linea-contorno-1:${contorno.color1}; --color-linea-contorno-2:${contorno.color2}; --tamano-titulo:${config.tamanoTitulo}px; --espacio-titulo:${config.espacioTitulo}px; --tamano-escudo:${config.tamanoEscudo}px; --fuente-nombres:'${escaparHtml(config.fuenteNombres || "Arial")}'; --tamano-nombres:${Number(config.tamanoNombres) || 15}px; --espacio-gerencia:${config.espacioGerencia}px; --espacio-curriculum:${config.espacioCurriculum}px; --espacio-nombres:${config.espacioNombres}px; --tamano-folio:${config.tamanoFolio}px; --posicion-folio:${config.posicionFolio}px; --tamano-periodo:${config.tamanoPeriodo}px; --posicion-periodo:${config.posicionPeriodo}px;">
+          <div class="caratula ${modoDocumentos ? "modo-documentos" : ""} ${config.ordenFolioPeriodo === "folio-arriba" ? "orden-folio-arriba" : "orden-periodo-arriba"} ${config.posicionSubgerencia === "encima-escudo" ? "area-sobre-escudo" : ""} ${config.alineacionNombres === "centrado" ? "nombres-centrados" : ""} ${config.mostrarMarcadoresNombres === false ? "sin-marcadores-nombres" : ""} ${modoDocumentos && config.ocultarNotaPaginaEnCaratula === true ? "sin-notas-pagina-caratula" : ""} ${contorno.lineas >= 1 ? "contorno-linea-1" : ""} ${contorno.lineas >= 2 ? "contorno-linea-2" : ""} ${contorno.sombreado ? "contorno-sombreado" : ""}" style="border-color:${contorno.colorPrincipal}; border-width:${contorno.grosorPrincipal}px; --grosor-borde-principal:${contorno.grosorPrincipal}px; --color-borde-principal:${contorno.colorPrincipal}; --grosor-linea-contorno-1:${contorno.grosor1}px; --grosor-linea-contorno-2:${contorno.grosor2}px; --color-linea-contorno-1:${contorno.color1}; --color-linea-contorno-2:${contorno.color2}; --color-sombra-contorno:${contorno.colorSombreado}; --grosor-sombra-contorno:${contorno.grosorSombreado}px; --desplazamiento-sombra-contorno:${desplazamientoSombreado}px; --tamano-titulo:${config.tamanoTitulo}px; --espacio-titulo:${config.espacioTitulo}px; --tamano-escudo:${config.tamanoEscudo}px; --fuente-nombres:'${escaparHtml(config.fuenteNombres || "Arial")}'; --tamano-nombres:${Number(config.tamanoNombres) || 15}px; --espacio-gerencia:${config.espacioGerencia}px; --espacio-curriculum:${config.espacioCurriculum}px; --espacio-nombres:${config.espacioNombres}px; --tamano-folio:${config.tamanoFolio}px; --posicion-folio:${config.posicionFolio}px; --tamano-periodo:${config.tamanoPeriodo}px; --posicion-periodo:${config.posicionPeriodo}px;">
             <div class="titulo">MUNICIPALIDAD DISTRITAL DE CHINCHAO</div>
             <img class="escudo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiij9VKAtMBiHfcGy8Q-NeekFK54ihGvJrZXLHmxDx9CH1jUUrDz5Gfvc&s=10" alt="Escudo">
             ${config.textoSubgerencia?.trim() ? `<div class="subgerencia" style="font-family:'${config.fuenteSubgerencia}', Arial, sans-serif; font-size:${config.tamanoSubgerencia}px;">${escaparHtml(config.textoSubgerencia).replace(/\n/g, "<br>")}</div>` : ""}
@@ -3624,6 +3650,22 @@
       };
       $("cfgLineasContorno").onchange = (e) => {
         configVisual.lineasContorno = Math.min(2, Math.max(0, Number.parseInt(e.target.value, 10) || 0));
+        aplicarConfigVisual();
+      };
+      $("cfgSombreadoContorno").onchange = (e) => {
+        configVisual.sombreadoContorno = e.target.checked;
+        $("opcionesSombreadoContorno").hidden = !e.target.checked;
+        aplicarConfigVisual();
+      };
+      $("cfgColorSombreadoContorno").oninput = (e) => {
+        configVisual.colorSombreadoContorno = e.target.value;
+        aplicarConfigVisual(false);
+      };
+      $("cfgColorSombreadoContorno").onchange = () => aplicarConfigVisual();
+      $("cfgGrosorSombreadoContorno").onchange = (e) => {
+        const valor = Number.parseInt(e.target.value, 10);
+        configVisual.grosorSombreadoContorno = Number.isFinite(valor) ? Math.min(15, Math.max(1, valor)) : 5;
+        e.target.value = configVisual.grosorSombreadoContorno;
         aplicarConfigVisual();
       };
       const actualizarGrosorContorno = (evento, campo, maximo) => {

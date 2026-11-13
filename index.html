@@ -363,6 +363,7 @@
                 </div>
               </div>
             </details>
+            
             <details class="opcion">
               <summary>Líneas adicionales (máximo 2)</summary>
               <div class="opcion-cuerpo">
@@ -405,6 +406,22 @@
                   <label class="config-color-linea" for="cfgColorLineaContorno2">
                     Color
                     <input type="color" id="cfgColorLineaContorno2" value="#2563eb" />
+                  </label>
+                </div>
+              </div>
+            </details>
+            <details class="opcion">
+              <summary>Sombreado del contorno</summary>
+              <div class="opcion-cuerpo">
+                <label style="display:flex;align-items:center;gap:8px;margin:0 0 10px;font-weight:600;">
+                  <input type="checkbox" id="cfgSombreadoContorno" /> Activar línea de sombra
+                </label>
+                <div class="config-borde-principal" id="opcionesSombreadoContorno" hidden>
+                  <label class="config-color-linea" for="cfgColorSombreadoContorno">Color de la línea
+                    <input type="color" id="cfgColorSombreadoContorno" value="#8b6b2e" />
+                  </label>
+                  <label for="cfgGrosorSombreadoContorno">Grosor
+                    <div class="control-grosor-contorno"><input type="number" id="cfgGrosorSombreadoContorno" min="1" max="15" step="1" /><span>px</span></div>
                   </label>
                 </div>
               </div>
