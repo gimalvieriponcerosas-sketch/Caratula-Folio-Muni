@@ -247,6 +247,7 @@
       const modoEdicion = $("modoEdicion");
       const buscador = $("buscador");
       const buscadorImpresion = $("buscadorImpresion");
+      [buscador, buscadorImpresion, $("buscarFoliosExcel")].filter(Boolean).forEach((input) => input.setAttribute("autocomplete", "off"));
       const listaFolios = $("listaFolios");
       const historialContenido = $("historialContenido");
       const txtSubgerencia = $("txtSubgerencia");
@@ -455,7 +456,8 @@
       }
 
       function modoConfiguracionFormulario(modo = $("selectTipoRegistro")?.value) {
-        return esModoDocumentos(modo) ? "documentos" : (modo === "notas" ? "notas" : "normal");
+        // Normal y Notas usan una sola plantilla visual.
+        return esModoDocumentos(modo) ? "documentos" : "normal";
       }
 
       function claveObservacionesPorModo(modo = modoRegistroActual) {
@@ -891,7 +893,6 @@
 
       function obtenerConfiguracionGlobalPorModo(modo = modoConfigPlantilla) {
         if (modo === "documentos") return configuracionGlobalDocumentos;
-        if (modo === "notas") return configuracionGlobalNotas;
         return configuracionGlobal;
       }
 
@@ -920,7 +921,7 @@
           return modoConfiguracionFormulario();
         }
         const folio = todosLosFoliosCache.find((item) => String(item.id) === clave);
-        return obtenerModoDeFolio(folio);
+        return esFolioModoDocumentos(folio) ? "documentos" : "normal";
       }
 
       function normalizarAjusteNotaCaratula(config) {
@@ -938,14 +939,16 @@
         const esFormularioActual = clave === "actual_form" || clave === String(inpId.value || "");
         const folio = esFormularioActual ? null : todosLosFoliosCache.find((item) => String(item.id) === clave);
         const bloque = folio?.numero_bloque ?? (esFormularioActual ? inpBloque.value : "");
+        const porBloqueNotas = modo === "normal" ? (configuracionesPorBloque[obtenerClaveConfiguracionBloque("notas", bloque)] || {}) : {};
         const porBloque = configuracionesPorBloque[obtenerClaveConfiguracionBloque(modo, bloque)] || {};
-        return normalizarAjusteNotaCaratula({ ...obtenerConfiguracionGlobalPorModo(modo), ...porBloque, ...especifica });
+        const especificaNotas = modo === "normal" ? obtenerOverridesFolioModo(clave, "notas") : {};
+        return normalizarAjusteNotaCaratula({ ...obtenerConfiguracionGlobalPorModo(modo), ...porBloqueNotas, ...porBloque, ...especificaNotas, ...especifica });
       }
 
       function obtenerOverridesFolioModo(clave, modo, mapa = configuracionesPorFolio) {
         const guardada = mapa[clave] || {};
         return guardada._por_modo
-          ? (guardada._por_modo[modo] || {})
+          ? (guardada._por_modo[modo] || (modo === "normal" ? guardada._por_modo.notas : {}) || {})
           : (modo === obtenerModoConfiguracionFolio(clave) ? guardada : {});
       }
 
@@ -1035,7 +1038,7 @@
       }
 
       function cargarModoConfigPlantilla(modo) {
-        modoConfigPlantilla = ["notas", "documentos"].includes(modo) ? modo : "normal";
+        modoConfigPlantilla = modo === "documentos" ? "documentos" : "normal";
         const modoFormulario = modoConfiguracionFormulario();
         configVisual = modoConfigPlantilla === modoFormulario
           ? obtenerConfiguracionParaFolio(obtenerClaveFolioActual())
@@ -1498,20 +1501,17 @@
         if (!texto) return true;
         const query = normalizarTexto(texto);
 
-        if (query.startsWith("blo")) {
-          const numBloqueBuscado = query.replace(/^blo[a-z]*/, "").trim();
-          const bloqFolio = normalizarTexto(f.numero_bloque);
-          
-          if (!numBloqueBuscado) return bloqFolio.length > 0;
-          
-          const intBuscado = parseInt(numBloqueBuscado, 10);
-          const intFolio = parseInt(bloqFolio, 10);
-          
-          if (!isNaN(intBuscado) && !isNaN(intFolio)) {
-            return intBuscado === intFolio || bloqFolio.includes(numBloqueBuscado);
-          }
-          return bloqFolio.includes(numBloqueBuscado);
+        // Un número sin prefijo siempre busca el número de folio. Para buscar
+        // bloques, se debe escribir explícitamente "Bloque 04".
+        const consultaBloque = query.match(/^bloque\s+(\d+)$/);
+        if (consultaBloque) {
+          const bloqueBuscado = consultaBloque[1].replace(/^0+(?=\d)/, "");
+          const bloqueFolio = normalizarTexto(f.numero_bloque).replace(/^0+(?=\d)/, "");
+          return !!bloqueFolio && bloqueFolio === bloqueBuscado;
         }
+
+        if (query === "bloque") return !!String(f.numero_bloque || "").trim();
+        if (query.startsWith("bloque")) return false;
 
         if (/^\d{1,2}$/.test(query)) {
           const numFolio = normalizarTexto(f.numero_folio);
@@ -1524,25 +1524,17 @@
           return normalizarTexto(f.periodo).includes(query);
         }
 
-        const num = normalizarTexto(f.numero_folio);
-        const bloq = normalizarTexto(f.numero_bloque);
-        const per = normalizarTexto(f.periodo);
-        const obs = normalizarTexto(obtenerTextoObservaciones(f));
-        const numDocumentos = normalizarTexto(f.numero_documentos);
-        const terminos = query.split(" ");
         const nombres = Array.isArray(f.nombres) ? f.nombres : [f.nombres || ""];
         const cargos = Array.isArray(f.cargos) ? f.cargos : [f.cargos || ""];
-
-        return num === query ||
-               bloq === query ||
-               per === query ||
-               numDocumentos.includes(query) ||
-               obs.includes(query) ||
-               nombres.some((n) => {
-                 const nombre = normalizarTexto(n);
-                 return nombre.includes(query) || terminos.every((termino) => nombre.includes(termino));
-               }) ||
-               cargos.some((c) => normalizarTexto(c).includes(query));
+        const notas = Array.isArray(f.notas_pago) ? f.notas_pago : [f.notas_pago || ""];
+        const terminos = query.split(/\s+/).filter(Boolean);
+        const textoCaratula = normalizarTexto([
+          f.numero_folio, f.numero_bloque ? `bloque ${f.numero_bloque}` : "", f.periodo,
+          f.numero_documentos, f.texto_subgerencia, f.subgerencia,
+          nombres.join(" "), cargos.join(" "), notas.join(" "),
+          obtenerTextoObservaciones(f), esFolioModoDocumentos(f) ? "documentos numero de documentos" : f.tipo_registro
+        ].join(" "));
+        return terminos.every((termino) => textoCaratula.includes(termino));
       }
 
       async function cargarFoliosCache() {
@@ -2591,13 +2583,9 @@
         boton.setAttribute("aria-expanded", String(mostrarFoliosImpresos));
         contenedor.style.display = mostrarFoliosImpresos ? "block" : "none";
 
-        const query = normalizarTexto(buscadorImpresion?.value || "");
+        const query = (buscadorImpresion?.value || "").trim();
         const impresosFiltrados = query
-          ? impresos.filter((f) => normalizarTexto([
-              f.numero_folio,
-              f.numero_bloque ? `bloque ${f.numero_bloque}` : "",
-              f.periodo
-            ].join(" ")).includes(query))
+          ? impresos.filter((f) => cumpleFiltroInteligente(f, query))
           : impresos;
 
         if (!impresosFiltrados.length) {
