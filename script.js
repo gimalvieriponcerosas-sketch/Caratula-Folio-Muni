@@ -1528,13 +1528,15 @@
         const cargos = Array.isArray(f.cargos) ? f.cargos : [f.cargos || ""];
         const notas = Array.isArray(f.notas_pago) ? f.notas_pago : [f.notas_pago || ""];
         const terminos = query.split(/\s+/).filter(Boolean);
-        const textoCaratula = normalizarTexto([
+        const campos = [
           f.numero_folio, f.numero_bloque ? `bloque ${f.numero_bloque}` : "", f.periodo,
           f.numero_documentos, f.texto_subgerencia, f.subgerencia,
-          nombres.join(" "), cargos.join(" "), notas.join(" "),
-          obtenerTextoObservaciones(f), esFolioModoDocumentos(f) ? "documentos numero de documentos" : f.tipo_registro
-        ].join(" "));
-        return terminos.every((termino) => textoCaratula.includes(termino));
+          ...nombres, ...cargos, ...notas, obtenerTextoObservaciones(f),
+          esFolioModoDocumentos(f) ? "documentos numero de documentos" : f.tipo_registro
+        ].map(normalizarTexto).filter(Boolean);
+        // Todas las palabras deben aparecer dentro del mismo campo (nombre,
+        // cargo, observación, etc.); así no se mezclan coincidencias casuales.
+        return campos.some((campo) => terminos.every((termino) => campo.includes(termino)));
       }
 
       async function cargarFoliosCache() {
@@ -1845,7 +1847,7 @@
 
             return `<div class="detalle-nombre" data-nombre="${escaparHtml(nombre)}">
               <div style="${esDuplicado ? 'text-decoration:underline;text-decoration-color:#ef4444;' : ''}">
-                <b>${index + 1}.</b> ${nombreHtml}${badge} ${cargo ? `<span class="${cargoCoincide ? 'cargo-coincidente' : ''}" style="${cargoCoincide ? '' : 'color:#0ea5e9;font-weight:bold;'}">(${cargoCoincide ? escaparHtml(cargo) : resaltarCoincidenciasTexto(cargo, filtroActivo)})</span>` : ''}
+                <b>${index + 1}.</b> ${nombreHtml}${badge} ${cargo ? `<span class="${cargoCoincide ? 'cargo-coincidente' : ''}" style="${cargoCoincide ? '' : 'color:#0ea5e9;font-weight:bold;'}">(${cargoCoincide ? resaltarCoincidenciasTexto(cargo, filtroActivo) : escaparHtml(cargo)})</span>` : ''}
               </div>
               ${nota ? `<div style="font-size:11px;color:#64748b;margin-left:14px;">📄 Nota: ${escaparHtml(nota)}</div>` : ''}
             </div>`;
