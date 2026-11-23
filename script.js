@@ -122,7 +122,7 @@
             <div id="mensajeLogin" role="status" aria-live="polite"></div>
           </div>
         </div>
-        <div class="sesion-barra" style="display:none"><span id="usuarioSesion"></span><button id="btnCerrarSesion" type="button">Cerrar sesión</button></div>
+        <div class="sesion-barra" style="display:none"><span id="usuarioSesion"></span><button id="btnCerrarSesion" type="button">Cerrar sesi\u00F3n</button></div>
       `);
 
       function mostrarMensajeLogin(mensaje, tipo = "error") {
@@ -253,9 +253,9 @@
       const txtSubgerencia = $("txtSubgerencia");
       const txtCvLabel = $("txtCvLabel");
 
-      const MARCADOR_SEPARADOR = "§SEP§";
-      const MARCADOR_SEPARADOR_AREA = "§SEP_AREA§";
-      const MARCADOR_SEPARADOR_CV = "§SEP_CV§";
+      const MARCADOR_SEPARADOR = "\u00A7SEP\u00A7";
+      const MARCADOR_SEPARADOR_AREA = "\u00A7SEP_AREA\u00A7";
+      const MARCADOR_SEPARADOR_CV = "\u00A7SEP_CV\u00A7";
       const PAGE_SIZE = 5;
       const PAGE_SIZE_IMPRESION = 6;
       const MAX_NOMBRES_VISIBLES = 10;
@@ -309,6 +309,7 @@
         periodoAutomatico: false,
         exportarNumeroDocumentos: false,
         exportarNotasPaginas: false,
+        secuenciasPorModo: {},
         ultimoFolioAutomatico: "",
         ultimoPeriodoAutomatico: "",
         secuenciaFolioIniciada: false
@@ -445,7 +446,7 @@
         if (["documentos", "documentos_sin_notas"].includes(folio.tipo_registro) || String(folio.numero_documentos || "").trim()) return true;
         const nombres = Array.isArray(folio.nombres) ? folio.nombres : (folio.nombres ? [folio.nombres] : []);
         const rangoAnterior = String(nombres[0] || "").trim();
-        const rangoValido = /^(?:n\s*[°º.]?\s*)?\d+\s*(?:-|–|—|al|a)\s*\d+$/i.test(rangoAnterior);
+        const rangoValido = /^(?:n\s*[°º.]?\s*)?\d+\s*(?:-|\u2013|\u2014|al|a)\s*\d+$/i.test(rangoAnterior);
         const cargos = Array.isArray(folio.cargos) ? folio.cargos : [];
         const notas = Array.isArray(folio.notas_pago) ? folio.notas_pago : [];
         return nombres.length === 1 && rangoValido && !String(cargos[0] || "").trim() && !String(notas[0] || "").trim();
@@ -718,7 +719,7 @@
         const seleccionados = idsVisibles.filter((id) => foliosMarcadosParaImprimir.includes(id)).length;
         const inicio = foliosFiltrados.length ? paginaImpresionActual * PAGE_SIZE_IMPRESION + 1 : 0;
         const fin = Math.min((paginaImpresionActual + 1) * PAGE_SIZE_IMPRESION, foliosFiltrados.length);
-        contador.textContent = `${inicio}–${fin} de ${foliosFiltrados.length} · ${seleccionados} marcados`;
+        contador.textContent = `${inicio}\u2013${fin} de ${foliosFiltrados.length} \u00B7 ${seleccionados} marcados`;
       }
 
       function actualizarEstadoMarcarTodosVisibles(foliosDisponibles) {
@@ -829,7 +830,20 @@
 
           const configBloquesGuardada = configVisual._configuracionPorBloque;
           if (configBloquesGuardada && typeof configBloquesGuardada === "object") {
-            configuracionesPorBloque = { ...configBloquesGuardada };
+            configuracionesPorBloque = {};
+            Object.entries(configBloquesGuardada).forEach(([clave, valores]) => {
+              const separador = clave.indexOf("::");
+              const modoGuardado = separador >= 0 ? clave.slice(0, separador) : "normal";
+              // Versiones anteriores guardaban Notas bajo una clave propia;
+              // hoy Carátula y Notas comparten la plantilla normal.
+              const modo = modoGuardado === "notas" ? "normal" : modoGuardado;
+              const bloque = separador >= 0 ? clave.slice(separador + 2) : clave;
+              const claveNormalizada = obtenerClaveConfiguracionBloque(modo, bloque);
+              const existente = configuracionesPorBloque[claveNormalizada] || {};
+              configuracionesPorBloque[claveNormalizada] = modoGuardado === "normal"
+                ? { ...existente, ...(valores || {}) }
+                : { ...(valores || {}), ...existente };
+            });
           }
           // Compatibilidad con configuraciones antiguas que no tenían estos campos.
           const configDocumentosGuardada = configVisual._configuracionDocumentos;
@@ -900,8 +914,13 @@
         return { ...configuracionGlobal, _configuracionDocumentos: { ...configuracionGlobalDocumentos }, _configuracionNotas: { ...configuracionGlobalNotas }, _configuracionPorBloque: { ...configuracionesPorBloque } };
       }
 
+      function normalizarNumeroBloque(bloque) {
+        const valor = String(bloque || "").trim();
+        return /^\d+$/.test(valor) ? (valor.replace(/^0+(?=\d)/, "") || "0") : valor.toLocaleLowerCase("es");
+      }
+
       function obtenerClaveConfiguracionBloque(modo, bloque) {
-        return `${modo}::${String(bloque || "").trim().toLocaleLowerCase("es")}`;
+        return `${modo}::${normalizarNumeroBloque(bloque)}`;
       }
 
       function establecerConfiguracionBloque(modo, bloque, valores) {
@@ -944,7 +963,13 @@
         const especificaNotas = modo === "normal" ? obtenerOverridesFolioModo(clave, "notas") : {};
         // La configuración elegida para un bloque debe prevalecer sobre los
         // ajustes antiguos específicos de notas de cada folio de ese bloque.
-        return normalizarAjusteNotaCaratula({ ...obtenerConfiguracionGlobalPorModo(modo), ...especificaNotas, ...porBloqueNotas, ...especifica, ...porBloque });
+        return normalizarAjusteNotaCaratula({
+          ...obtenerConfiguracionGlobalPorModo(modo),
+          ...porBloqueNotas,
+          ...porBloque,
+          ...especificaNotas,
+          ...especifica
+        });
       }
 
       function obtenerOverridesFolioModo(clave, modo, mapa = configuracionesPorFolio) {
@@ -1127,6 +1152,40 @@
         }
       }
 
+      function actualizarDisenoBloqueEnVistaPrevia() {
+        const modalConfig = $("modalConfig");
+        if (modalConfig?.classList.contains("mostrar")) return;
+        // Los folios guardados conservan su propia configuración; el diseño
+        // heredado del bloque solo se usa para un folio nuevo.
+        const modo = modoConfiguracionFormulario();
+        if (inpId.value) {
+          const disenoBloque = configuracionesPorBloque[obtenerClaveConfiguracionBloque(modo, inpBloque.value)];
+          if (!disenoBloque) {
+            cargarConfiguracionParaFolio(inpId.value);
+            return;
+          }
+          const configuracionPrevia = configVisual;
+          configVisual = { ...obtenerConfiguracionGlobalPorModo(modo), ...disenoBloque };
+          aplicarConfigVisual(false);
+          configVisual = configuracionPrevia;
+          actualizarPreview();
+          return;
+        }
+        const bloque = inpBloque.value;
+        const configuracionGuardada = configuracionesPorBloque[obtenerClaveConfiguracionBloque(modo, bloque)];
+        const configuracionPrevia = configVisual;
+        configVisual = configuracionGuardada
+          ? { ...obtenerConfiguracionGlobalPorModo(modo), ...configuracionGuardada }
+          : { ...obtenerConfiguracionGlobalPorModo(modo) };
+        aplicarConfigVisual(false);
+        configVisual = configuracionPrevia;
+        actualizarPreview();
+      }
+
+      // El bloque y el modo determinan juntos la vista previa. Solo se actualiza
+      // la carátula; la selección no guarda cambios de configuración.
+      inpBloque.addEventListener("input", actualizarDisenoBloqueEnVistaPrevia);
+
       async function guardarConfigVisual(grupo = "visual") {
         const campos = Object.keys(configVisual);
         if (!configVisualModalInicio) return;
@@ -1149,10 +1208,16 @@
       }
 
       async function aplicarConfiguracionVisualPendiente() {
+        const alcance = $("alcanceConfigPendiente").value;
+        // Guardar puede aplicar el diseño actual a un bloque o a todos los
+        // folios del modo aunque no se haya movido ningún control.
+        if (!Object.keys(configVisualPendiente).length && (alcance === "bloque" || alcance === "todos")) {
+          configVisualPendiente = { ...configVisual };
+          claveFolioConfigPendiente = obtenerClaveFolioActual();
+        }
         const campos = Object.keys(configVisualPendiente);
         if (!campos.length) return true;
 
-        const alcance = $("alcanceConfigPendiente").value;
         const configuracionGlobalModo = obtenerConfiguracionGlobalPorModo(modoConfigPlantilla);
         const bloqueObjetivo = String(inpBloque.value || "").trim();
         if (alcance === "bloque" && !bloqueObjetivo) {
@@ -1231,21 +1296,21 @@
             establecerConfiguracionFolioPorModo(String(id), modoConfigPlantilla, configVisualPendiente);
           });
         } else if (alcance === "bloque") {
-          const foliosDelBloque = todosLosFoliosCache.filter((folio) =>
-            String(folio.numero_bloque || "").trim() === bloqueObjetivo
-            && obtenerModoDeFolio(folio) === modoConfigPlantilla
-          );
-          foliosDelBloque.forEach((folio) => {
-            establecerConfiguracionFolioPorModo(String(folio.id), modoConfigPlantilla,
-              Object.fromEntries(campos.map((campo) => [campo, undefined])));
-            // Los folios normales también pueden conservar overrides del modo
-            // Notas; quitarlos evita que tapen los colores del diseño del bloque.
-            if (modoConfigPlantilla === "normal") {
-              establecerConfiguracionFolioPorModo(String(folio.id), "notas",
-                Object.fromEntries(campos.map((campo) => [campo, undefined])));
-            }
-          });
-          establecerConfiguracionBloque(modoConfigPlantilla, bloqueObjetivo, configVisualPendiente);
+          const claveBloque = obtenerClaveConfiguracionBloque(modoConfigPlantilla, bloqueObjetivo);
+          const configuracionBloqueCompleta = {
+            ...configuracionGlobalModo,
+            ...(configuracionesPorBloque[claveBloque] || {}),
+            ...configVisualPendiente
+          };
+          configuracionesPorBloque[claveBloque] = configuracionBloqueCompleta;
+          // Aplicar al bloque también actualiza sus folios guardados en este
+          // modo; los demás bloques y modos conservan sus configuraciones.
+          todosLosFoliosCache
+            .filter((folio) => normalizarNumeroBloque(folio.numero_bloque) === normalizarNumeroBloque(bloqueObjetivo)
+              && obtenerModoConfiguracionFolio(String(folio.id)) === modoConfigPlantilla)
+            .forEach((folio) => {
+              establecerConfiguracionFolioPorModo(String(folio.id), modoConfigPlantilla, configuracionBloqueCompleta);
+            });
         } else {
           configuracionesPorFolio = configuracionesExistentesConservadas;
           if (alcance === "este-y-nuevos" && claveFolioConfigPendiente && claveFolioConfigPendiente !== "actual_form" && obtenerModoConfiguracionFolio(claveFolioConfigPendiente) === modoConfigPlantilla) {
@@ -1508,7 +1573,7 @@
         actualizarPreview();
       }
 
-      /* LÓGICA DE BÚSQUEDA INTELIGENTE */
+      /* LÓGICA DE B\u00DASQUEDA INTELIGENTE */
       function cumpleFiltroInteligente(f, texto) {
         if (!texto) return true;
         const query = normalizarTexto(texto);
@@ -1731,24 +1796,24 @@
 
           return `
             <li class="ubicacion-duplicado ${esActual ? "ubicacion-actual" : ""}" data-folio-id="${escaparHtml(folio.id)}" data-nombre="${escaparHtml(nombre)}" tabindex="0" role="button" aria-label="Ir al folio número ${escaparHtml(folio.numero_folio)}">
-              <div>📁 <b>Folio N° ${escaparHtml(folio.numero_folio)}</b>${bloqTexto} - ${escaparHtml(folio.periodo || "----")}</div>
-              <div class="posicion-duplicado">📍 Posición: ${folio.posiciones.join(", ")}</div>
+              <div>\u{1F4C1} <b>Folio N° ${escaparHtml(folio.numero_folio)}</b>${bloqTexto} - ${escaparHtml(folio.periodo || "----")}</div>
+              <div class="posicion-duplicado">\u{1F4CD} Posición: ${folio.posiciones.join(", ")}</div>
             </li>`;
         }).join("");
 
         const formularioHtml = posicionesFormulario.length > 1
           ? `<div class="ubicacion-formulario">
-               <div><b>📝 En el folio que estás editando</b></div>
-               <div class="posicion-duplicado">📍 Posiciones: ${posicionesFormulario.join(", ")}</div>
+               <div><b>\u{1F4DD} En el folio que estás editando</b></div>
+               <div class="posicion-duplicado">\u{1F4CD} Posiciones: ${posicionesFormulario.join(", ")}</div>
              </div>`
           : "";
 
         const contenido = $("contenidoModalDuplicados");
         contenido.innerHTML = `
-          <div>El nombre <b>“${escaparHtml(nombre)}”</b> tiene más de una aparición.</div>
+          <div>El nombre <b>\u201C${escaparHtml(nombre)}\u201D</b> tiene más de una aparición.</div>
           ${formularioHtml}
           ${ubicacionesHtml ? `
-            <div class="titulo-ubicaciones">📌 Ubicación en folios guardados:</div>
+            <div class="titulo-ubicaciones">\u{1F4CC} Ubicación en folios guardados:</div>
             <ul class="lista-folios-duplicados">${ubicacionesHtml}</ul>
           ` : `
             <div class="sin-ubicaciones">No se encontraron ubicaciones guardadas para este nombre.</div>
@@ -1822,7 +1887,7 @@
         return entradas.map((entrada, indice) => {
           const nota = folio.tipo_registro === "documentos_sin_notas" ? "" : (notas[indice] || "");
           const notaHtml = nota && !esSeparador(entrada)
-            ? '<div style="font-size:11px;color:#64748b;margin-left:14px;">📄 Nota de páginas: ' +
+            ? '<div style="font-size:11px;color:#64748b;margin-left:14px;">\u{1F4C4} Nota de páginas: ' +
               escaparHtml(nota) + ' · Total: ' + escaparHtml(contarTotalDocumentos(nota)) + ' página(s)</div>'
             : "";
           if (esSeparador(entrada)) return "";
@@ -1861,13 +1926,13 @@
               <div style="${esDuplicado ? 'text-decoration:underline;text-decoration-color:#ef4444;' : ''}">
                 <b>${index + 1}.</b> ${nombreHtml}${badge} ${cargo ? `<span class="${cargoCoincide ? 'cargo-coincidente' : ''}" style="${cargoCoincide ? '' : 'color:#0ea5e9;font-weight:bold;'}">(${cargoCoincide ? resaltarCoincidenciasTexto(cargo, filtroActivo) : escaparHtml(cargo)})</span>` : ''}
               </div>
-              ${nota ? `<div style="font-size:11px;color:#64748b;margin-left:14px;">📄 Nota: ${escaparHtml(nota)}</div>` : ''}
+              ${nota ? `<div style="font-size:11px;color:#64748b;margin-left:14px;">\u{1F4C4} Nota: ${escaparHtml(nota)}</div>` : ''}
             </div>`;
           }).join("") : `<div class="detalle-vacio">No hay nombres registrados.</div>`;
 
           const observacion = obtenerObservacionDelModoFolio(f);
           const observacionHtml = observacion
-            ? `<div class="detalle-observaciones" style="margin:8px 0 0;padding:6px 0 0;border-top:1px dashed #cbd5e1;font-size:11px;line-height:1.35;white-space:pre-wrap;">📝 <span style="color:#1e3a8a;font-weight:normal;">Observaciones:</span> ${escaparHtml(observacion)}</div>`
+            ? `<div class="detalle-observaciones" style="margin:8px 0 0;padding:6px 0 0;border-top:1px dashed #cbd5e1;font-size:11px;line-height:1.35;white-space:pre-wrap;">\u{1F4DD} <span style="color:#1e3a8a;font-weight:normal;">Observaciones:</span> ${escaparHtml(observacion)}</div>`
             : "";
           const nombresReales = nombres.filter((n) => !esSeparador(n));
           const tipoBadge = `<span style="background:${esModoDocumentos ? "#fef3c7" : "#e0f2fe"};color:${esModoDocumentos ? "#92400e" : "#075985"};padding:2px 6px;border-radius:4px;font-size:10px;margin-left:4px;">${esModoDocumentos ? "Documentos" : "Normal"}</span>`;
@@ -1875,17 +1940,17 @@
 
           return `<div class="lista-item${bloqueTieneDuplicados ? ' bloque-duplicado' : ''}">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div><b>N° ${escaparHtml(f.numero_folio)}</b>${tipoBadge}${bloqBadge} - ${escaparHtml(f.periodo)}${bloqueTieneDuplicados ? '<span class="marcador-bloque-duplicado">⚠️</span>' : ''}</div>
-              <span style="color:#64748b;font-size:12px;">${esModoDocumentos ? "N.º de documentos" : `${nombresReales.length} nombre(s)`}</span>
+              <div><b>N\u00B0 ${escaparHtml(f.numero_folio)}</b>${tipoBadge}${bloqBadge} - ${escaparHtml(f.periodo)}${bloqueTieneDuplicados ? '<span class="marcador-bloque-duplicado">\u26A0\uFE0F</span>' : ''}</div>
+              <span style="color:#64748b;font-size:12px;">${esModoDocumentos ? "N.\u00BA de documentos" : `${nombresReales.length} nombre(s)`}</span>
             </div>
             <details style="margin-top:6px;" data-folio-id="${f.id}" ${isOpen ? 'open' : ''}>
               <summary style="cursor:pointer;color:#0ea5e9;">Ver contenido</summary>
               <div style="margin-top:6px;">${contenido}${observacionHtml}</div>
             </details>
             <div class="acciones">
-              <button class="btn-accion btn-editar" data-action="editar" data-folio-id="${escaparHtml(f.id)}">✏️ Editar</button>
-              <button class="btn-accion btn-duplicar" data-action="duplicar" data-folio-id="${escaparHtml(f.id)}">📋 Duplicar</button>
-              <button class="btn-accion btn-eliminar" data-action="eliminar" data-folio-id="${escaparHtml(f.id)}">🗑️ Eliminar</button>
+              <button class="btn-accion btn-editar" data-action="editar" data-folio-id="${escaparHtml(f.id)}">\u270F\uFE0F Editar</button>
+              <button class="btn-accion btn-duplicar" data-action="duplicar" data-folio-id="${escaparHtml(f.id)}">\u{1F4CB} Duplicar</button>
+              <button class="btn-accion btn-eliminar" data-action="eliminar" data-folio-id="${escaparHtml(f.id)}">\u{1F5D1}\uFE0F Eliminar</button>
             </div>
           </div>`;
         }).join("");
@@ -1960,8 +2025,8 @@
         if (!input || !total) return;
         const res = validarRangoNotaPago(input.value);
         if (!input.value.trim()) { total.className = "nota-pago-total"; total.textContent = ""; return; }
-        if (!res.valido) { total.className = "nota-pago-total nota-pago-error"; total.textContent = "⚠️ " + res.mensaje; return; }
-        total.className = "nota-pago-total"; total.textContent = `✓ Total: ${res.total} página(s)`;
+        if (!res.valido) { total.className = "nota-pago-total nota-pago-error"; total.textContent = "\u26A0\uFE0F " + res.mensaje; return; }
+        total.className = "nota-pago-total"; total.textContent = `\u2713 Total: ${res.total} página(s)`;
       }
 
       /* CONSTRUCCIÓN DE FILAS Y MANEJO DEL DOM */
@@ -1971,15 +2036,15 @@
         const cargoFinal = cargo !== "" ? cargo : cargoActual;
         row.innerHTML = `
           <div class="nombre-row-top">
-            <button type="button" class="btn-orden" onclick="moverFila(this, -1)">▲</button>
-            <button type="button" class="btn-orden" onclick="moverFila(this, 1)">▼</button>
+            <button type="button" class="btn-orden" onclick="moverFila(this, -1)">\u25B2</button>
+            <button type="button" class="btn-orden" onclick="moverFila(this, 1)">\u25BC</button>
             <input type="text" class="inpNombreItem" value="${escaparHtml(valor)}">
-            <span class="indicador-mover">↕ Mover</span>
+            <span class="indicador-mover">\u2195 Mover</span>
             <input type="text" class="inpCargoItem" value="${escaparHtml(cargoFinal)}">
-            <button type="button" class="btn-eliminar-fila" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>
+            <button type="button" class="btn-eliminar-fila" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">\u00D7</button>
           </div>
           <div class="nota-pago-wrap ${notasPagoVisibles ? "mostrar" : ""}">
-            <label>📄 Nota de páginas</label>
+            <label>\u{1F4C4} Nota de páginas</label>
             <input type="text" class="inpNotaPago" value="${escaparHtml(notaPago)}" inputmode="numeric">
             <div class="nota-pago-total"></div>
           </div>`;
@@ -1993,7 +2058,7 @@
         const modoDocumentos = esModoDocumentos();
         const modoDocumentosConNotas = $("selectTipoRegistro")?.value === "documentos";
         const etiqueta = $("etiquetaDatosRegistro");
-        if (etiqueta) etiqueta.textContent = modoDocumentos ? "N.º de documentos" : "Apellidos y Nombres / Cargo";
+        if (etiqueta) etiqueta.textContent = modoDocumentos ? "N.\u00BA de documentos" : "Apellidos y Nombres / Cargo";
 
         const btnAgregarNombre = $("btnAgregarNombre");
         const btnAgregarSeparador = $("btnAgregarSeparador");
@@ -2068,10 +2133,10 @@
         row.dataset.tipo = "separador";
         row.innerHTML = `
           <div class="nombre-row-top">
-            <button type="button" class="btn-orden" onclick="moverFila(this, -1)">▲</button>
-            <button type="button" class="btn-orden" onclick="moverFila(this, 1)">▼</button>
+            <button type="button" class="btn-orden" onclick="moverFila(this, -1)">\u25B2</button>
+            <button type="button" class="btn-orden" onclick="moverFila(this, 1)">\u25BC</button>
             <input type="text" class="inpSeparador" value="${escaparHtml(valor)}" >
-          <button type="button" class="btn-eliminar-fila" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">✕</button>
+          <button type="button" class="btn-eliminar-fila" onclick="this.closest('.nombre-row').remove(); actualizarPreview(); actualizarVisibilidadFilas();">\u00D7</button>
           </div>`;
         contNombres.appendChild(row);
         actualizarCamposTipoRegistro();
@@ -2234,7 +2299,7 @@
             input.classList.add("nombre-duplicado-input");
             // El nombre solo se marca en rojo mientras se escribe.
             // La ubicación del duplicado se muestra al guardar.
-            input.title = "⚠️ Nombre duplicado. Al guardar se mostrará dónde está.";
+            input.title = "\u26A0\uFE0F Nombre duplicado. Al guardar se mostrará dónde está.";
             input.onclick = null;
           } else {
             input.classList.remove("nombre-duplicado-input");
@@ -2300,15 +2365,15 @@
 
             return `
               <li class="ubicacion-duplicado ${esActual ? "ubicacion-actual" : ""}" data-folio-id="${escaparHtml(folio.id)}" data-nombre="${escaparHtml(nombreOriginal)}" tabindex="0" role="button" aria-label="Ir al folio número ${escaparHtml(folio.numero_folio)}">
-                <div>📁 <b>Folio N° ${escaparHtml(folio.numero_folio)}</b>${bloque} - ${escaparHtml(folio.periodo || "----")}</div>
-                <div class="posicion-duplicado">📍 Posición: ${folio.posiciones.join(", ")}</div>
+                <div>\u{1F4C1} <b>Folio N° ${escaparHtml(folio.numero_folio)}</b>${bloque} - ${escaparHtml(folio.periodo || "----")}</div>
+                <div class="posicion-duplicado">\u{1F4CD} Posición: ${folio.posiciones.join(", ")}</div>
               </li>`;
           }).join("");
 
           bloques.push(`
             <div style="margin-bottom:14px;">
-              <div style="margin-bottom:6px;">👤 <b>“${escaparHtml(nombreOriginal)}”</b></div>
-              <div class="titulo-ubicaciones">📌 Se encontró duplicado en:</div>
+              <div style="margin-bottom:6px;">\u{1F464} <b>\u201C${escaparHtml(nombreOriginal)}\u201D</b></div>
+              <div class="titulo-ubicaciones">\u{1F4CC} Se encontró duplicado en:</div>
               <ul class="lista-folios-duplicados">${ubicacionesHtml}</ul>
             </div>`);
         });
@@ -2316,7 +2381,7 @@
         if (!bloques.length) return;
 
         $("contenidoModalDuplicados").innerHTML = `
-          <div style="margin-bottom:12px;">⚠️ Se encontraron <b>nombres duplicados</b> en los folios guardados.</div>
+          <div style="margin-bottom:12px;">\u26A0\uFE0F Se encontraron <b>nombres duplicados</b> en los folios guardados.</div>
           ${bloques.join("")}
         `;
         $("modalDuplicados").classList.add("mostrar");
@@ -2373,31 +2438,53 @@
         actualizarVisibilidadFilas();
       }
 
-      function obtenerUltimoFolioRegistrado() {
+      function claveModoSecuenciaAutomatica(modo = modoRegistroActual) {
+        return ["normal", "notas", "documentos", "documentos_sin_notas"].includes(modo) ? modo : "normal";
+      }
+
+      function obtenerSecuenciaAutomatica(modo = modoRegistroActual) {
+        const clave = claveModoSecuenciaAutomatica(modo);
+        ajustesAvanzados.secuenciasPorModo = ajustesAvanzados.secuenciasPorModo && typeof ajustesAvanzados.secuenciasPorModo === "object"
+          ? ajustesAvanzados.secuenciasPorModo
+          : {};
+        if (!ajustesAvanzados.secuenciasPorModo[clave]) {
+          ajustesAvanzados.secuenciasPorModo[clave] = {
+            ultimoFolioAutomatico: "",
+            secuenciaFolioIniciada: false,
+            ultimoPeriodoAutomatico: ""
+          };
+        }
+        return ajustesAvanzados.secuenciasPorModo[clave];
+      }
+
+      function modoSecuenciaDeFolio(folio) {
+        const tipo = String(folio?.tipo_registro || "").trim();
+        if (["normal", "notas", "documentos", "documentos_sin_notas"].includes(tipo)) return tipo;
+        return esFolioModoDocumentos(folio) ? "documentos" : "normal";
+      }
+
+      function obtenerUltimoFolioRegistrado(modo = modoRegistroActual) {
         const folios = Array.isArray(todosLosFoliosCache) ? todosLosFoliosCache : [];
         // La consulta se ordena por creado_en descendente. Para una secuencia
         // numérica conviene tomar el mayor folio, no el último elemento (que
         // sería el registro más antiguo).
-        return folios.reduce((mayor, folio) => {
-          const numero = Number(String(folio?.numero_folio ?? "").trim());
-          if (!Number.isFinite(numero)) return mayor;
-          const numeroMayor = Number(String(mayor?.numero_folio ?? "").trim());
-          return !mayor || numero > numeroMayor ? folio : mayor;
-        }, null);
+        return folios.find((folio) => modoSecuenciaDeFolio(folio) === claveModoSecuenciaAutomatica(modo)) || null;
       }
 
       function aplicarValoresAutomaticosFormulario() {
         if (inpId.value) return;
+        const secuencia = obtenerSecuenciaAutomatica(modoRegistroActual);
 
         if (ajustesAvanzados.folioAutomatico) {
-          const ultimo = ajustesAvanzados.secuenciaFolioIniciada
-            ? Number(ajustesAvanzados.ultimoFolioAutomatico)
+          const ultimo = secuencia.secuenciaFolioIniciada
+            ? Number(secuencia.ultimoFolioAutomatico)
             : Number.NaN;
-          const ultimoRegistrado = obtenerUltimoFolioRegistrado();
+          const ultimoRegistrado = obtenerUltimoFolioRegistrado(modoRegistroActual);
           const ultimoCache = Number(ultimoRegistrado?.numero_folio);
           if (Number.isFinite(ultimo) || Number.isFinite(ultimoCache)) {
-            const textoBase = Number.isFinite(ultimo) ? String(ajustesAvanzados.ultimoFolioAutomatico) : String(ultimoRegistrado?.numero_folio || "");
-            const base = Number.isFinite(ultimo) ? ultimo : ultimoCache;
+            const usarSecuenciaGuardada = Number.isFinite(ultimo);
+            const textoBase = usarSecuenciaGuardada ? String(secuencia.ultimoFolioAutomatico) : String(ultimoRegistrado?.numero_folio || "");
+            const base = usarSecuenciaGuardada ? ultimo : ultimoCache;
             inpNumero.value = String(base + 1).padStart(/^\d+$/.test(textoBase) ? textoBase.length : 1, "0");
           } else {
             // La primera numeración debe iniciarla el usuario.
@@ -2408,8 +2495,8 @@
         if (ajustesAvanzados.periodoAutomatico) {
           // Si todavía no hay secuencia guardada, iniciar con el período del
           // folio más reciente para que activar el ajuste no deje el campo vacío.
-          const periodoGuardado = ajustesAvanzados.ultimoPeriodoAutomatico ||
-            todosLosFoliosCache[0]?.periodo || "";
+          const ultimoFolioDelModo = todosLosFoliosCache.find((folio) => modoSecuenciaDeFolio(folio) === claveModoSecuenciaAutomatica(modoRegistroActual));
+          const periodoGuardado = secuencia.ultimoPeriodoAutomatico || ultimoFolioDelModo?.periodo || "";
           inpPeriodo.value = periodoGuardado;
         }
       }
@@ -2434,7 +2521,7 @@
       /* MODO REORDENAR Y DRAG & DROP */
       $("btnReordenar").addEventListener("click", function() {
         const activo = contNombres.classList.toggle("modo-reordenar");
-        this.textContent = activo ? "✓ Finalizar" : "↕ Reordenar";
+        this.textContent = activo ? "\u2713 Finalizar" : "\u2195 Reordenar";
         filaSeleccionada = null;
         document.querySelectorAll(".nombre-row").forEach(f => {
           f.draggable = activo;
@@ -2482,8 +2569,8 @@
     const span = document.createElement("span");
     span.className = "etiqueta-mover-separador";
     span.innerHTML = texto
-      ? `↕ Mover <span class="nombre-separador-texto">${escaparHtml(texto)}</span>`
-      : "↕ Mover";
+      ? `\u2195 Mover <span class="nombre-separador-texto">${escaparHtml(texto)}</span>`
+      : "\u2195 Mover";
     fila.querySelector(".nombre-row-top").insertBefore(span, fila.querySelector("button[onclick*='remove']"));
   }
 });
@@ -2521,9 +2608,12 @@
         if (claveBorradorModoRegistro(modoRegistroActual) !== claveBorradorModoRegistro(modoAnterior)) {
           restaurarBorradorModoRegistro(modoRegistroActual);
         }
+        if (!inpId.value && (ajustesAvanzados.folioAutomatico || ajustesAvanzados.periodoAutomatico)) {
+          aplicarValoresAutomaticosFormulario();
+        }
         // Cada modo usa su propia plantilla global (incluidos colores y contorno).
         // Recarga esa configuración al cambiar el selector del formulario.
-        cargarConfiguracionParaFolio(obtenerClaveFolioActual());
+        actualizarDisenoBloqueEnVistaPrevia();
         notasPagoVisibles = evento.target.value === "notas";
         actualizarVisibilidadNotas();
         actualizarPreview();
@@ -2610,7 +2700,7 @@
         contenedor.innerHTML = impresosFiltrados.map((f) => `
           <div class="folio-impreso-item">
             <div class="folio-impreso-datos">
-              <span class="folio-impreso-numero">N° ${escaparHtml(f.numero_folio)}</span>
+              <span class="folio-impreso-numero">N\u00B0 ${escaparHtml(f.numero_folio)}</span>
               ${f.numero_bloque ? `<span class="folio-impreso-bloque">Bloque ${escaparHtml(f.numero_bloque)}</span>` : ""}
               <span class="folio-impreso-periodo">Período: ${escaparHtml(f.periodo)}</span>
             </div>
@@ -2632,7 +2722,7 @@
 
         renderizarListaFoliosImpresos(foliosDisponibles);
         renderizarListaImpresion(foliosDisponibles);
-        agregarHistorial("↩️ Deshecho", `Se quitó de Impresos: ${etiqueta}`);
+        agregarHistorial("\u21A9\uFE0F Deshecho", `Se quitó de Impresos: ${etiqueta}`);
       }
 
       function renderizarListaImpresion(foliosDisponibles) {
@@ -2656,7 +2746,7 @@
           item.style.cssText = "display:flex; align-items:center; gap:8px; padding:6px; border-bottom:1px solid #e2e8f0; cursor:pointer;";
           item.innerHTML = `
             <input type="checkbox" class="chkFolioImprimir" value="${f.id}" ${checked} style="width:auto;">
-            <span style="font-size:13px; font-weight:bold;">N° ${escaparHtml(f.numero_folio)}</span>
+            <span style="font-size:13px; font-weight:bold;">N\u00B0 ${escaparHtml(f.numero_folio)}</span>
             ${f.numero_bloque ? `<span style="font-size:11px; color:#334155; background:#e2e8f0; padding:2px 6px; border-radius:4px;">Bloque ${escaparHtml(f.numero_bloque)}</span>` : ""}
             <span style="font-size:11px; color:#64748b;">Periodo: ${escaparHtml(f.periodo)}</span>
           `;
@@ -2823,7 +2913,7 @@
         if (!ids.length) return; // No había folios guardados marcados (era solo la carátula actual)
 
         registrarFoliosImpresos(ids);
-        agregarHistorial("🖨️ Impresión", `Folios registrados como impresos: ${ids.length}`);
+        agregarHistorial("\u{1F5A8}\uFE0F Impresión", `Folios registrados como impresos: ${ids.length}`);
       }
 
       function confirmarImpresionCancelar() {
@@ -2878,7 +2968,7 @@
           if (!r.valido) { alert(`Revisa la nota de página de "${u.nombre}": ${r.mensaje}`); notasPagoVisibles = true; actualizarVisibilidadNotas(); return; }
         }
 
-        let error, data, accion = inpId.value ? "✏️ Edición" : "➕ Creación";
+        let error, data, accion = inpId.value ? "\u270F\uFE0F Edición" : "\u2795 Creación";
         const bloqueDetalle = payload.numero_bloque ? ` [Bloque ${payload.numero_bloque}]` : "";
         const detalle = `Folio N° ${payload.numero_folio}${bloqueDetalle} - ${payload.periodo}`;
 
@@ -2898,12 +2988,13 @@
           return;
         }
 
+        const secuenciaActual = obtenerSecuenciaAutomatica(modoRegistroActual);
         if (ajustesAvanzados.folioAutomatico && Number.isFinite(Number(payload.numero_folio))) {
-          ajustesAvanzados.ultimoFolioAutomatico = payload.numero_folio;
-          ajustesAvanzados.secuenciaFolioIniciada = true;
+          secuenciaActual.ultimoFolioAutomatico = payload.numero_folio;
+          secuenciaActual.secuenciaFolioIniciada = true;
         }
         if (ajustesAvanzados.periodoAutomatico && payload.periodo) {
-          ajustesAvanzados.ultimoPeriodoAutomatico = payload.periodo;
+          secuenciaActual.ultimoPeriodoAutomatico = payload.periodo;
         }
         if (ajustesAvanzados.folioAutomatico || ajustesAvanzados.periodoAutomatico) {
           guardarEstadoAutomatico();
@@ -2982,6 +3073,7 @@
         actualizarPreview(); 
         actualizarMarcadoDuplicadosFormulario(); 
         actualizarVisibilidadFilas();
+        actualizarDisenoBloqueEnVistaPrevia();
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
 
@@ -3032,7 +3124,7 @@
           .eq("id", id).eq("owner_id", usuarioAutenticado.id);
         if (error) { alert("Error al eliminar: " + error.message); return; }
         actualizarFoliosCache({ id }, true);
-        agregarHistorial("🗑️ Eliminación", `Folio N° ${numero} - ${periodo}`);
+        agregarHistorial("\u{1F5D1}\uFE0F Eliminación", `Folio N° ${numero} - ${periodo}`);
         if (inpId.value === id) limpiarFormulario();
         await recargarUltimaPagina();
       }
@@ -3054,7 +3146,7 @@
         ordenarListaPorBloque = !ordenarListaPorBloque;
         const btn = $("btnOrdenarBloque");
         btn.classList.toggle("activo", ordenarListaPorBloque);
-        btn.textContent = ordenarListaPorBloque ? "↕ Ordenar por reciente" : "↕ Ordenar por bloque";
+        btn.textContent = ordenarListaPorBloque ? "\u2195 Ordenar por reciente" : "\u2195 Ordenar por bloque";
         paginaActual = 0;
         await cargarPagina(0);
       });
@@ -3838,7 +3930,7 @@
         }
         localStorage.setItem(claveLocalPorUsuario("ajustesAvanzados"), JSON.stringify(ajustesAvanzados));
 
-        // Estos ajustes ya quedaron guardados aunque luego falle la aplicaciÃ³n del diseÃ±o.
+        // Estos ajustes ya quedaron guardados aunque luego falle la aplicación del diseño.
         if (estadoConfigAntesModal) {
           estadoConfigAntesModal.ajustesAvanzados = { ...ajustesAvanzados };
           estadoConfigAntesModal.cargoActual = cargoActual;
@@ -3846,7 +3938,7 @@
         }
 
         await guardarConfigVisual();
-        if (Object.keys(configVisualPendiente).length) {
+        if (Object.keys(configVisualPendiente).length || ["bloque", "todos"].includes($("alcanceConfigPendiente").value)) {
           const aplicado = await aplicarConfiguracionVisualPendiente();
           if (!aplicado) return;
         }
@@ -3866,7 +3958,7 @@
         };
         iniciarHistorialConfig();
         actualizarVistaPreviaConfiguracion();
-        alert("Configuración guardada correctamente.");
+        alert("Configuraci\u00F3n guardada correctamente.");
       };
 
       /* TECLAS ESCAPE PARA MODALES */
