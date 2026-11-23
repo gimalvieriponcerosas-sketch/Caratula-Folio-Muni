@@ -942,7 +942,9 @@
         const porBloqueNotas = modo === "normal" ? (configuracionesPorBloque[obtenerClaveConfiguracionBloque("notas", bloque)] || {}) : {};
         const porBloque = configuracionesPorBloque[obtenerClaveConfiguracionBloque(modo, bloque)] || {};
         const especificaNotas = modo === "normal" ? obtenerOverridesFolioModo(clave, "notas") : {};
-        return normalizarAjusteNotaCaratula({ ...obtenerConfiguracionGlobalPorModo(modo), ...porBloqueNotas, ...porBloque, ...especificaNotas, ...especifica });
+        // La configuración elegida para un bloque debe prevalecer sobre los
+        // ajustes antiguos específicos de notas de cada folio de ese bloque.
+        return normalizarAjusteNotaCaratula({ ...obtenerConfiguracionGlobalPorModo(modo), ...especificaNotas, ...porBloqueNotas, ...especifica, ...porBloque });
       }
 
       function obtenerOverridesFolioModo(clave, modo, mapa = configuracionesPorFolio) {
@@ -1236,6 +1238,12 @@
           foliosDelBloque.forEach((folio) => {
             establecerConfiguracionFolioPorModo(String(folio.id), modoConfigPlantilla,
               Object.fromEntries(campos.map((campo) => [campo, undefined])));
+            // Los folios normales también pueden conservar overrides del modo
+            // Notas; quitarlos evita que tapen los colores del diseño del bloque.
+            if (modoConfigPlantilla === "normal") {
+              establecerConfiguracionFolioPorModo(String(folio.id), "notas",
+                Object.fromEntries(campos.map((campo) => [campo, undefined])));
+            }
           });
           establecerConfiguracionBloque(modoConfigPlantilla, bloqueObjetivo, configVisualPendiente);
         } else {
