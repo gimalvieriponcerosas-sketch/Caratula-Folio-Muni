@@ -335,7 +335,7 @@
       .caratula .subgerencia[hidden] { display: none !important; }
       .caratula .cv-label { order: 4; font-weight: bold; margin-top: var(--espacio-curriculum, 0px); margin-bottom: 6px; letter-spacing: 1px; text-align: center; font-size: 28px; }
       .caratula .nombres { order: 5; font-family: var(--fuente-nombres, Arial), Arial, sans-serif; font-size: var(--tamano-nombres, 15px); text-align: left; padding-left: 8px; padding-top: var(--espacio-nombres, 0px); flex-grow: 1; width: 100%; min-width: 0; }
-      .caratula .nombres div { margin-bottom: 6px; padding-left: 14px; position: relative; overflow-wrap: anywhere; }
+      .caratula .nombres div { margin-bottom: var(--separacion-nombres, 6px); padding-left: 14px; position: relative; overflow-wrap: anywhere; }
       .caratula .nombres > div:not(.separador):not(.documento-con-nota-preview):not(.sin-nombres):before,
       .caratula .nombres > .documento-con-nota-preview > div:first-child:before { content: "➤"; position: absolute; left: -4px; top: 0; transform: none; color: var(--sky); font-size: 0.55em; line-height: inherit; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .caratula.nombres-centrados .nombres { text-align: center; padding-left: 0; }
