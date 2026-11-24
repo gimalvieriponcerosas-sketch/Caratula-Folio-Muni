@@ -1155,20 +1155,13 @@
       function actualizarDisenoBloqueEnVistaPrevia() {
         const modalConfig = $("modalConfig");
         if (modalConfig?.classList.contains("mostrar")) return;
-        // Los folios guardados conservan su propia configuración; el diseño
-        // heredado del bloque solo se usa para un folio nuevo.
+        // En folios guardados, los ajustes propios del folio tienen prioridad
+        // sobre el diseño heredado del bloque. El bloque solo sirve de base.
         const modo = modoConfiguracionFormulario();
         if (inpId.value) {
-          const disenoBloque = configuracionesPorBloque[obtenerClaveConfiguracionBloque(modo, inpBloque.value)];
-          if (!disenoBloque) {
-            cargarConfiguracionParaFolio(inpId.value);
-            return;
-          }
-          const configuracionPrevia = configVisual;
-          configVisual = { ...obtenerConfiguracionGlobalPorModo(modo), ...disenoBloque };
-          aplicarConfigVisual(false);
-          configVisual = configuracionPrevia;
-          actualizarPreview();
+          // obtenerConfiguracionParaFolio combina global + bloque + overrides
+          // específicos del folio, en ese orden.
+          cargarConfiguracionParaFolio(inpId.value);
           return;
         }
         const bloque = inpBloque.value;
