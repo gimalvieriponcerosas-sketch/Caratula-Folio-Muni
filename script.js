@@ -1899,10 +1899,12 @@
           const esModoDocumentos = esFolioModoDocumentos(f);
           const bloqueTieneDuplicados = nombres.some((nombre) => nombre && !esSeparador(nombre) && duplicados[normalizarTexto(nombre)]);
 
+          let numeroNombre = 0;
           const contenido = esModoDocumentos
             ? renderizarContenidoDocumentos(f, nombres, notas)
             : nombres.length ? nombres.map((nombre, index) => {
             if (esSeparador(nombre)) return "";
+            numeroNombre++;
             const nota = notas[index] ?? "", cargo = cargos[index] ?? "";
             const cargoCoincide = !!filtroActivo.trim() && coincideTextoExacto(cargo, filtroActivo);
             const infoDuplicado = duplicados[normalizarTexto(nombre)];
@@ -1917,7 +1919,7 @@
 
             return `<div class="detalle-nombre" data-nombre="${escaparHtml(nombre)}">
               <div style="${esDuplicado ? 'text-decoration:underline;text-decoration-color:#ef4444;' : ''}">
-                <b>${index + 1}.</b> ${nombreHtml}${badge} ${cargo ? `<span class="${cargoCoincide ? 'cargo-coincidente' : ''}" style="${cargoCoincide ? '' : 'color:#0ea5e9;font-weight:bold;'}">(${cargoCoincide ? resaltarCoincidenciasTexto(cargo, filtroActivo) : escaparHtml(cargo)})</span>` : ''}
+                <b>${numeroNombre}.</b> ${nombreHtml}${badge} ${cargo ? `<span class="${cargoCoincide ? 'cargo-coincidente' : ''}" style="${cargoCoincide ? '' : 'color:#0ea5e9;font-weight:bold;'}">(${cargoCoincide ? resaltarCoincidenciasTexto(cargo, filtroActivo) : escaparHtml(cargo)})</span>` : ''}
               </div>
               ${nota ? `<div style="font-size:11px;color:#64748b;margin-left:14px;">\u{1F4C4} Nota: ${escaparHtml(nota)}</div>` : ''}
             </div>`;
@@ -2407,6 +2409,19 @@
       }
 
       function limpiarFormulario() {
+        const eraFolioNuevo = !inpId.value;
+        const modoAntesDeLimpiar = modoRegistroActual;
+        const numeroActual = inpNumero.value.trim();
+        if (eraFolioNuevo && ajustesAvanzados.folioAutomatico && /^\d+$/.test(numeroActual)) {
+          const secuencia = obtenerSecuenciaAutomatica(modoAntesDeLimpiar);
+          const numero = Number(numeroActual);
+          const ultimo = secuencia.secuenciaFolioIniciada ? Number(secuencia.ultimoFolioAutomatico) : Number.NaN;
+          if (!Number.isFinite(ultimo) || numero > ultimo) {
+            secuencia.ultimoFolioAutomatico = numeroActual;
+            secuencia.secuenciaFolioIniciada = true;
+            guardarEstadoAutomatico();
+          }
+        }
         inpId.value = ""; 
         // Al guardar y limpiar el formulario, conserva el modo elegido para
         // que el siguiente registro pueda capturarse con el mismo tipo.
